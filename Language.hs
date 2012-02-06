@@ -4,6 +4,8 @@ module Language where
 type Name = String
 type IsRec = Bool
 
+--For each alternative in a case statement we need the tag, list of bound
+--vairables and the expression.
 type Alter a = (Int, [a], Expr a)
 
 data Expr a
@@ -22,6 +24,30 @@ data Expr a
     deriving Show
 
 type CoreExpr = Expr Name   --An expression with its name
+type CoreAlt = Alter Name   --An aternative expression and its name for cases
 
+--Following two functions are to retrieve either the bounded variable names
+--or the expressions from a list of definitions
+bindersOf :: [(a,b)] -> [a]
+bindersOf defs = [names | (names, exprs) <- defs]
 
+expressionsOf :: [(a,b)] -> [b]
+expressionsOf defs = [exprs | (names, exprs) <- defs]
+
+--Atomic expressions are functions that have no structure on the RHS
+--Because of our syntax, that means it is either an EVar or an ENum
+isAtomicExpr :: Expr a -> Bool
+isAtomicExpr (EVar a) = True
+isAtomicExpr (ENum a) = True
+isAtomicExpr e = False          -- If the pattern matching gets here, it's false
+
+--Supercombinators definitions contain the name of the supercombinator, the list
+--of arguments and the expression (body) to compute.
+type ScDef a = (Name, [a], Expr a)
+
+--Following from this, a program is just a list of supercombinators
+type Program a = [ScDef a]
+
+--A Core Program is the list of supercombinators with an included name
+type CoreProgram = Program Name
 
