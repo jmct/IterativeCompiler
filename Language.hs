@@ -21,3 +21,7 @@ data Expr a
     | ELam [a] (Expr a)     --Lambda expression
     deriving Show
 
+type CoreExpr = Expr Name   --An expression with its name
+
+
+
