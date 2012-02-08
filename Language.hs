@@ -68,4 +68,17 @@ preludeDefs = [ ("I", ["x"], EVar "x"),
                                                  (EAp (EVar "g") (EVar "x"))),
                 ("twice", ["f"], EAp (EAp (EVar "compose") (EVar "f")) (EVar "f")) ]
 
+{-**************************
+ - Pretty Printing a program
+ - *************************-}
 
+--First we define how we would print our CoreExpressions
+
+pprExpr :: CoreExpr -> String
+pprExpr (ENum n) = show n
+pprExpr (EVar v) = v
+pprExpr (EAp e1 e2) = pprExpr e1 ++ " " ++ pprExprParen e2
+                        where pprExprParen e = if isAtomicExpr e then pprExpr e
+                                               else "(" ++ pprExpr e ++ ")"
+
+--pprint :: CoreProgram -> String
