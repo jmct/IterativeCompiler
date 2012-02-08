@@ -51,3 +51,21 @@ type Program a = [ScDef a]
 --A Core Program is the list of supercombinators with an included name
 type CoreProgram = Program Name
 
+{-********************************************************************
+ - The Prelude for the Core Lanuage
+ - 
+ - The prelude will define the usual SKI combinators along with combinators
+ - for composition (compose) and for repeating function application (twice).
+ - *******************************************************************-}
+
+preludeDefs :: CoreProgram
+preludeDefs = [ ("I", ["x"], EVar "x"),
+                ("K", ["x", "y"], EVar "x"), 
+                ("K1", ["x", "y"], EVar "y"),
+                ("S", ["f", "g", "x"], EAp (EAp (EVar "f") (EVar "x")) 
+                                           (EAp (EVar "g") (EVar "x"))),
+                ("compose", ["f", "g", "x"], EAp (EVar "f") 
+                                                 (EAp (EVar "g") (EVar "x"))),
+                ("twice", ["f"], EAp (EAp (EVar "compose") (EVar "f")) (EVar "f")) ]
+
+
