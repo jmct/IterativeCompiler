@@ -1,4 +1,5 @@
 module Language where
+--import Debug.Trace
 
 
 type Name = String
@@ -72,13 +73,58 @@ preludeDefs = [ ("I", ["x"], EVar "x"),
  - Pretty Printing a program
  - *************************-}
 
+mkMultiAp :: Int -> CoreExpr -> CoreExpr -> CoreExpr
+mkMultiAp n e1 e2 = foldl EAp e1 $ take n e2s
+    where e2s = e2 : e2s
+
 --First we define how we would print our CoreExpressions
 
+{- 
 pprExpr :: CoreExpr -> String
 pprExpr (ENum n) = show n
 pprExpr (EVar v) = v
 pprExpr (EAp e1 e2) = pprExpr e1 ++ " " ++ pprExprParen e2
                         where pprExprParen e = if isAtomicExpr e then pprExpr e
                                                else "(" ++ pprExpr e ++ ")"
+-}
+
+--
+pprExpr :: CoreExpr -> Iseq
+pprExpr (ENum n) = show n
+pprExpr (EVar v) = iStr v
+pprExpr (ELet isrec defs expr) 
+    = iConcat [ iStr keyword, iNewline, iStr " ", iIndent (pprDefs defs),
+                iNewline, iStr "in ", pprExpr expr ]
+    where keyword 
+        | not isrec = "let"
+        | isrec =     "letrec"
+pprExpr (EAp e1 e2) = (pprExpr e1) 'iAppend' (iStr " ") 'iAppend' (pprExprParen e2)
+                 where pprExprParen e = if isAtomicExpr e then pprExpr e
+                                        else (iStr "(") 'iAppend' (pprExpr e 'iAppend' (iStr ")"))
+
+pprDefs :: [(Name,CoreExpr)] 
+pprDefs defs = iInterleave sep (map pprDefn defs)
+    where sep = iConcat [iStr ";", iNewine] 
+
+pprDef :: (Name, CoreExpr)
+pprDef (name, expr) = iConcat [iStr name, iStr " = ", iIndent (pprExpr expr)]
+
+iConcat :: [Iseq] -> Iseq
+iConcat []     = iNil
+iConcat (x:xs) = x 'iAppend' iConcat xs
+
+iInterleave :: Iseq -> [Iseq] -> Iseq
+iInterleave _ []       = iNil
+iInterleave sep (x:xs) = (x 'iAppend' sep) 'iAppend'  (iConcat xs)
+
+
+data Iseq where
+    isNil       :: Iseq
+    iStr        :: String -> Iseq
+    iAppend     :: Iseq -> Iseq -> Iseq
+    iNewline    :: Iseq
+    iIndent     :: Iseq -> Iseq
+    iDisplay    :: Iseq -> String
+
 
 --pprint :: CoreProgram -> String
