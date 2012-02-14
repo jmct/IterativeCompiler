@@ -101,10 +101,14 @@ pprExpr (ELet isrec defs expr)
 pprExpr (EAp e1 e2) = (pprExpr e1) 'iAppend' (iStr " ") 'iAppend' (pprExprParen e2)
                  where pprExprParen e = if isAtomicExpr e then pprExpr e
                                         else (iStr "(") 'iAppend' (pprExpr e 'iAppend' (iStr ")"))
+pprExpr (ECase (e1) alts) = decla 'iAppend' alters
+    where 
+        decla = iConcat [ iStr "Case ", pprExpr e1, iStr " of", iNewline ]
+        alters = pprAlters alts
 
 pprDefs :: [(Name,CoreExpr)] 
 pprDefs defs = iInterleave sep (map pprDefn defs)
-    where sep = iConcat [iStr ";", iNewine] 
+    where sep = iConcat [iStr ";", iNewline] 
 
 pprDef :: (Name, CoreExpr)
 pprDef (name, expr) = iConcat [iStr name, iStr " = ", iIndent (pprExpr expr)]
