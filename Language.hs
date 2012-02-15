@@ -1,3 +1,4 @@
+import List
 module Language where
 --import Debug.Trace
 
@@ -88,23 +89,28 @@ pprExpr (EAp e1 e2) = pprExpr e1 ++ " " ++ pprExprParen e2
                                                else "(" ++ pprExpr e ++ ")"
 -}
 
---
 pprExpr :: CoreExpr -> Iseq
-pprExpr (ENum n) = show n
+pprExpr (ENum n) = iStr $ show n
 pprExpr (EVar v) = iStr v
 pprExpr (ELet isrec defs expr) 
     = iConcat [ iStr keyword, iNewline, iStr " ", iIndent (pprDefs defs),
                 iNewline, iStr "in ", pprExpr expr ]
-    where keyword 
-        | not isrec = "let"
-        | isrec =     "letrec"
-pprExpr (EAp e1 e2) = (pprExpr e1) 'iAppend' (iStr " ") 'iAppend' (pprExprParen e2)
+    where keyword = if isrec then "letrec" else "let"
+pprExpr (EAp e1 e2) = (pprExpr e1) `iAppend` (iStr " ") `iAppend` (pprExprParen e2)
                  where pprExprParen e = if isAtomicExpr e then pprExpr e
-                                        else (iStr "(") 'iAppend' (pprExpr e 'iAppend' (iStr ")"))
-pprExpr (ECase (e1) alts) = decla 'iAppend' alters
+                                        else (iStr "(") `iAppend` (pprExpr e `iAppend` (iStr ")"))
+pprExpr (ECase (e1) alts) = decla `iAppend` alters
     where 
         decla = iConcat [ iStr "Case ", pprExpr e1, iStr " of", iNewline ]
         alters = pprAlters alts
+pprExpr (ELam vars e1) = iConcat [iStr "\\", iStr (concat.intersperse ' ' vars), 
+                                  iStr " . ", (pprExpr e1)]
+
+pprProgram :: CoreProgram -> Iseq
+pprProgram [] = iNil
+pprProgram (prog:rest) = (ppr 
+
+
 
 pprDefs :: [(Name,CoreExpr)] 
 pprDefs defs = iInterleave sep (map pprDefn defs)
@@ -113,15 +119,23 @@ pprDefs defs = iInterleave sep (map pprDefn defs)
 pprDef :: (Name, CoreExpr)
 pprDef (name, expr) = iConcat [iStr name, iStr " = ", iIndent (pprExpr expr)]
 
+pprAlters :: [CoreAlt] -> Iseq
+pprAlters [] = iNil
+pprAlters (x:xs) = iIndent ((pprAlt x) `iAppend` iNewline `iAppend` (pprAlters xs))
+
+pprAlter :: CoreAlt -> Iseq
+pprAlter ( _, vars, e1) = iConcat [iStr (concat.intersperse " " $ map show vars), 
+                                    iStr " -> ", (pprExpr e1)]
+
 iConcat :: [Iseq] -> Iseq
 iConcat []     = iNil
-iConcat (x:xs) = x 'iAppend' iConcat xs
+iConcat (x:xs) = x `iAppend` iConcat xs
 
 iInterleave :: Iseq -> [Iseq] -> Iseq
 iInterleave _ []       = iNil
-iInterleave sep (x:xs) = (x 'iAppend' sep) 'iAppend'  (iConcat xs)
+iInterleave sep (x:xs) = (x `iAppend` sep) `iAppend`  (iConcat xs)
 
-
+{-
 data Iseq where
     isNil       :: Iseq
     iStr        :: String -> Iseq
@@ -130,5 +144,5 @@ data Iseq where
     iIndent     :: Iseq -> Iseq
     iDisplay    :: Iseq -> String
 
-
+-}
 --pprint :: CoreProgram -> String
