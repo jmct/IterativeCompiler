@@ -41,10 +41,10 @@ expressionsOf defs = [exprs | (names, exprs) <- defs]
 isAtomicExpr :: Expr a -> Bool
 isAtomicExpr (EVar a) = True
 isAtomicExpr (ENum a) = True
-isAtomicExpr e = False          -- If the pattern matching gets here, it's false
+isAtomicExpr e = False     -- If the pattern matching gets here, it's false
 
---Supercombinators definitions contain the name of the supercombinator, the list
---of arguments and the expression (body) to compute.
+--Supercombinators definitions contain the name of the supercombinator,
+--the list of arguments and the expression (body) to compute.
 type ScDef a = (Name, [a], Expr a)
 
 --Following from this, a program is just a list of supercombinators
@@ -64,11 +64,16 @@ preludeDefs :: CoreProgram
 preludeDefs = [ ("I", ["x"], EVar "x"),
                 ("K", ["x", "y"], EVar "x"), 
                 ("K1", ["x", "y"], EVar "y"),
-                ("S", ["f", "g", "x"], EAp (EAp (EVar "f") (EVar "x")) 
-                                           (EAp (EVar "g") (EVar "x"))),
+                ("S", ["f", "g", "x"], EAp (EAp (EVar "f") 
+                                                (EVar "x")) 
+                                           (EAp (EVar "g") 
+                                                (EVar "x"))),
                 ("compose", ["f", "g", "x"], EAp (EVar "f") 
-                                                 (EAp (EVar "g") (EVar "x"))),
-                ("twice", ["f"], EAp (EAp (EVar "compose") (EVar "f")) (EVar "f")) ]
+                                                 (EAp (EVar "g") 
+                                                      (EVar "x"))),
+                ("twice", ["f"], EAp (EAp (EVar "compose") 
+                                          (EVar "f")) 
+                                     (EVar "f")) ]
 
 {-**************************
  - Pretty Printing a program
@@ -78,68 +83,69 @@ mkMultiAp :: Int -> CoreExpr -> CoreExpr -> CoreExpr
 mkMultiAp n e1 e2 = foldl EAp e1 $ take n e2s
     where e2s = e2 : e2s
 
+--The data-type Iseq is what is going to be used to flatten
+--the large printing tree when we want to pretty-print
+
+data Iseq = INil | IStr String | IAppend Iseq Iseq
+
 --First we define how we would print our CoreExpressions
-
-{- 
-pprExpr :: CoreExpr -> String
-pprExpr (ENum n) = show n
-pprExpr (EVar v) = v
-pprExpr (EAp e1 e2) = pprExpr e1 ++ " " ++ pprExprParen e2
-                        where pprExprParen e = if isAtomicExpr e then pprExpr e
-                                               else "(" ++ pprExpr e ++ ")"
--}
-
+-------------------------------------------------------------------------------
 pprExpr :: CoreExpr -> Iseq
-pprExpr (ENum n) = iStr $ show n
-pprExpr (EVar v) = iStr v
-pprExpr (ELet isrec defs expr) 
-    = iConcat [ iStr keyword, iNewline, iStr " ", iIndent (pprDefs defs),
-                iNewline, iStr "in ", pprExpr expr ]
+pprExpr (ENum n) = IStr $ show n
+pprExpr (EVar v) = IStr v
+pprExpr (ELet isrec defs expr) = 
+    iConcat [ IStr keyword, iNewline, IStr " ", 
+              iIndent (pprDefs defs),
+              iNewline, IStr "in ", pprExpr expr ]
     where keyword = if isrec then "letrec" else "let"
-pprExpr (EAp e1 e2) = (pprExpr e1) `iAppend` (iStr " ") `iAppend` (pprExprParen e2)
-                 where pprExprParen e = if isAtomicExpr e then pprExpr e
-                                        else (iStr "(") `iAppend` (pprExpr e `iAppend` (iStr ")"))
-pprExpr (ECase (e1) alts) = decla `iAppend` alters
+pprExpr (EAp e1 e2) = 
+    (pprExpr e1) `IAppend` (IStr " ") `IAppend` (pprExprParen e2)
+    where pprExprParen e = 
+            if isAtomicExpr e then pprExpr e
+            else (IStr "(") `IAppend` (pprExpr e `IAppend` (IStr ")"))
+pprExpr (ECase (e1) alts) = decla `IAppend` alters
     where 
-        decla = iConcat [ iStr "Case ", pprExpr e1, iStr " of", iNewline ]
+        decla = iConcat [ IStr "Case ", pprExpr e1, IStr " of", iNewline ]
         alters = pprAlters alts
-pprExpr (ELam vars e1) = iConcat [iStr "\\", iStr (concat.intersperse ' ' vars), 
-                                  iStr " . ", (pprExpr e1)]
+pprExpr (ELam vars e1) = iConcat [IStr "\\", 
+                                  IStr (concat.intersperse ' ' vars), 
+                                  IStr " . ", (pprExpr e1)]
 
 pprProgram :: CoreProgram -> Iseq
-pprProgram [] = iNil
-pprProgram (prog:rest) = (ppr 
+pprProgram [] = INil
+pprProgram (prog:rest) = (pprExpr prog) `IAppend` (pprProgram rest)
 
+pprint prog = iDisplay (pprProgam prog)
 
+pprDefs :: [ScDef a] -> Iseq
+pprDefs defs = iInterleave sep (map pprDef defs)
+    where sep = iConcat [IStr ";", iNewline] 
 
-pprDefs :: [(Name,CoreExpr)] 
-pprDefs defs = iInterleave sep (map pprDefn defs)
-    where sep = iConcat [iStr ";", iNewline] 
-
-pprDef :: (Name, CoreExpr)
-pprDef (name, expr) = iConcat [iStr name, iStr " = ", iIndent (pprExpr expr)]
+pprDef :: ScDef Name -> Iseq
+pprDef (name, args, expr) = iConcat [IStr name,
+                                     iInterleave (IStr " ") (map IStr args),
+                                     IStr " = ", iIndent (pprExpr expr)]
 
 pprAlters :: [CoreAlt] -> Iseq
-pprAlters [] = iNil
-pprAlters (x:xs) = iIndent ((pprAlt x) `iAppend` iNewline `iAppend` (pprAlters xs))
+pprAlters [] = INil
+pprAlters (x:xs) = iIndent ((pprAlt x) `IAppend` 
+                            iNewline `IAppend` (pprAlters xs))
 
 pprAlter :: CoreAlt -> Iseq
-pprAlter ( _, vars, e1) = iConcat [iStr (concat.intersperse " " $ map show vars), 
-                                    iStr " -> ", (pprExpr e1)]
+pprAlter ( _, vars, e1) = 
+    iConcat [IStr (concat.intersperse " " $ map show vars), 
+             IStr " -> ", (pprExpr e1)]
 
 iConcat :: [Iseq] -> Iseq
-iConcat []     = iNil
-iConcat (x:xs) = x `iAppend` iConcat xs
+iConcat []     = INil
+iConcat (x:xs) = x `IAppend` iConcat xs
 
 iInterleave :: Iseq -> [Iseq] -> Iseq
-iInterleave _ []       = iNil
-iInterleave sep (x:xs) = (x `iAppend` sep) `iAppend`  (iConcat xs)
+iInterleave _ []       = INil
+iInterleave sep (x:xs) = (x `IAppend` sep) `IAppend`  (iInterleave sep xs)
 
 {-
 data Iseq where
-    isNil       :: Iseq
-    iStr        :: String -> Iseq
-    iAppend     :: Iseq -> Iseq -> Iseq
     iNewline    :: Iseq
     iIndent     :: Iseq -> Iseq
     iDisplay    :: Iseq -> String
