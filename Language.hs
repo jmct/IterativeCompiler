@@ -1,7 +1,6 @@
-import List
 module Language where
 --import Debug.Trace
-
+import List
 
 type Name = String
 type IsRec = Bool
@@ -86,9 +85,13 @@ mkMultiAp n e1 e2 = foldl EAp e1 $ take n e2s
 --The data-type Iseq is what is going to be used to flatten
 --the large printing tree when we want to pretty-print
 
-data Iseq = INil | IStr String | IAppend Iseq Iseq
+data Iseq = INil 
+          | IStr String 
+          | IAppend Iseq Iseq
+          | IIndent Iseq
+          | INewline
 
-iIndent seq = seq
+IIndent seq = seq
 
 iNewline = IStr "\n"
 
@@ -99,11 +102,11 @@ iNewline = IStr "\n"
  - actually _builds_ builds up the list of ISeqs *as* it consumes it.
  - This is why we've put off the work of appending strings this entire time,
  - so we could do it all at once. -}
-flatten :: [ISeq] -> String
+flatten :: [Iseq] -> String
 flatten [] = ""
 flatten (INil : seqs) = flatten seqs
 flatten (IStr a : seqs) = a ++ flatten seqs
-flatten (IAppend iseq1 iseq2 : seqs) = flatten (seq1 : seq2 : seqs)
+flatten (IAppend iseq1 iseq2 : seqs) = flatten (iseq1 : iseq2 : seqs)
 
 
 iDisplay seq = flatten [seq]
@@ -117,7 +120,7 @@ pprExpr (ENum n) = IStr $ show n
 pprExpr (EVar v) = IStr v
 pprExpr (ELet isrec defs expr) = 
     iConcat [ IStr keyword, iNewline, IStr " ", 
-              iIndent (pprDefs defs),
+              IIndent (pprLetDefs defs),
               iNewline, IStr "in ", pprExpr expr ]
     where keyword = if isrec then "letrec" else "let"
 pprExpr (EAp e1 e2) = 
@@ -130,27 +133,34 @@ pprExpr (ECase (e1) alts) = decla `IAppend` alters
         decla = iConcat [ IStr "Case ", pprExpr e1, IStr " of", iNewline ]
         alters = pprAlters alts
 pprExpr (ELam vars e1) = iConcat [IStr "\\", 
-                                  IStr (concat.intersperse ' ' vars), 
+                                  IStr (concat $ intersperse " " vars), 
                                   IStr " . ", (pprExpr e1)]
 
 pprProgram :: CoreProgram -> Iseq
 pprProgram [] = INil
-pprProgram (prog:rest) = (pprExpr prog) `IAppend` (pprProgram rest)
+pprProgram (supComb:rest) = (pprDef supComb) `IAppend` (pprProgram rest)
 
-pprint prog = iDisplay (pprProgam prog)
+pprint prog = iDisplay (pprProgram prog)
 
-pprDefs :: [ScDef a] -> Iseq
-pprDefs defs = iInterleave sep (map pprDef defs)
-    where sep = iConcat [IStr ";", iNewline] 
-
+--The following are for supercombinator Definitions
 pprDef :: ScDef Name -> Iseq
-pprDef (name, args, expr) = iConcat [IStr name,
+pprDef (name, args, expr) = iConcat [IStr name, IStr " ",
                                      iInterleave (IStr " ") (map IStr args),
-                                     IStr " = ", iIndent (pprExpr expr)]
+                                     IStr "= ", IIndent (pprExpr expr),
+                                     iNewline, iNewline]
+
+--The following functions are for pretty-printing the Let definitions
+pprLetDefs :: [(Name, CoreExpr)] -> Iseq
+pprLetDefs defs = iInterleave sep (map pprLetDef defs)
+    where sep = iConcat [IStr ";", iNewline]
+
+pprLetDef :: (Name, CoreExpr) -> Iseq
+pprLetDef (name, expr) = iConcat [IStr name, IStr " = ", 
+                                  IIndent (pprExpr expr)]
 
 pprAlters :: [CoreAlt] -> Iseq
 pprAlters [] = INil
-pprAlters (x:xs) = iIndent ((pprAlt x) `IAppend` 
+pprAlters (x:xs) = IIndent ((pprAlter x) `IAppend` 
                             iNewline `IAppend` (pprAlters xs))
 
 pprAlter :: CoreAlt -> Iseq
@@ -166,11 +176,4 @@ iInterleave :: Iseq -> [Iseq] -> Iseq
 iInterleave _ []       = INil
 iInterleave sep (x:xs) = (x `IAppend` sep) `IAppend`  (iInterleave sep xs)
 
-{-
-data Iseq where
-    iNewline    :: Iseq
-    iIndent     :: Iseq -> Iseq
-    iDisplay    :: Iseq -> String
-
--}
 --pprint :: CoreProgram -> String
