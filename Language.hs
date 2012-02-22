@@ -88,6 +88,28 @@ mkMultiAp n e1 e2 = foldl EAp e1 $ take n e2s
 
 data Iseq = INil | IStr String | IAppend Iseq Iseq
 
+iIndent seq = seq
+
+iNewline = IStr "\n"
+
+{-The flatten function takes a list of ISeqs and creates one long 
+ - string that is the printed function. You may be wondering, 'But 
+ - we don't have a list of ISeqs, we only have the resulting (large)
+ - ISeq from pprProgram. What gives?'. Well, the flatten function
+ - actually _builds_ builds up the list of ISeqs *as* it consumes it.
+ - This is why we've put off the work of appending strings this entire time,
+ - so we could do it all at once. -}
+flatten :: [ISeq] -> String
+flatten [] = ""
+flatten (INil : seqs) = flatten seqs
+flatten (IStr a : seqs) = a ++ flatten seqs
+flatten (IAppend iseq1 iseq2 : seqs) = flatten (seq1 : seq2 : seqs)
+
+
+iDisplay seq = flatten [seq]
+
+
+
 --First we define how we would print our CoreExpressions
 -------------------------------------------------------------------------------
 pprExpr :: CoreExpr -> Iseq
