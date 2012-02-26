@@ -90,26 +90,40 @@ data Iseq = INil
           | IAppend Iseq Iseq
           | IIndent Iseq
           | INewline
-
+{-
 IIndent seq = seq
 
-iNewline = IStr "\n"
-
+INewline = IStr "\n"
+-}
 {-The flatten function takes a list of ISeqs and creates one long 
  - string that is the printed function. You may be wondering, 'But 
  - we don't have a list of ISeqs, we only have the resulting (large)
  - ISeq from pprProgram. What gives?'. Well, the flatten function
  - actually _builds_ builds up the list of ISeqs *as* it consumes it.
  - This is why we've put off the work of appending strings this entire time,
- - so we could do it all at once. -}
-flatten :: [Iseq] -> String
-flatten [] = ""
-flatten (INil : seqs) = flatten seqs
-flatten (IStr a : seqs) = a ++ flatten seqs
-flatten (IAppend iseq1 iseq2 : seqs) = flatten (iseq1 : iseq2 : seqs)
+ - so we could do it all at once. 
+ -
+ - The Int that is passed to flatten is used to keep track of the current
+ - column for indentation -}
+flatten :: Int -> [(Iseq, Int)] -> String
+flatten col [] = ""
+flatten col ((INil, indent) : seqs) = flatten col seqs
+flatten col ((IStr a, indent) : seqs) = a ++ flatten (col + length a) seqs
+flatten col ((IAppend iseq1 iseq2, indent) : seqs) = 
+    flatten col ((iseq1, indent) : (iseq2, indent) : seqs)
+flatten col ((INewline, indent) : seqs) = 
+    '\n' : (take indent $ repeat ' ') ++ (flatten indent seqs)
+flatten col ((IIndent seq, indent) : seqs) = 
+    flatten col ((seq, col) : seqs) 
 
 
-iDisplay seq = flatten [seq]
+
+
+
+--iDisplay takes the Iseq representation of the program and passes it to
+--flatten. The zero is for the starting column (most programs start on the
+--leftmost column).
+iDisplay seq = flatten 0 [(seq, 0)]
 
 
 
@@ -119,9 +133,9 @@ pprExpr :: CoreExpr -> Iseq
 pprExpr (ENum n) = IStr $ show n
 pprExpr (EVar v) = IStr v
 pprExpr (ELet isrec defs expr) = 
-    iConcat [ IStr keyword, iNewline, IStr " ", 
+    iConcat [ IStr keyword, INewline, IStr " ", 
               IIndent (pprLetDefs defs),
-              iNewline, IStr "in ", pprExpr expr ]
+              INewline, IStr "in ", pprExpr expr ]
     where keyword = if isrec then "letrec" else "let"
 pprExpr (EAp e1 e2) = 
     (pprExpr e1) `IAppend` (IStr " ") `IAppend` (pprExprParen e2)
@@ -130,8 +144,8 @@ pprExpr (EAp e1 e2) =
             else (IStr "(") `IAppend` (pprExpr e `IAppend` (IStr ")"))
 pprExpr (ECase (e1) alts) = decla `IAppend` alters
     where 
-        decla = iConcat [ IStr "Case ", pprExpr e1, IStr " of", iNewline ]
-        alters = pprAlters alts
+        decla = iConcat [ IStr "Case ", pprExpr e1, IStr " of", INewline ]
+        alters = iConcat [ IStr " ", IIndent (pprAlters alts) ]
 pprExpr (ELam vars e1) = iConcat [IStr "\\", 
                                   IStr (concat $ intersperse " " vars), 
                                   IStr " . ", (pprExpr e1)]
@@ -147,12 +161,12 @@ pprDef :: ScDef Name -> Iseq
 pprDef (name, args, expr) = iConcat [IStr name, IStr " ",
                                      iInterleave (IStr " ") (map IStr args),
                                      IStr "= ", IIndent (pprExpr expr),
-                                     iNewline, iNewline]
+                                     INewline, INewline]
 
 --The following functions are for pretty-printing the Let definitions
 pprLetDefs :: [(Name, CoreExpr)] -> Iseq
 pprLetDefs defs = iInterleave sep (map pprLetDef defs)
-    where sep = iConcat [IStr ";", iNewline]
+    where sep = iConcat [IStr ";", INewline]
 
 pprLetDef :: (Name, CoreExpr) -> Iseq
 pprLetDef (name, expr) = iConcat [IStr name, IStr " = ", 
@@ -160,8 +174,8 @@ pprLetDef (name, expr) = iConcat [IStr name, IStr " = ",
 
 pprAlters :: [CoreAlt] -> Iseq
 pprAlters [] = INil
-pprAlters (x:xs) = IIndent ((pprAlter x) `IAppend` 
-                            iNewline `IAppend` (pprAlters xs))
+pprAlters (x:xs) = (pprAlter x) `IAppend` 
+                            INewline `IAppend` (pprAlters xs)
 
 pprAlter :: CoreAlt -> Iseq
 pprAlter ( _, vars, e1) = 
