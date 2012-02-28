@@ -47,7 +47,23 @@ isComment :: String -> Bool
 isComment ('-':'-':rest) = True
 isComment _ = False
 
+--We define a Parser as a function that takes a list of tokens and returns
+--a tuple of the parsed value and the remaining list of tokens.
+type Parser a = [Token] -> [(a, [Token])]
 
+--For Literal values we will take a string and a Parser for type String and 
+--compare the provided string with the value of the fist token's String
+--if this fails we return an empty list, signalling that the parsing has failed. 
+pLiteral :: String -> Parser String
+pLiteral _ []       = []
+pLiteral s (tok:toks)
+    | s == snd tok  = [(s, toks)]
+    | otherwise     = []
+
+--For variables we have to check if the token is a vairable or not.
+--Therefore we don't need to provide any other information other than the token
+pVar :: Parser String
+pVar []     = []
 
 
 {-
