@@ -64,7 +64,34 @@ pLiteral s (tok:toks)
 --Therefore we don't need to provide any other information other than the token
 pVar :: Parser String
 pVar []     = []
+pVar (tok:toks) 
+    | isVarToken tok = [(snd tok, toks)]
+    | otherwise              = []
+        where
+            isVarToken = isAlpha.head.snd
 
+--pAlt is used to provide the result of two parsers for when there can be two
+--valid parsings of a token. 
+pAlt :: Parser a -> Parser a -> Parser a
+pAlt p1 p2 toks = (p1 toks) ++ (p2 toks)
+
+--pThen takes two parsers, p1 and p2, performs the parsing with p1 then parses
+--the remaining list of tokens (from p1's result) 
+pThen :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
+pThen combiner p1 p2 toks = [(combiner rslt1 rslt2, toks2) | (rslt1, toks1) <- p1 toks,
+                                                             (rslt2, toks2) <- p2 toks1]
+
+--Silly test parsers
+--
+--
+--Silly test parsers
+pHelloOrGoodbye :: Parser String
+pHelloOrGoodbye = (pLiteral "Hello") `pAlt` (pLiteral "Goodbye")
+
+pGreeting :: Parser (String, String)
+pGreeting = pThen comb pHelloOrGoodbye pVar
+        where
+            comb helloGoodbye name = (helloGoodbye, name)
 
 {-
 --once we have the tokens, we can then perform syntactical analysis
