@@ -81,6 +81,16 @@ pThen :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
 pThen combiner p1 p2 toks = [(combiner rslt1 rslt2, toks2) | (rslt1, toks1) <- p1 toks,
                                                              (rslt2, toks2) <- p2 toks1]
 
+pThen3 :: (a -> b -> c -> d) -> Parser a -> Parser b -> Parser c -> Parser d
+pThen3 combiner p1 p2 p3 toks = [(combiner rslt1 rslt2 rslt3, toks3) | (rslt1, toks1) <- p1 toks,
+                                                                       (rslt2, toks2) <- p2 toks1,
+                                                                       (rslt3, toks3) <- p3 toks2]
+
+pThen4 :: (a -> b -> c -> d -> e) -> Parser a -> Parser b -> Parser c -> Parser d -> Parser e
+pThen4 combiner p1 p2 p3 p4 toks = [(combiner rslt1 rslt2 rslt3 rslt4, toks4) | (rslt1, toks1) <- p1 toks,
+                                                                                (rslt2, toks2) <- p2 toks1,
+                                                                                (rslt3, toks3) <- p3 toks2,
+                                                                                (rslt4, toks4) <- p4 toks3]
 --Silly test parsers
 --
 --
@@ -89,10 +99,19 @@ pHelloOrGoodbye :: Parser String
 pHelloOrGoodbye = (pLiteral "Hello") `pAlt` (pLiteral "Goodbye")
 
 pGreeting :: Parser (String, String)
-pGreeting = pThen comb pHelloOrGoodbye pVar
-        where
-            comb helloGoodbye name = (helloGoodbye, name)
+pGreeting = pThen (,) pHelloOrGoodbye pVar
 
+pGreeting' :: Parser (String, String)
+pGreeting' = pThen keepFrst 
+                    (pThen (,) pHelloOrGoodbye pVar)
+                    (pLiteral "!")
+                where
+                    keepFrst a b = a
+
+pGreeting'' :: Parser (String, String)
+pGreeting'' = pThen3 mkGreeting pHelloOrGoodbye pVar (pLiteral "!")
+    where
+        mkGreeting a b c = (a,b)
 {-
 --once we have the tokens, we can then perform syntactical analysis
 syntax :: [Token] -> CoreProgram
