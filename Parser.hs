@@ -91,6 +91,26 @@ pThen4 combiner p1 p2 p3 p4 toks = [(combiner rslt1 rslt2 rslt3 rslt4, toks4) | 
                                                                                 (rslt2, toks2) <- p2 toks1,
                                                                                 (rslt3, toks3) <- p3 toks2,
                                                                                 (rslt4, toks4) <- p4 toks3]
+--pZeroOrMore will take a parser and return a parser that recognizes zero or
+--more of whatever the given parser recoginizes (unlike the usual zero or one).
+pZeroOrMore :: Parser a -> Parser [a]
+pZeroOrMore p1 = (pOneOrMore p1) `pAlt` (pEmpty [])
+
+pEmpty :: a -> Parser a
+pEmpty a toks = [(a, toks)]
+
+pOneOrMore :: Parser a -> Parser [a]
+pOneOrMore p1  = pThen (:) (p1)
+                           (pZeroOrMore p1) 
+
+pApply :: Parser a -> (a -> b) -> Parser b
+pApply p f = \toks -> [((f a), toks1) | (a, toks1) <- p toks]
+
+
+pEnd :: Parser ()
+pEnd = \toks -> if toks == [] then  [((), [])]
+                              else []
+
 --Silly test parsers
 --
 --
@@ -112,6 +132,12 @@ pGreeting'' :: Parser (String, String)
 pGreeting'' = pThen3 mkGreeting pHelloOrGoodbye pVar (pLiteral "!")
     where
         mkGreeting a b c = (a,b)
+
+pGreetings :: Parser [(String, String)]
+pGreetings = pThen (\x y -> x) (pZeroOrMore pGreeting) (pEnd)
+
+pGreetingsN :: Parser Int
+pGreetingsN = (pGreetings) `pApply` length
 {-
 --once we have the tokens, we can then perform syntactical analysis
 syntax :: [Token] -> CoreProgram
