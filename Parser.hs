@@ -32,6 +32,9 @@ clex line (c:cs)
             twoChrOpTkn    = take 2 (c:cs)
             restTwoChar    = drop 2 (c:cs)
 
+keywords :: [String]
+keywords = ["let","letrec","case","in","of","Pack"]
+
 --Two character operators must be a member of the following string.
 --Currently the Not-Equal-To operator is ~= This may be changed to /=
 twoCharOps :: [String]
@@ -68,10 +71,10 @@ pLiteral s (tok:toks)
 pVar :: Parser String
 pVar []     = []
 pVar (tok:toks) 
-    | isVarToken tok = [(snd tok, toks)]
+    | isVarToken $ snd tok = [(snd tok, toks)]
     | otherwise              = []
         where
-            isVarToken = isAlpha.head.snd
+            isVarToken s = (isAlpha.head $ s) && (s `notElem` keywords)
 
 --pAlt is used to provide the result of two parsers for when there can be two
 --valid parsings of a token. 
