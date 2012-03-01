@@ -88,6 +88,9 @@ pSat p (tok:toks)
     | (p.snd) tok = [(snd tok, toks)]
     | otherwise   = []
 
+--pNum to recognize Ints
+pNum :: Parser Int
+pNum = pApply (pSat  
 --pThen takes two parsers, p1 and p2, performs the parsing with p1 then parses
 --the remaining list of tokens (from p1's result) 
 pThen :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
