@@ -6,6 +6,9 @@ import Char
 type Token = (Int, String)
 --note that a token will never be empty!
 
+first :: a -> b -> a
+first a b = a
+
 {-clex will take the source code (as a long string) and produce a set of tokens 
  - the whitespace is 'eaten up' first with a check to isSpace, then numbers are
  - are taken in their entirety and lastly we have variables. Variables must
@@ -75,6 +78,13 @@ pVar (tok:toks)
 pAlt :: Parser a -> Parser a -> Parser a
 pAlt p1 p2 toks = (p1 toks) ++ (p2 toks)
 
+--We can generalize pLiteral and pVar with pSat that checks is the token
+--satifies some property given as a parameter.
+pSat :: (String -> Bool) -> Parser String
+pSat p (tok:toks)
+    | (p.snd) tok = [(snd tok, toks)]
+    | otherwise   = []
+
 --pThen takes two parsers, p1 and p2, performs the parsing with p1 then parses
 --the remaining list of tokens (from p1's result) 
 pThen :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
@@ -103,6 +113,11 @@ pOneOrMore :: Parser a -> Parser [a]
 pOneOrMore p1  = pThen (:) (p1)
                            (pZeroOrMore p1) 
 
+pOneOrMoreWithSep :: Parser a -> Parser b -> Parser [a]
+pOneOrMoreWithSep p1 pS = pOneOrMore p'
+            where
+                p' = pThen first p1 pS
+
 pApply :: Parser a -> (a -> b) -> Parser b
 pApply p f = \toks -> [((f a), toks1) | (a, toks1) <- p toks]
 
@@ -110,6 +125,8 @@ pApply p f = \toks -> [((f a), toks1) | (a, toks1) <- p toks]
 pEnd :: Parser ()
 pEnd = \toks -> if toks == [] then  [((), [])]
                               else []
+pSep :: String -> Parser String
+pSep sep = pLiteral sep
 
 --Silly test parsers
 --
