@@ -9,6 +9,9 @@ type Token = (Int, String)
 first :: a -> b -> a
 first a b = a
 
+second :: a -> b -> b
+second a b = b
+
 {-clex will take the source code (as a long string) and produce a set of tokens 
  - the whitespace is 'eaten up' first with a check to isSpace, then numbers are
  - are taken in their entirety and lastly we have variables. Variables must
@@ -88,9 +91,10 @@ pSat p (tok:toks)
     | (p.snd) tok = [(snd tok, toks)]
     | otherwise   = []
 
+
 --pNum to recognize Ints
 pNum :: Parser Int
-pNum = pApply (pSat  
+pNum = pApply (pOneOrMore $ pSat (isDigit.head)) (read.concat) 
 --pThen takes two parsers, p1 and p2, performs the parsing with p1 then parses
 --the remaining list of tokens (from p1's result) 
 pThen :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
@@ -120,9 +124,7 @@ pOneOrMore p1  = pThen (:) (p1)
                            (pZeroOrMore p1) 
 
 pOneOrMoreWithSep :: Parser a -> Parser b -> Parser [a]
-pOneOrMoreWithSep p1 pS = pOneOrMore p'
-            where
-                p' = pThen first p1 pS
+pOneOrMoreWithSep p1 pS = pThen (:) p1 (pZeroOrMore $ pThen second pS p1)
 
 pApply :: Parser a -> (a -> b) -> Parser b
 pApply p f = \toks -> [((f a), toks1) | (a, toks1) <- p toks]
@@ -161,10 +163,43 @@ pGreetings = pThen (\x y -> x) (pZeroOrMore pGreeting) (pEnd)
 
 pGreetingsN :: Parser Int
 pGreetingsN = (pGreetings) `pApply` length
-{-
 --once we have the tokens, we can then perform syntactical analysis
 syntax :: [Token] -> CoreProgram
+syntax = takeFirstParse . pProgram
+    where
+        takeFirstParse ((prog, []):otherParses) = prog
+        takeFirstParse (parse:otherParses) = takeFirstParse otherParses
+        takeFirstParse _ = error "Syntax error!"
 
+pProgram :: Parser CoreProgram
+pProgram = pOneOrMoreWithSep pSc (pLiteral ";")
+
+pSc :: Parser (ScDef Name)
+pSc = pThen4 makeSc pVar (pZeroOrMore pVar) (pLiteral "=") pExpr
+    where
+        makeSc name args eq expr = (name, args, expr)        
+
+pExpr :: Parser CoreExpr
+pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr
+
+pLet :: Parser CoreExpr
+pLet = pThen4 makeLet (pLiteral "let") (pOneOrMoreWithSep pDef (pLiteral ";")) (pLiteral "in") pExpr
+        where
+            makeLet leht defs inn expr = (ELet False defs expr)
+
+pLetRec :: Parser CoreExpr
+pLetRec = pThen4 makeLet (pLiteral "letrec") (pOneOrMoreWithSep pDef (pLiteral ";")) (pLiteral "in") pExpr
+        where
+            makeLet leht defs inn expr = (ELet True defs expr)
+
+pDef :: Parser (Name, Expr Name)
+pDef = pThen3 makeDef pVar (pLiteral "=") pExpr
+    where
+        makeDef var eqs expr = (var, expr)
+
+pVarExpr :: Parser CoreExpr
+pVarExpr = pApply pVar EVar
+{-
 parse :: String -> CoreProgram
 parse = syntax . clex
 -}

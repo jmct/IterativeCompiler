@@ -27,6 +27,16 @@ data Expr a
 type CoreExpr = Expr Name   --An expression with its name
 type CoreAlt = Alter Name   --An aternative expression and its name for cases
 
+--Supercombinators definitions contain the name of the supercombinator,
+--the list of arguments and the expression (body) to compute.
+type ScDef a = (Name, [a], Expr a)
+
+--Following from this, a program is just a list of supercombinators
+type Program a = [ScDef a]
+
+--A Core Program is the list of supercombinators with an included name
+type CoreProgram = Program Name
+
 --Following two functions are to retrieve either the bounded variable names
 --or the expressions from a list of definitions
 bindersOf :: [(a,b)] -> [a]
@@ -42,15 +52,6 @@ isAtomicExpr (EVar a) = True
 isAtomicExpr (ENum a) = True
 isAtomicExpr e = False     -- If the pattern matching gets here, it's false
 
---Supercombinators definitions contain the name of the supercombinator,
---the list of arguments and the expression (body) to compute.
-type ScDef a = (Name, [a], Expr a)
-
---Following from this, a program is just a list of supercombinators
-type Program a = [ScDef a]
-
---A Core Program is the list of supercombinators with an included name
-type CoreProgram = Program Name
 
 {-********************************************************************
  - The Prelude for the Core Lanuage
