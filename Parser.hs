@@ -98,19 +98,23 @@ pNum = pApply (pOneOrMore $ pSat (isDigit.head)) (read.concat)
 --pThen takes two parsers, p1 and p2, performs the parsing with p1 then parses
 --the remaining list of tokens (from p1's result) 
 pThen :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
-pThen combiner p1 p2 toks = [(combiner rslt1 rslt2, toks2) | (rslt1, toks1) <- p1 toks,
-                                                             (rslt2, toks2) <- p2 toks1]
+pThen combiner p1 p2 toks = [(combiner rslt1 rslt2, toks2) 
+                                                 | (rslt1, toks1) <- p1 toks,
+                                                   (rslt2, toks2) <- p2 toks1]
 
 pThen3 :: (a -> b -> c -> d) -> Parser a -> Parser b -> Parser c -> Parser d
-pThen3 combiner p1 p2 p3 toks = [(combiner rslt1 rslt2 rslt3, toks3) | (rslt1, toks1) <- p1 toks,
-                                                                       (rslt2, toks2) <- p2 toks1,
-                                                                       (rslt3, toks3) <- p3 toks2]
+pThen3 combiner p1 p2 p3 toks = [(combiner rslt1 rslt2 rslt3, toks3) | 
+                                                      (rslt1, toks1) <- p1 toks,
+                                                      (rslt2, toks2) <- p2 toks1,
+                                                      (rslt3, toks3) <- p3 toks2]
 
-pThen4 :: (a -> b -> c -> d -> e) -> Parser a -> Parser b -> Parser c -> Parser d -> Parser e
-pThen4 combiner p1 p2 p3 p4 toks = [(combiner rslt1 rslt2 rslt3 rslt4, toks4) | (rslt1, toks1) <- p1 toks,
-                                                                                (rslt2, toks2) <- p2 toks1,
-                                                                                (rslt3, toks3) <- p3 toks2,
-                                                                                (rslt4, toks4) <- p4 toks3]
+pThen4 :: (a -> b -> c -> d -> e) -> Parser a -> Parser b -> Parser c 
+                                              -> Parser d -> Parser e
+pThen4 combiner p1 p2 p3 p4 toks = [(combiner rslt1 rslt2 rslt3 rslt4, toks4) | 
+                                                   (rslt1, toks1) <- p1 toks,
+                                                   (rslt2, toks2) <- p2 toks1,
+                                                   (rslt3, toks3) <- p3 toks2,
+                                                   (rslt4, toks4) <- p4 toks3]
 --pZeroOrMore will take a parser and return a parser that recognizes zero or
 --more of whatever the given parser recoginizes (unlike the usual zero or one).
 pZeroOrMore :: Parser a -> Parser [a]
@@ -184,13 +188,19 @@ pSc = pThen4 makeSc pVar (pZeroOrMore pVar) (pLiteral "=") pExpr
 pExpr :: Parser CoreExpr
 pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr
 
+--------------------------------------------------------------------------------
+--The parser functions below are for the grammar outlined in Figure 1.1 of IFL
+
+{-The parsing for Let expressions and Recursive-Let expressions are defined
+--independently, this is because the core Language uses different keywords for
+--the two. -}
 pLet :: Parser CoreExpr
-pLet = pThen4 makeLet (pLiteral "let") (pOneOrMoreWithSep pDef (pLiteral ";")) (pLiteral "in") pExpr
+pLet = pThen4 makeLet (pLiteral "let") pDefsWithSep (pLiteral "in") pExpr
         where
             makeLet leht defs inn expr = (ELet False defs expr)
 
 pLetRec :: Parser CoreExpr
-pLetRec = pThen4 makeLet (pLiteral "letrec") (pOneOrMoreWithSep pDef (pLiteral ";")) (pLiteral "in") pExpr
+pLetRec = pThen4 makeLet (pLiteral "letrec") pDefsWithSep (pLiteral "in") pExpr
         where
             makeLet leht defs inn expr = (ELet True defs expr)
 
@@ -198,6 +208,27 @@ pDef :: Parser (Name, Expr Name)
 pDef = pThen3 makeDef pVar (pLiteral "=") pExpr
     where
         makeDef var eqs expr = (var, expr)
+
+pDefsWithSep :: Parser [(Name, Expr Name)]
+pDefsWithSep = pOneOrMoreWithSep pDef (pLiteral ";")
+
+{-The parsing of the case expression relies on the processing of the necessary 
+ - keywords (case, of) and parsing of the alternatives, which take the form:
+ -
+ - alt1;alt2;alt3...altn        n >= 1
+ -
+ - where each alternative takes the form of:
+ -
+ - <num> var1 var2 var3 ... varN -> Expr    N >=0
+ -}
+
+pCase :: Parser CoreExpr
+pCase = pThen4 makeCase (pLiteral "case") pExpr (pLiteral "of") pCaseAlters
+        where
+            makeCase cse expr f alters = (ECase expr alters) 
+
+pCaseAlters :: Parser (Int, [Name], Expr Name)
+pCaseAlters = pOneOrMoreWithSep pAlter 
 
 pVarExpr :: Parser CoreExpr
 pVarExpr = pApply pVar EVar
