@@ -179,6 +179,8 @@ pSc = pThen4 makeSc pVar (pZeroOrMore pVar) (pLiteral "=") pExpr
     where
         makeSc name args eq expr = (name, args, expr)        
 
+{-PExpr will string together all of parsers for the valid expressions as defined in Language.hs
+ -There will be one parser for each expression type and a few helper functions/parsers -}
 pExpr :: Parser CoreExpr
 pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr
 
