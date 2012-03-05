@@ -188,14 +188,12 @@ pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr
 
 --------------------------------------------------------------------------------
 pLet :: Parser CoreExpr
-pLet = pThen4 makeLet (pLiteral "let") (pOneOrMoreWithSep pDef (pLiteral ";")) 
-              (pLiteral "in") pExpr
+pLet = pThen4 makeLet (pLiteral "let") pDefsWithSep (pLiteral "in") pExpr
         where
             makeLet leht defs inn expr = (ELet False defs expr)
 
 pLetRec :: Parser CoreExpr
-pLetRec = pThen4 makeLet (pLiteral "letrec") (pOneOrMoreWithSep pDef (pLiteral ";")) 
-                 (pLiteral "in") pExpr
+pLetRec = pThen4 makeLet (pLiteral "letrec") pDefsWithSep (pLiteral "in") pExpr
         where
             makeLet leht defs inn expr = (ELet True defs expr)
 
@@ -203,6 +201,9 @@ pDef :: Parser (Name, Expr Name)
 pDef = pThen3 makeDef pVar (pLiteral "=") pExpr
     where
         makeDef var eqs expr = (var, expr)
+
+pDefsWithSep :: Parser [(Name, Expr Name)]
+pDefsWithSep = pOneOrMoreWithSep pDef (pLiteral ";")
 
 pVarExpr :: Parser CoreExpr
 pVarExpr = pApply pVar EVar
