@@ -227,8 +227,10 @@ pCase = pThen4 makeCase (pLiteral "case") pExpr (pLiteral "of") pCaseAlters
         where
             makeCase cse expr f alters = (ECase expr alters) 
 
-pCaseAlters :: Parser (Int, [Name], Expr Name)
-pCaseAlters = pOneOrMoreWithSep pAlter 
+pCaseAlters :: Parser [(Int, [Name], Expr Name)]
+pCaseAlters = pOneOrMoreWithSep pAlter  (pLiteral ";")
+
+pAlter :: Parser 
 
 pVarExpr :: Parser CoreExpr
 pVarExpr = pApply pVar EVar
