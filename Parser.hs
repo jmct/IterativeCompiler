@@ -186,7 +186,7 @@ pSc = pThen4 makeSc pVar (pZeroOrMore pVar) (pLiteral "=") pExpr
 {-PExpr will string together all of parsers for the valid expressions as defined in Language.hs
  -There will be one parser for each expression type and a few helper functions/parsers -}
 pExpr :: Parser CoreExpr
-pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr `pAlt` pCase
+pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr `pAlt` pCase `pAlt` pLambda
 
 --------------------------------------------------------------------------------
 --The parser functions below are for the grammar outlined in Figure 1.1 of IFL
@@ -221,7 +221,6 @@ pDefsWithSep = pOneOrMoreWithSep pDef (pLiteral ";")
  -
  - <num> var1 var2 var3 ... varN -> Expr    N >=0
  -}
-
 pCase :: Parser CoreExpr
 pCase = pThen4 makeCase (pLiteral "case") pExpr (pLiteral "of") pCaseAlters
         where
@@ -230,6 +229,8 @@ pCase = pThen4 makeCase (pLiteral "case") pExpr (pLiteral "of") pCaseAlters
 pCaseAlters :: Parser [(Int, [Name], Expr Name)]
 pCaseAlters = pOneOrMoreWithSep pAlter  (pLiteral ";")
 
+--The combiner function just needs to take the parsed values, ignore the keywords
+--and place them in a tuple. 
 pAlter :: Parser (Int, [Name], Expr Name)
 pAlter = pThen4 retCase pCaseNum pCaseVars (pLiteral "->") pExpr
         where
@@ -245,6 +246,25 @@ pCaseVars = pZeroOrMore pVar
 
 pVarExpr :: Parser CoreExpr
 pVarExpr = pApply pVar EVar
+
+{-Lambda expressions take a fairly simple form:
+ -
+ -\ var1 var2 var3 ... varN . expr     N >= 1
+ -
+ -So all that needs to be done is to parse the '\' out, 
+ -then parse the variables in a manner identical to pCaseVars
+ -then parse the literal '.' and then the body of the expression
+ -(which is an expression
+ -}
+pLambda :: Parser CoreExpr
+pLambda = pThen4 retLambda (pLiteral "\\") pLambVars (pLiteral ".") pExpr
+        where
+            retLambda lamb vars dot expr = (ELam vars expr)
+
+pLambVars :: Parser [Name]
+pLambVars = pOneOrMore pVar
+
+
 {-
 parse :: String -> CoreProgram
 parse = syntax . clex
