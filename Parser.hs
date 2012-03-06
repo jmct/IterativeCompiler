@@ -1,7 +1,7 @@
 module Parser where
 
 import Language
-import Char
+import Data.Char
 
 type Token = (Int, String)
 --note that a token will never be empty!
@@ -186,7 +186,7 @@ pSc = pThen4 makeSc pVar (pZeroOrMore pVar) (pLiteral "=") pExpr
 {-PExpr will string together all of parsers for the valid expressions as defined in Language.hs
  -There will be one parser for each expression type and a few helper functions/parsers -}
 pExpr :: Parser CoreExpr
-pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr
+pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr `pAlt` pCase
 
 --------------------------------------------------------------------------------
 --The parser functions below are for the grammar outlined in Figure 1.1 of IFL
@@ -230,7 +230,18 @@ pCase = pThen4 makeCase (pLiteral "case") pExpr (pLiteral "of") pCaseAlters
 pCaseAlters :: Parser [(Int, [Name], Expr Name)]
 pCaseAlters = pOneOrMoreWithSep pAlter  (pLiteral ";")
 
-pAlter :: Parser 
+pAlter :: Parser (Int, [Name], Expr Name)
+pAlter = pThen4 retCase pCaseNum pCaseVars (pLiteral "->") pExpr
+        where
+            retCase num vars arrow expr = (num, vars, expr)
+
+pCaseNum :: Parser Int
+pCaseNum = pThen3 retNum (pLiteral "<") pNum (pLiteral ">")
+        where
+            retNum brack num brack2 = num
+
+pCaseVars :: Parser [String]
+pCaseVars = pZeroOrMore pVar
 
 pVarExpr :: Parser CoreExpr
 pVarExpr = pApply pVar EVar
