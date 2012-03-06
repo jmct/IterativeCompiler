@@ -1,6 +1,6 @@
 module Language where
 --import Debug.Trace
-import List
+import Data.List
 
 type Name = String
 type IsRec = Bool
