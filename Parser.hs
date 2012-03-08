@@ -186,8 +186,12 @@ pSc = pThen4 makeSc pVar (pZeroOrMore pVar) (pLiteral "=") pExpr
 {-PExpr will string together all of parsers for the valid expressions as defined in Language.hs
  -There will be one parser for each expression type and a few helper functions/parsers -}
 pExpr :: Parser CoreExpr
-pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr `pAlt` pCase `pAlt` pLambda
+pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr `pAlt` pCase `pAlt` pLambda `pAlt` pParen
 
+pParen :: Parser CoreExpr
+pParen = pThen3 retEx (pLiteral "(") pExpr (pLiteral ")")
+        where
+            retEx paren1 expr paren2 = expr
 --------------------------------------------------------------------------------
 --The parser functions below are for the grammar outlined in Figure 1.1 of IFL
 
