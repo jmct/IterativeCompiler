@@ -87,6 +87,7 @@ pAlt p1 p2 toks = (p1 toks) ++ (p2 toks)
 --We can generalize pLiteral and pVar with pSat that checks is the token
 --satifies some property given as a parameter.
 pSat :: (String -> Bool) -> Parser String
+pSat _ [] = []
 pSat p (tok:toks)
     | (p.snd) tok = [(snd tok, toks)]
     | otherwise   = []
@@ -187,6 +188,7 @@ pSc = pThen4 makeSc pVar (pZeroOrMore pVar) (pLiteral "=") pExpr
  -There will be one parser for each expression type and a few helper functions/parsers -}
 pExpr :: Parser CoreExpr
 pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr `pAlt` pCase `pAlt` pLambda `pAlt` pParen
+             `pAlt` pNumExpr
 
 pParen :: Parser CoreExpr
 pParen = pThen3 retEx (pLiteral "(") pExpr (pLiteral ")")
@@ -251,6 +253,8 @@ pCaseVars = pZeroOrMore pVar
 pVarExpr :: Parser CoreExpr
 pVarExpr = pApply pVar EVar
 
+pNumExpr :: Parser CoreExpr
+pNumExpr = pApply pNum ENum
 {-Lambda expressions take a fairly simple form:
  -
  -\ var1 var2 var3 ... varN . expr     N >= 1
