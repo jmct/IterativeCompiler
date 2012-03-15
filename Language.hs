@@ -134,9 +134,9 @@ pprExpr :: CoreExpr -> Iseq
 pprExpr (ENum n) = IStr $ show n
 pprExpr (EVar v) = IStr v
 pprExpr (ELet isrec defs expr) = 
-    iConcat [ IStr keyword, INewline, IStr " ", 
+    iConcat [ IStr keyword, IStr " ", 
               IIndent (pprLetDefs defs),
-              INewline, IStr "in ", pprExpr expr ]
+              IStr "in ", pprExpr expr ]
     where keyword = if isrec then "letrec" else "let"
 pprExpr (EAp e1 e2) = 
     (pprExpr e1) `IAppend` (IStr " ") `IAppend` (pprExprParen e2)
