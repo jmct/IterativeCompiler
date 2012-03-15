@@ -187,8 +187,10 @@ pSc = pThen4 makeSc pVar (pZeroOrMore pVar) (pLiteral "=") pExpr
 {-PExpr will string together all of parsers for the valid expressions as defined in Language.hs
  -There will be one parser for each expression type and a few helper functions/parsers -}
 pExpr :: Parser CoreExpr
-pExpr = pLet `pAlt` pLetRec `pAlt` pVarExpr `pAlt` pCase `pAlt` pLambda `pAlt` pParen
-             `pAlt` pNumExpr
+pExpr = pLet `pAlt` pLetRec `pAlt` pCase `pAlt` pLambda `pAlt` pAexpr
+
+pAexpr :: Parser CoreExpr
+pAexpr = pVarExpr `pAlt` pNumExpr `pAlt` pConstr `pAlt` pParen
 
 pParen :: Parser CoreExpr
 pParen = pThen3 retEx (pLiteral "(") pExpr (pLiteral ")")
@@ -273,6 +275,11 @@ pLambVars :: Parser [Name]
 pLambVars = pOneOrMore pVar
 
 
+{-To parse constructors we must strip out the intergers from the Pack{num, num}
+ - form 
+pConstr :: Parser CoreExpr
+pConstr = p
+-}
 {-
 parse :: String -> CoreProgram
 parse = syntax . clex
