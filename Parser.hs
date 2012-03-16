@@ -184,10 +184,50 @@ pSc = pThen4 makeSc pVar (pZeroOrMore pVar) (pLiteral "=") pExpr
     where
         makeSc name args eq expr = (name, args, expr)        
 
+--------------------------------------------------------------------------------
+--The parser functions below are for the grammar outlined in Figure 1.1 of IFL
+
+{-For parsing the infix operators we break up the parsing of expressions into
+ - levels of precedence. The grammar below makes the precedence explicit:
+ - 
+ - expr -> let defs in expr
+ -       | letrec defs in expr
+ -       | case expr of alts
+ -       | \var1 ... varn . expr
+ -       | expr1
+ -
+ - expr1  -> expr2 expr1c
+ - expr1c -> | expr1        --This means that expr1c is either an OR followed
+ -         | []             --by an expr1 or an empty list. This, and all
+ -                          --similar cases below require partial expressions
+ -
+ - expr2  -> expr3 expr2c
+ - expr2c -> & expr2
+ -         | []
+ -
+ - expr3  -> expr4 expr3c
+ - expr3c -> relop expr3
+ -         | []
+ -
+ - expr4  -> expr5 expr4c
+ - expr4c -> + expr4
+ -         | - expr5
+ -         | []
+ -
+ - expr5  -> expr6 expr5c
+ - expr5c -> * expr5
+ -         | / expr5
+ -         | []
+ -
+ - expr6  -> aexpr1 ... aexprN   where N >= 1
+ - -}
+{-The parsing for Let expressions and Recursive-Let expressions are defined
+--independently, this is because the core Language uses different keywords for
+--the two. -}
 {-PExpr will string together all of parsers for the valid expressions as defined in Language.hs
  -There will be one parser for each expression type and a few helper functions/parsers -}
 pExpr :: Parser CoreExpr
-pExpr = pLet `pAlt` pLetRec `pAlt` pCase `pAlt` pLambda `pAlt` pAexpr
+pExpr = pLet `pAlt` pLetRec `pAlt` pCase `pAlt` pLambda `pAlt` pAexpr `pAlt` pApplication
 
 pAexpr :: Parser CoreExpr
 pAexpr = pVarExpr `pAlt` pNumExpr `pAlt` pConstr `pAlt` pParen
@@ -196,12 +236,7 @@ pParen :: Parser CoreExpr
 pParen = pThen3 retEx (pLiteral "(") pExpr (pLiteral ")")
         where
             retEx paren1 expr paren2 = expr
---------------------------------------------------------------------------------
---The parser functions below are for the grammar outlined in Figure 1.1 of IFL
 
-{-The parsing for Let expressions and Recursive-Let expressions are defined
---independently, this is because the core Language uses different keywords for
---the two. -}
 pLet :: Parser CoreExpr
 pLet = pThen4 makeLet (pLiteral "let") pDefsWithSep (pLiteral "in") pExpr
         where
@@ -274,12 +309,35 @@ pLambda = pThen4 retLambda (pLiteral "\\") pLambVars (pLiteral ".") pExpr
 pLambVars :: Parser [Name]
 pLambVars = pOneOrMore pVar
 
+pApplication :: Parser CoreExpr
+pApplication = pThen EAp ((pOneOrMore pAexpr) `pApply` mkApChain) pAexpr
+
+mkApChain :: [CoreExpr] -> CoreExpr
+mkApChain (x:[]) = x
+mkApChain (x:xs) = EAp x (mkApChain xs)
 
 {-To parse constructors we must strip out the intergers from the Pack{num, num}
- - form 
+ - form. We do this by breaking the task into three parsers (note that with a
+ - monadic parser we would only have needed one as pThen4 wouldn't be our
+ - maximum parser-combinator). The first parser simple takes out the keyword
+ - "Pack", the second parser parses the form of the curly brackets around the
+ - two ints (which represent the constructor's tag and arity respectively), and
+ - the last parser puts the ints into a tuple (ignoring the comma in the
+ - Pack{int1,int2} form)-}
 pConstr :: Parser CoreExpr
-pConstr = p
--}
+pConstr = pThen makeConstr (pLiteral "Pack") pBrackets
+        where
+            makeConstr _ (num1,num2) = EConstr num1 num2
+
+pBrackets :: Parser (Int, Int)
+pBrackets = pThen3 onlyTuple (pLiteral "{") pTagArity (pLiteral "}")
+        where
+            onlyTuple _ (x,y) _ = (x,y)
+
+pTagArity :: Parser (Int, Int)
+pTagArity = pThen3 makeTuple pNum (pLiteral ",") pNum
+        where
+            makeTuple num1 _ num2 = (num1, num2)
 {-
 parse :: String -> CoreProgram
 parse = syntax . clex
