@@ -1,5 +1,30 @@
 module Heap where
 
+--We need to define an association list type for use in our heap
+--An association will be a tuple _associating_ the value of one type to the a
+--stored value of another type. 
+type Assoc a b = [(a,b)]
+
+--When lookup up a value in an association list, we want a default value that
+--will be the result if the key is not found in the list. Usually this will be
+--an error message, but it could be anyting of type b.
+aLookup :: Assoc a b -> a -> b -> b
+aLookup [] key defalt = defalt
+aLookup ((key, val):rest) key' defalt
+    | key == key' = val
+    | key /= hey' = aLookup rest key' defalt
+
+--Not directly used in our heap implementation, but useful to have when dealing
+--with association lists, we've created functions to find the domain (the list
+--of valid key values) and the range (the list of stored values in the
+--association list) of an Assoc list. 
+aDomain :: Assoc a b -> [a]
+aDomain alist = [key | (key,val) <- alist]
+
+aRange :: Assoc a b -> [b]
+aRange alist = [val | (key,val) <- alist]
+
+
 type Addr = Int
 
 --A heap is a collection of objects, each object has a corresponding address.
