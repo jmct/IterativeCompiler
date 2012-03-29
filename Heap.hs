@@ -10,11 +10,11 @@ aEmpty = []
 --When lookup up a value in an association list, we want a default value that
 --will be the result if the key is not found in the list. Usually this will be
 --an error message, but it could be anyting of type b.
-aLookup :: Assoc a b -> a -> b -> b
+aLookup :: Assoc Int b -> Int -> b -> b
 aLookup [] key defalt = defalt
 aLookup ((key, val):rest) key' defalt
     | key == key' = val
-    | key /= hey' = aLookup rest key' defalt
+    | key /= key' = aLookup rest key' defalt
 
 --Not directly used in our heap implementation, but useful to have when dealing
 --with association lists, we've created functions to find the domain (the list
@@ -48,7 +48,7 @@ remove ((a',n) : contents) a
 --The function creating the initial heap. (We know that there isn't actually
 --infinite memory...)
 hInitial :: Heap a
-hInitial = (0, [1..] [])
+hInitial = (0, [1..], [])
 
 hAlloc :: Heap a -> a -> (Heap a, Addr)
 hAlloc (size, (next:free), contents) n 
@@ -64,7 +64,7 @@ hFree (size, free, contents) a = (size-1, a:free, remove contents a)
 
 hLookup :: Heap a -> Addr -> a
 hLookup (size, free, contents) addr
-    = aLookup contents a (error ("Can't find node " ++ showAddr addr 
+    = aLookup contents addr (error ("Can't find node " ++ showAddr addr 
                                                     ++ " in heap"))
 
 hAddresses :: Heap a -> [Addr]
