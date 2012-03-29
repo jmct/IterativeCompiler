@@ -5,6 +5,8 @@ module Heap where
 --stored value of another type. 
 type Assoc a b = [(a,b)]
 
+aEmpty = []
+
 --When lookup up a value in an association list, we want a default value that
 --will be the result if the key is not found in the list. Usually this will be
 --an error message, but it could be anyting of type b.
