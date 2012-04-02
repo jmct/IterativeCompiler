@@ -74,11 +74,98 @@ type GMGlobals = Assoc Name Addr
 getGlobals :: GMState -> GMGlobals
 getGlobals (_, _, _, globals, _) = globals
 
+--GMStats:
+type GMStats = Int
 
+statInitial :: GMStats
+statInitial = 0
 
+statIncSteps :: GMStats -> GMStats
+statIncSteps s = s + 1
 
+statGetSteps :: GMStats -> Int
+statGetSteps s = s
 
+getStats :: GMState -> GMStats
+getStats (code, stack, heap, globals, stats) = stats
 
+putStats :: GMStats -> GMState -> GMState
+putStats stats' (code, stack, heap, globals, stats) = 
+        (code, stack, heap, globals, stats')
 
+--The Evaluator function takes a list of states (the first of which is created 
+--by the compiler)
+eval :: GMState -> [GMState]
+eval state = state : restStates
+        where
+        restStates 
+            | gmFinal state     = []
+            | otherwise         = eval nextState
+        nextState = doAdmin (step state)
+
+--doAdmin allows for any between-state calculations that need to be made. In
+--this case we increment the stats counter. 
+doAdmin :: GMState -> GMState
+doAdmin state = putStats (statIncSteps (getStats state)) state
+
+--gmFinal state checks if there is any code left to execute; if there is not,
+--we have reached the final state. 
+gmFinal :: GMState -> Bool
+gmFinal s = case (getCode s) of
+                []        -> True
+                otherwise -> False
+
+step :: GMState -> GMState
+step state = dispatch code (putCode rest state)
+            where (code:rest) = getCode state
+
+dispatch :: Instruction -> GMState -> GMState
+dispatch (PushGlobal f) = pushglobal f
+dispatch (PushInt n)    = pushint n
+dispatch MkAp           = mkap
+dispatch (Push n)       = push n
+dispatch (Slide n)      = slide n
+dispatch Unwind         = unwind
+
+pushglobal :: Name -> GMState ->GMState
+pushglobal f state 
+    = putStack (a : getStack state) state
+        where 
+        a = aLookup (getGlobals state) f (error ("Undeclared global " ++ f))
+
+pushint :: Int -> GMState -> GMState
+pushint n state
+    = putHeap heap' (putStack (a: getStack state) state)
+    where (heap', a) =  hAlloc (getHeap state) (NNum n)
+
+mkap :: GMState -> GMState
+mkap state
+    = putHeap heap' (putStack (a:as') state)
+    where (heap', a) = hAlloc (getHeap state) (NAp a1 a2)
+          (a1:a2:as') = getStack state
+
+push :: Int -> GMState -> GMState
+push n state
+    = putStack (a:as) state
+    where as = getStack state
+          a  = getArg (hLookup (getHeap state) (as !! (n+1)))
+
+getArg :: Node -> Addr
+getArg (NAp a1 a2) = a2
+getArg _ = error "Error in call to getArg: not an application node."
+
+slide :: Int -> GMState -> GMState
+slide n state
+    = putStack (a: drop n as) state
+    where (a:as) = getStack state
+
+unwind :: GMState -> GMState
+unwind state
+    = newState (hLookup heap a)
+    where
+        (a:as) = getStack state
+        heap   = getHeap state
+        newState (NNum n) = state
+        newState (NAp a1 a2) = putCode [Unwind] (putStack (a1:a:as) state)
 
 
