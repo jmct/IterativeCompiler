@@ -33,7 +33,7 @@ data Instruction =
 getCode :: GMState -> GMCode
 getCode (code, _, _, _, _) = code
 
-putCode :: CMCode -> GMState -> GMState
+putCode :: GMCode -> GMState -> GMState
 putCode code' (code, stack, heap, globals, stats) 
     = (code', stack, heap, globals, stats)
 
@@ -44,7 +44,7 @@ type GMStack = [Addr]
 getStack :: GMState -> GMStack
 getStack (_, stack, _, _, _) = stack
 
-putStack :: CMStack -> GMState -> GMState
+putStack :: GMStack -> GMState -> GMState
 putStack stack' (code, stack, heap, globals, stats) 
     = (code, stack', heap, globals, stats)
 
@@ -60,7 +60,7 @@ data Node =
 
 
 getHeap :: GMState -> GMHeap
-getStack (_, _, heap, _, _) = heap
+getHeap (_, _, heap, _, _) = heap
 
 putHeap :: GMHeap -> GMState -> GMState
 putHeap heap' (code, stack, heap, globals, stats) 
@@ -167,5 +167,66 @@ unwind state
         heap   = getHeap state
         newState (NNum n) = state
         newState (NAp a1 a2) = putCode [Unwind] (putStack (a1:a:as) state)
+        newState (NGlobal n c)
+                | length as < n     = error "Unwinding with too few args"
+                | otherwise         = putCode c state
+
+--mapAccuml is a utility function that will be used frequently in the code to
+--come.
+mapAccuml :: (a -> b -> (a, c)) -> a -> [b] -> (a, [c])
+mapAccuml f acc []      = (acc, [])
+mapAccuml f acc (x:xs)  = (acc2, x':xs')
+                where
+                    (acc1, x')  = f acc x
+                    (acc2, xs') = mapAccuml f acc1 xs
 
 
+--Compile functions are broken into portions for compiling SC, R and C
+compile :: CoreProgram -> GMState
+compile prog = (initCode, [], heap, globals, statInitial)
+        where (heap, globals) =  buildInitialHeap prog
+
+--Once compiled a supercombinator for the G-Machine will be of the form:
+type GMCompiledSC = (Name, Int, GMCode)
+
+buildInitialHeap :: CoreProgram -> (GMHeap, GMGlobals)
+buildInitialHeap prog = 
+        mapAccuml allocateSC hInitial compiled
+            where compiled = map compileSC prog
+
+--allocating SCs in the heap makes sure that there is a new heap containing the
+--new global representing the SC
+allocateSC :: GMHeap -> GMCompiledSC -> (GMHeap, (Name, Addr))
+allocateSC heap (name, numArgs, gmCode) = (newHeap, (name, addr))
+        where
+            (newHeap, addr) = hAlloc heap (NGlobal numArgs gmCode)
+
+--The special-case supercombinator "main" is required of every program and is
+--the first function to be called. So the initial gCode for every program will
+--be loading that supercombinator
+initCode :: GMCode
+initCode = [PushGlobal "main", Unwind]
+
+compileSC :: (Name, [Name], CoreExpr) -> GMCompiledSC
+compileSC (name, env, body)
+    = (name, length env, compileR body (zip env [0..]))
+
+compileR :: GMCompiler
+compileR expr env = compileC expr env ++ [Slide (length env + 1), Unwind]
+
+compileC :: GMCompiler
+compileC (EVar v) env
+    | elem v (aDomain env)  = [Push n]
+    | otherwise             = [PushGlobal v]
+    where n = aLookup env v (error "This error can't possibly happen")
+compileC (ENum n) env       = [PushInt n]
+compileC (EAp e1 e2) env    = compileC e2 env ++ 
+                              compileC e1 (argOffset 1 env) ++ 
+                              [MkAp]
+
+type GMCompiler = CoreExpr -> GMEnvironment -> GMCode
+
+type GMEnvironment = Assoc Name Int
+
+argOffset :: Int -> GMEnvironment -> GMEnvironment
+argOffset n env = [(v, n+m) | (v, m) <- env]
