@@ -131,7 +131,7 @@ pushglobal :: Name -> GMState ->GMState
 pushglobal f state 
     = putStack (a : getStack state) state
         where 
-        a = aLookup (getGlobals state) f (error ("Undeclared global " ++ f))
+        a = aLookupString (getGlobals state) f (error ("Undeclared global " ++ f))
 
 pushint :: Int -> GMState -> GMState
 pushint n state
@@ -218,7 +218,7 @@ compileC :: GMCompiler
 compileC (EVar v) env
     | elem v (aDomain env)  = [Push n]
     | otherwise             = [PushGlobal v]
-    where n = aLookup env v (error "This error can't possibly happen")
+    where n = aLookupString env v (error "This error can't possibly happen")
 compileC (ENum n) env       = [PushInt n]
 compileC (EAp e1 e2) env    = compileC e2 env ++ 
                               compileC e1 (argOffset 1 env) ++ 
