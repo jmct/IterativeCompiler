@@ -16,6 +16,14 @@ aLookup ((key, val):rest) key' defalt
     | key == key' = val
     | key /= key' = aLookup rest key' defalt
 
+--This aLookup was needed because the previous aLookup was not allowing abstract
+--datatypes for the key values (because they wouldn't necessarilly have
+--instances of Eq)
+aLookupString :: Assoc String b -> String -> b -> b
+aLookupString [] key defalt = defalt
+aLookupString ((key, val):rest) key' defalt
+    | key == key' = val
+    | key /= key' = aLookupString rest key' defalt
 --Not directly used in our heap implementation, but useful to have when dealing
 --with association lists, we've created functions to find the domain (the list
 --of valid key values) and the range (the list of stored values in the
