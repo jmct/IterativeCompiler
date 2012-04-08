@@ -230,3 +230,23 @@ type GMEnvironment = Assoc Name Int
 
 argOffset :: Int -> GMEnvironment -> GMEnvironment
 argOffset n env = [(v, n+m) | (v, m) <- env]
+
+--In the Mark I GMachine there are no primitives, but we should still have them
+--defined
+compiledPrimitives :: [GMCompiledSC]
+compiledPrimitives = []
+
+
+{-The following are the printing functions needed for when viewing the results
+ - of compilation in GHCI
+ -}
+
+showResults :: [GMState] -> String
+showResults states
+    = iDisplay (iConcat [iStr "Supercombinator definitions:", iNewline
+                        ,iInterleave iNewline (map (showSC s) (getGlobals s))
+                        ,iNewline, iNewine, iStr "State transitions:", iNewline
+                        ,iNewline
+                        ,iLayn (map showState states), iNewline, iNewline
+                        ,showStats (last states)])
+                where (s:ss) = states
