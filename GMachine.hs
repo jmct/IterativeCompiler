@@ -243,10 +243,64 @@ compiledPrimitives = []
 
 showResults :: [GMState] -> String
 showResults states
-    = iDisplay (iConcat [iStr "Supercombinator definitions:", iNewline
-                        ,iInterleave iNewline (map (showSC s) (getGlobals s))
-                        ,iNewline, iNewine, iStr "State transitions:", iNewline
-                        ,iNewline
-                        ,iLayn (map showState states), iNewline, iNewline
+    = iDisplay (iConcat [IStr "Supercombinator definitions:", INewline
+                        ,iInterleave INewline (map (showSC s) (getGlobals s))
+                        ,INewline, INewline, IStr "State transitions:", INewline
+                        ,INewline
+                        ,iLayn (map showState states), INewline, INewline
                         ,showStats (last states)])
                 where (s:ss) = states
+
+showSC :: GMState -> (Name, Addr) -> Iseq
+showSC state (name, addr)
+    = iConcat [ IStr "Code for ", IStr name, INewline
+               ,showInstructions code, INewline, INewline]
+        where 
+            (NGlobal arity code) = (hLookup (getHeap state) addr)
+
+showInstructions :: GMCode -> Iseq
+showInstructions code 
+    = iConcat [IStr "  Code:{",
+               IIndent (iInterleave INewline (map showInstruction code)),
+               IStr "}", INewline]
+
+--Functions to turn each instruction into an appropriate Iseq
+showInstruction :: Instruction -> Iseq
+showInstruction Unwind         = IStr "Unwind"
+showInstruction (PushGlobal f) = (IStr "Pushglobal ") `IAppend` (IStr f)
+showInstruction (Push n)       = (IStr "Push ") `IAppend` (iNum n)
+showInstruction (PushInt n)    = (IStr "Pushint ") `IAppend` (iNum n)   
+showInstruction MkAp           = IStr "MkAp"
+showInstruction (Slide n)      = (IStr "Slide ") `IAppend` (iNum n)   
+
+--showState will take the GCode and the stack from a given state and 
+--wrap them in Iseqs
+showState :: GMState -> Iseq
+showState state
+    = iConcat [showStack state, INewline
+              ,showInstructions (getCode state), INewline]
+
+--When preparing the stack to be printed
+showStack :: GMState -> Iseq
+showStack state
+    = iConcat [IStr " Stack:["
+              ,IIndent (iInterleave INewline
+                                    (map (showStackItem state)
+                                         (reverse (getStack state))))
+              ,IStr "]"]
+
+showStackItem :: GMState -> Addr -> Iseq
+showStackItem state addr
+    = iConcat [IStr (showAddr addr), IStr ": "
+              ,showNode state addr (hLookup (getHeap state) addr)]
+
+showNode :: GMState -> Addr -> Node -> Iseq
+showNode state addr (NNum n)         = iNum n 
+showNode state addr (NAp ad1 ad2)    = iConcat [IStr "Ap ", IStr (showAddr ad1)
+                                               ,IStr " ", IStr (showAddr ad2)]
+showNode state addr (NGlobal n code) = iConcat [IStr "Global ", IStr v]
+                    where v = head [n | (n, b) <- getGlobals state, addr == b]
+
+showStats :: GMState -> Iseq
+showStats state = iConcat [IStr "Steps taken: "
+                          ,iNum (statGetSteps (getStats state))]
