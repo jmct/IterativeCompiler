@@ -91,6 +91,9 @@ data Iseq = INil
           | IAppend Iseq Iseq
           | IIndent Iseq
           | INewline
+
+iNum :: Int -> Iseq
+iNum n = IStr (show n)
 {-
 IIndent seq = seq
 
@@ -191,4 +194,15 @@ iInterleave :: Iseq -> [Iseq] -> Iseq
 iInterleave _ []       = INil
 iInterleave sep (x:xs) = (x `IAppend` sep) `IAppend`  (iInterleave sep xs)
 
+iFWNum :: Int -> Int -> Iseq
+iFWNum width n
+    = IStr (space (width - length digits) ++ digits)
+        where digits  = show n
+              space n = take n (repeat ' ')
+iLayn :: [Iseq] -> Iseq
+iLayn seqs = iConcat (map lay_item (zip [1..] seqs))
+             where
+                lay_item (n, seq)
+                    = iConcat [iFWNum 4 n, IStr ") ", IIndent seq
+                              ,INewline]
 --pprint :: CoreProgram -> String
