@@ -393,7 +393,7 @@ pTagArity :: Parser (Int, Int)
 pTagArity = pThen3 makeTuple pNum (pLiteral ",") pNum
         where
             makeTuple num1 _ num2 = (num1, num2)
-{-
+
 parse :: String -> CoreProgram
-parse = syntax . clex
--}
+parse = syntax . clex 1
+
