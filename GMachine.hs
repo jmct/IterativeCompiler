@@ -74,6 +74,10 @@ type GMGlobals = Assoc Name Addr
 getGlobals :: GMState -> GMGlobals
 getGlobals (_, _, _, globals, _) = globals
 
+putGlobals :: (Name, Addr) -> GMState -> GMState
+putGlobals global' (c, s, h, globals, stats) 
+        =  (c, s, h, global', stats)
+
 --GMStats:
 type GMStats = Int
 
@@ -134,9 +138,9 @@ pushglobal f state
         a = aLookupString (getGlobals state) f (error ("Undeclared global " ++ f))
 
 pushint :: Int -> GMState -> GMState
-pushint n state
-    = putHeap heap' (putStack (a: getStack state) state)
-    where (heap', a) =  hAlloc (getHeap state) (NNum n)
+pushint n state = putStack (a : getStack state') state'
+    where (a, state') = case lookupRes of 
+          lookupRes = lookup (show n) (getGlobals state)
 
 mkap :: GMState -> GMState
 mkap state
