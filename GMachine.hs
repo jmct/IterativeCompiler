@@ -173,7 +173,12 @@ slide n state
 
 update :: Int -> GMState -> GmState
 update n state
-    = putStack (drop 1 (a:as)) (putHeap state
+    = putStack (stack') (putHeap heap' state)
+        where 
+            (a:as)      = getStack state
+            stack'      = drop 1 (a:as)
+            an          = head (drop n stack')
+            (heap', _)  = --OMG WORK HERE
 
 
 unwind :: GMState -> GMState
