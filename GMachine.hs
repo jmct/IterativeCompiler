@@ -139,8 +139,11 @@ pushglobal f state
 
 pushint :: Int -> GMState -> GMState
 pushint n state = putStack (a : getStack state') state'
-    where (a, state') = case lookupRes of 
+    where (a, state') = case lookupRes of  
+                        Just ad -> (ad, state)
+                        Nothing -> cleanUp (hAlloc (getHeap state) (NNum n)) 
           lookupRes = lookup (show n) (getGlobals state)
+          cleanUp (heap', ad1) = (ad1, (putHeap heap' (putGlobals (show n, ad1)state)))
 
 mkap :: GMState -> GMState
 mkap state
