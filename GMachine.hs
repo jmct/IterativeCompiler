@@ -27,7 +27,8 @@ data Instruction =
         | PushInt Int
         | Push Int
         | MkAp
-        | Slide Int
+        | Update Int
+        | Pop Int
     deriving Eq
 
 getCode :: GMState -> GMCode
@@ -57,6 +58,8 @@ data Node =
           NNum Int
         | NAp Addr Addr
         | NGlobal Int GMCode
+        | NInd Addr         --Indirection node
+    deriving Eq
 
 
 getHeap :: GMState -> GMHeap
@@ -128,7 +131,9 @@ dispatch (PushGlobal f) = pushglobal f
 dispatch (PushInt n)    = pushint n
 dispatch MkAp           = mkap
 dispatch (Push n)       = push n
-dispatch (Slide n)      = slide n
+--dispatch (Slide n)      = slide n
+dispatch (Pop n)        = popInst n
+dispatch (Update n)     = update n
 dispatch Unwind         = unwind
 
 pushglobal :: Name -> GMState ->GMState
@@ -165,6 +170,11 @@ slide :: Int -> GMState -> GMState
 slide n state
     = putStack (a: drop n as) state
     where (a:as) = getStack state
+
+update :: Int -> GMState -> GmState
+update n state
+    = putStack (drop 1 (a:as)) (putHeap state
+
 
 unwind :: GMState -> GMState
 unwind state
@@ -278,7 +288,8 @@ showInstruction (PushGlobal f) = (IStr "Pushglobal ") `IAppend` (IStr f)
 showInstruction (Push n)       = (IStr "Push ") `IAppend` (iNum n)
 showInstruction (PushInt n)    = (IStr "Pushint ") `IAppend` (iNum n)   
 showInstruction MkAp           = IStr "MkAp"
-showInstruction (Slide n)      = (IStr "Slide ") `IAppend` (iNum n)   
+showInstruction (Update n)     = (IStr "Update ") `IAppend` (iNum n)   
+showInstruction (Pop n)        = (IStr "Pop ") `IAppend` (iNum n)   
 
 --showState will take the GCode and the stack from a given state and 
 --wrap them in Iseqs
@@ -307,6 +318,7 @@ showNode state addr (NAp ad1 ad2)    = iConcat [IStr "Ap ", IStr (showAddr ad1)
                                                ,IStr " ", IStr (showAddr ad2)]
 showNode state addr (NGlobal n code) = iConcat [IStr "Global ", IStr v]
                     where v = head [n | (n, b) <- getGlobals state, addr == b]
+showNode state addr (NInd ad1)  = iConcat [iStr "Indirection ", IStr (showAddr ad1)]
 
 showStats :: GMState -> Iseq
 showStats state = iConcat [IStr "Steps taken: "
