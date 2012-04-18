@@ -369,7 +369,7 @@ pApplication = ((pOneOrMore pAexpr) `pApply` mkApChain)
 
 mkApChain :: [CoreExpr] -> CoreExpr
 mkApChain (x:[]) = x
-mkApChain (x:xs) = EAp x (mkApChain xs)
+mkApChain (x1:x2:xs) = mkApChain (EAp x1 x2 : xs)
 
 {-To parse constructors we must strip out the intergers from the Pack{num, num}
  - form. We do this by breaking the task into three parsers (note that with a
