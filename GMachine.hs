@@ -79,7 +79,7 @@ getGlobals (_, _, _, globals, _) = globals
 
 putGlobals :: (Name, Addr) -> GMState -> GMState
 putGlobals global' (c, s, h, globals, stats) 
-        =  (c, s, h, global', stats)
+        =  (c, s, h, global':globals, stats)
 
 --GMStats:
 type GMStats = Int
@@ -132,7 +132,7 @@ dispatch (PushInt n)    = pushint n
 dispatch MkAp           = mkap
 dispatch (Push n)       = push n
 --dispatch (Slide n)      = slide n
-dispatch (Pop n)        = popInst n
+dispatch (Pop n)        = pop n
 dispatch (Update n)     = update n
 dispatch Unwind         = unwind
 
@@ -148,7 +148,7 @@ pushint n state = putStack (a : getStack state') state'
                         Just ad -> (ad, state)
                         Nothing -> cleanUp (hAlloc (getHeap state) (NNum n)) 
           lookupRes = lookup (show n) (getGlobals state)
-          cleanUp (heap', ad1) = (ad1, (putHeap heap' (putGlobals (show n, ad1)state)))
+          cleanUp (heap', ad1) = (ad1, (putHeap heap' (putGlobals (show n, ad1) state)))
 
 mkap :: GMState -> GMState
 mkap state
@@ -171,15 +171,18 @@ slide n state
     = putStack (a: drop n as) state
     where (a:as) = getStack state
 
-update :: Int -> GMState -> GmState
+update :: Int -> GMState -> GMState
 update n state
     = putStack (stack') (putHeap heap' state)
         where 
             (a:as)      = getStack state
             stack'      = drop 1 (a:as)
             an          = head (drop n stack')
-            (heap', _)  = --OMG WORK HERE
+            heap'  = hUpdate (getHeap state) an (NInd a)
 
+pop :: Int -> GMState -> GMState
+pop n state = putStack stack' state
+    where stack' = drop n (getStack state)
 
 unwind :: GMState -> GMState
 unwind state
@@ -189,6 +192,7 @@ unwind state
         heap   = getHeap state
         newState (NNum n) = state
         newState (NAp a1 a2) = putCode [Unwind] (putStack (a1:a:as) state)
+        newState (NInd a1) = putCode [Unwind] (putStack (a1:as) state)
         newState (NGlobal n c)
                 | length as < n     = error "Unwinding with too few args"
                 | otherwise         = putCode c state
@@ -234,7 +238,8 @@ compileSC (name, env, body)
     = (name, length env, compileR body (zip env [0..]))
 
 compileR :: GMCompiler
-compileR expr env = compileC expr env ++ [Slide (length env + 1), Unwind]
+compileR expr env = compileC expr env ++ [Update d, Pop d, Unwind]
+    where d = length env
 
 compileC :: GMCompiler
 compileC (EVar v) env
@@ -323,7 +328,7 @@ showNode state addr (NAp ad1 ad2)    = iConcat [IStr "Ap ", IStr (showAddr ad1)
                                                ,IStr " ", IStr (showAddr ad2)]
 showNode state addr (NGlobal n code) = iConcat [IStr "Global ", IStr v]
                     where v = head [n | (n, b) <- getGlobals state, addr == b]
-showNode state addr (NInd ad1)  = iConcat [iStr "Indirection ", IStr (showAddr ad1)]
+showNode state addr (NInd ad1)  = iConcat [IStr "Indirection ", IStr (showAddr ad1)]
 
 showStats :: GMState -> Iseq
 showStats state = iConcat [IStr "Steps taken: "
