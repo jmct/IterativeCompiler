@@ -29,6 +29,8 @@ data Instruction =
         | MkAp
         | Update Int
         | Pop Int
+        | Slide Int
+        | Alloc Int
     deriving Eq
 
 getCode :: GMState -> GMCode
@@ -131,10 +133,11 @@ dispatch (PushGlobal f) = pushglobal f
 dispatch (PushInt n)    = pushint n
 dispatch MkAp           = mkap
 dispatch (Push n)       = push n
---dispatch (Slide n)      = slide n
+dispatch (Slide n)      = slide n
 dispatch (Pop n)        = pop n
 dispatch (Update n)     = update n
 dispatch Unwind         = unwind
+dispatch (Alloc n)      = alloc n
 
 pushglobal :: Name -> GMState ->GMState
 pushglobal f state 
@@ -160,16 +163,34 @@ push :: Int -> GMState -> GMState
 push n state
     = putStack (a:as) state
     where as = getStack state
-          a  = getArg (hLookup (getHeap state) (as !! (n+1)))
+          a  = (as !! n)
 
-getArg :: Node -> Addr
-getArg (NAp a1 a2) = a2
-getArg _ = error "Error in call to getArg: not an application node."
 
 slide :: Int -> GMState -> GMState
 slide n state
     = putStack (a: drop n as) state
     where (a:as) = getStack state
+
+--This is my implementation of alloc, the book suggests another route that I've
+--written below
+alloc :: Int -> GMState -> GMState
+alloc n state
+    = putHeap heap' (putStack stack' state)
+        where
+            hNills      = take n (repeat (NInd hNull))
+            (heap', as) = mapAccuml hAlloc (getHeap state) hNills
+            stack' = as ++ (getStack state)
+{-The SPJ definition of alloc uses the following function in place of my use of
+ - mapAccuml:
+ -
+ - allocNodes :: Int -> GMHeap -> (GMHeap, [Addr])
+ - allocNodes 0 heap = (heap, [])
+ - allocNodes n heap = (heap2, a:as)
+ -      where
+ -          (heap1, as) = allocNodes (n-1) heap
+ -          (heap2, a)  = hAlloc heap1 (NInd hNull)
+ -}
+
 
 update :: Int -> GMState -> GMState
 update n state
@@ -195,7 +216,19 @@ unwind state
         newState (NInd a1) = putCode [Unwind] (putStack (a1:as) state)
         newState (NGlobal n c)
                 | length as < n     = error "Unwinding with too few args"
-                | otherwise         = putCode c state
+                | otherwise         = putStack (rearrange n (getHeap state) (a:as))
+                                               (putCode c state)
+
+rearrange :: Int -> GMHeap -> GMStack -> GMStack
+rearrange n heap stack
+    = take n stack' ++ drop n stack
+        where
+            stack' = map (getArg . hLookup heap) (tail stack)
+
+getArg :: Node -> Addr
+getArg (NAp a1 a2) = a2
+getArg _ = error "Error in call to getArg: not an application node."
+
 
 --mapAccuml is a utility function that will be used frequently in the code to
 --come.
@@ -210,7 +243,7 @@ mapAccuml f acc (x:xs)  = (acc2, x':xs')
 --Compile functions are broken into portions for compiling SC, R and C
 compile :: CoreProgram -> GMState
 compile prog = (initCode, [], heap, globals, statInitial)
-        where (heap, globals) =  buildInitialHeap prog
+        where (heap, globals) =  buildInitialHeap (prog ++ preludeDefs)
 
 --Once compiled a supercombinator for the G-Machine will be of the form:
 type GMCompiledSC = (Name, Int, GMCode)
@@ -250,6 +283,39 @@ compileC (ENum n) env       = [PushInt n]
 compileC (EAp e1 e2) env    = compileC e2 env ++ 
                               compileC e1 (argOffset 1 env) ++ 
                               [MkAp]
+compileC (ELet recursive defs e) args
+    | recursive             = compileLetRec compileC defs e args
+    | otherwise             = compileLet    compileC defs e args
+
+compileLet :: GMCompiler -> [(Name, CoreExpr)] -> GMCompiler
+compileLet comp defs expr env
+    = compileLet' defs env ++ comp expr env' ++ [Slide (length defs)]
+      where env' = compileArgs defs env
+
+compileLet' :: [(Name, CoreExpr)] -> GMEnvironment -> GMCode
+compileLet' []                  env = []
+compileLet' ((name, expr):defs) env 
+    = compileC expr env ++ compileLet' defs (argOffset 1 env)
+
+compileLetRec :: GMCompiler -> [(Name, CoreExpr)] -> GMCompiler
+compileLetRec comp defs expr env
+    = [Alloc n] ++ compileLetRec' defs env' ++ comp expr env' ++ [Slide n]
+        where 
+            n    = length defs
+            env' = compileArgs defs env
+
+compileLetRec' :: [(Name, CoreExpr)] -> GMEnvironment -> GMCode
+compileLetRec' []   env = []
+compileLetRec' defs env
+    = compileC expr env ++ [Update (n-1)] ++ compileLetRec' rest (argOffset 1 env)
+    where
+        ((name, expr):rest) = defs
+        n                   = length defs
+
+compileArgs :: [(Name, CoreExpr)] -> GMEnvironment -> GMEnvironment
+compileArgs defs env
+    = zip (map fst defs) [n-1, n-2 .. 0] ++ argOffset n env
+        where n = length defs
 
 type GMCompiler = CoreExpr -> GMEnvironment -> GMCode
 
@@ -300,6 +366,8 @@ showInstruction (PushInt n)    = (IStr "Pushint ") `IAppend` (iNum n)
 showInstruction MkAp           = IStr "MkAp"
 showInstruction (Update n)     = (IStr "Update ") `IAppend` (iNum n)   
 showInstruction (Pop n)        = (IStr "Pop ") `IAppend` (iNum n)   
+showInstruction (Slide n)      = (IStr "Slide ") `IAppend` (iNum n)   
+showInstruction (Alloc n)      = (IStr "Alloc ") `IAppend` (iNum n)   
 
 --showState will take the GCode and the stack from a given state and 
 --wrap them in Iseqs
