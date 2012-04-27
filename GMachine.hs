@@ -14,9 +14,14 @@ import Heap
 --The state of the G-Machine will be stored in the following 5-tuple
 type GMState = (GMCode,     --Current instuction stream
                 GMStack,    --Current Stack
+                GMDump,     --Stack dump for saving machine context
                 GMHeap,     --The Heap holding the program graph
                 GMGlobals,  --Addresses for globals in the heap
                 GMStats)    --Statistics about the computation
+
+--The types for the Dump and the items in the Dump are as follows
+type GMDump = [GMDumpItem]
+type GMDumpItem = (GMCode, GMStack)
 
 --The code for the GMCode type and `setter and getter' functions are below.
 type GMCode = [Instruction]
@@ -31,25 +36,37 @@ data Instruction =
         | Pop Int
         | Slide Int
         | Alloc Int
+        | Eval                          --Forcing the eval of top of stack
+        | Add | Sub | Mul | Div | Neg   --Arithmetic instructions
+        | Eq | Ne | Lt | Gt | Ge        --comparison instructions
+        | Cond GMCode GMCode            --conditional with alternatives
     deriving Eq
 
 getCode :: GMState -> GMCode
-getCode (code, _, _, _, _) = code
+getCode (code, _, _, _, _, _) = code
 
 putCode :: GMCode -> GMState -> GMState
-putCode code' (code, stack, heap, globals, stats) 
-    = (code', stack, heap, globals, stats)
+putCode code' (code, stack, dump, heap, globals, stats) 
+    = (code', stack, dump, heap, globals, stats)
 
 
 --The code for the GMStack is below:
 type GMStack = [Addr]
 
 getStack :: GMState -> GMStack
-getStack (_, stack, _, _, _) = stack
+getStack (_, stack, _, _, _, _) = stack
 
 putStack :: GMStack -> GMState -> GMState
-putStack stack' (code, stack, heap, globals, stats) 
-    = (code, stack', heap, globals, stats)
+putStack stack' (code, stack, dump, heap, globals, stats) 
+    = (code, stack', dump, heap, globals, stats)
+
+--'Setter and getter' for GMDump
+getDump :: GMState -> GMDump
+getDump (_, _, dump, _, _, _) = dump
+
+putDump :: GMDump -> GMState -> GMState
+putDump dump' (code, stack, dump, heap, globals, stats) 
+        = (code, stack, dump', heap, globals, stats) 
 
 --The code for the state's heap:
 type GMHeap = Heap Node
@@ -65,11 +82,11 @@ data Node =
 
 
 getHeap :: GMState -> GMHeap
-getHeap (_, _, heap, _, _) = heap
+getHeap (_, _, _, heap, _, _) = heap
 
 putHeap :: GMHeap -> GMState -> GMState
-putHeap heap' (code, stack, heap, globals, stats) 
-    = (code, stack, heap', globals, stats)
+putHeap heap' (code, stack, dump, heap, globals, stats) 
+    = (code, stack, dump, heap', globals, stats)
 
 
 --The code for GMGlobals is below. Because the globals of a program do not
@@ -77,11 +94,11 @@ putHeap heap' (code, stack, heap, globals, stats)
 type GMGlobals = Assoc Name Addr
 
 getGlobals :: GMState -> GMGlobals
-getGlobals (_, _, _, globals, _) = globals
+getGlobals (_, _, _, _, globals, _) = globals
 
 putGlobals :: (Name, Addr) -> GMState -> GMState
-putGlobals global' (c, s, h, globals, stats) 
-        =  (c, s, h, global':globals, stats)
+putGlobals global' (c, s, dump, h, globals, stats) 
+        =  (c, s, dump, h, global':globals, stats)
 
 --GMStats:
 type GMStats = Int
@@ -96,11 +113,11 @@ statGetSteps :: GMStats -> Int
 statGetSteps s = s
 
 getStats :: GMState -> GMStats
-getStats (code, stack, heap, globals, stats) = stats
+getStats (code, stack, dump, heap, globals, stats) = stats
 
 putStats :: GMStats -> GMState -> GMState
-putStats stats' (code, stack, heap, globals, stats) = 
-        (code, stack, heap, globals, stats')
+putStats stats' (code, stack, dump, heap, globals, stats) = 
+        (code, stack, dump, heap, globals, stats')
 
 --The Evaluator function takes a list of states (the first of which is created 
 --by the compiler)
@@ -211,13 +228,20 @@ unwind state
     where
         (a:as) = getStack state
         heap   = getHeap state
-        newState (NNum n) = state
+        (dCode, dStack) = head $ getDump state
+        newState (NNum n)
+                | null (getDump state) = state
+                | otherwise            = putCode dCode (putStack (a:dStack) state)
         newState (NAp a1 a2) = putCode [Unwind] (putStack (a1:a:as) state)
         newState (NInd a1) = putCode [Unwind] (putStack (a1:as) state)
         newState (NGlobal n c)
                 | length as < n     = error "Unwinding with too few args"
                 | otherwise         = putStack (rearrange n (getHeap state) (a:as))
                                                (putCode c state)
+
+eval :: GMState -> GMState
+eval (code, (a:as), dump, _, _, _) 
+    = putCode [Unwind] (putStack [a] (putDump ((code, as):dump) state))
 
 rearrange :: Int -> GMHeap -> GMStack -> GMStack
 rearrange n heap stack
@@ -228,7 +252,6 @@ rearrange n heap stack
 getArg :: Node -> Addr
 getArg (NAp a1 a2) = a2
 getArg _ = error "Error in call to getArg: not an application node."
-
 
 --mapAccuml is a utility function that will be used frequently in the code to
 --come.
@@ -242,7 +265,7 @@ mapAccuml f acc (x:xs)  = (acc2, x':xs')
 
 --Compile functions are broken into portions for compiling SC, R and C
 compile :: CoreProgram -> GMState
-compile prog = (initCode, [], heap, globals, statInitial)
+compile prog = (initCode, [], [], heap, globals, statInitial)
         where (heap, globals) =  buildInitialHeap (prog ++ preludeDefs)
 
 --Once compiled a supercombinator for the G-Machine will be of the form:
@@ -374,6 +397,7 @@ showInstruction (Alloc n)      = (IStr "Alloc ") `IAppend` (iNum n)
 showState :: GMState -> Iseq
 showState state
     = iConcat [showStack state, INewline
+              ,showDump state, INewline
               ,showInstructions (getCode state), INewline]
 
 --When preparing the stack to be printed
@@ -389,6 +413,33 @@ showStackItem :: GMState -> Addr -> Iseq
 showStackItem state addr
     = iConcat [IStr (showAddr addr), IStr ": "
               ,showNode state addr (hLookup (getHeap state) addr)]
+
+showDump :: GMState -> Iseq
+showDump state = iConcat [IStr " Dump:["
+                         ,IIndent (iInterleave INewline
+                                  (map showDumpItem (reverse (getDump state))))
+                         ,IStr "]"]
+
+showDumpItem :: GMDumpItem -> Iseq
+showDumpItem (code, stack) 
+    = iConcat [IStr "<"
+              ,shortShowInstructions 3 code, IStr ", "  
+              ,shortShowStack stack, IStr ">"]
+
+shortShowInstructions :: Int -> GMCode -> Iseq
+shortShowInstructions num code
+    = iConcat [IStr "{", iInterleave (IStr "; ") dotcodes, IStr "}"]
+    where
+        codes = map showInstruction (take num code)
+        dotcodes 
+            | length code > num = codes ++ [IStr "..."]
+            | otherwise         = codes
+
+shortShowStack :: GMStack -> Iseq
+shortShowStack stack
+    = iConcat [IStr "["
+              ,iInterleave (IStr ", ") (map (IStr . showAddr) stack)
+              ,IStr "]"]
 
 showNode :: GMState -> Addr -> Node -> Iseq
 showNode state addr (NNum n)         = iNum n 
