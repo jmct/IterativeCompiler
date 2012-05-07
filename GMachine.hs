@@ -1,4 +1,3 @@
-Silly change
 {-This file will contain all the code necessary for the basic GMachine
  -
  - the functions defined here or called from {Language, Parser, Heap}.hs
@@ -39,7 +38,7 @@ data Instruction =
         | Alloc Int
         | Eval                          --Forcing the eval of top of stack
         | Add | Sub | Mul | Div | Neg   --Arithmetic instructions
-        | Eq | Ne | Lt | Gt | Ge        --comparison instructions
+        | Eq | Ne | Lt | Le | Gt | Ge        --comparison instructions
         | Cond GMCode GMCode            --conditional with alternatives
     deriving Eq
 
@@ -156,6 +155,12 @@ dispatch (Pop n)        = pop n
 dispatch (Update n)     = update n
 dispatch Unwind         = unwind
 dispatch (Alloc n)      = alloc n
+dispatch Eval           = evalI
+dispatch Add            = addI
+dispatch Sub            = subI
+dispatch Mul            = mulI
+dispatch Div            = divI
+dispatch Neg            = negI
 
 pushglobal :: Name -> GMState ->GMState
 pushglobal f state 
@@ -244,7 +249,7 @@ unwind state
 --to be confused with the eval function, which is the evaluator (GMachine)
 --itself
 evalI :: GMState -> GMState
-evalI (code, (a:as), dump, _, _, _) 
+evalI state@(code, (a:as), dump, _, _, _) 
     = putCode [Unwind] (putStack [a] (putDump ((code, as):dump) state))
 
 rearrange :: Int -> GMHeap -> GMStack -> GMStack
@@ -257,16 +262,116 @@ getArg :: Node -> Addr
 getArg (NAp a1 a2) = a2
 getArg _ = error "Error in call to getArg: not an application node."
 
+--Below are the boxing and unboxing functions for items in the heap.
+boxInteger :: Int -> GMState -> GMState
+boxInteger num state
+    = putStack (a : getStack state) (putHeap heap' state)
+        where (heap', a) = hAlloc (getHeap state) (NNum num)
 
+boxBoolean :: Bool -> GMState -> GMState
+boxBoolean b state
+    = putStack (a : getStack state) (putHeap heap' state)
+        where
+            (heap', a)     = hAlloc (getHeap state) (NNum b')
+            b' | b         = 1
+               | otherwise = 0
+
+unboxInteger :: Addr -> GMState -> Int
+unboxInteger ad state
+    = unB (hLookup (getHeap state) ad)
+        where unB (NNum num) = num
+              unB _          = error "Unboxing a non integer"
+
+--the primitive1 function takes a boxing function, an unboxing function and an
+--operator (in this case unary) and a state to perform the operation on.
+primitive1 :: (b -> GMState -> GMState) --the boxing function 
+           -> (Addr -> GMState -> a)    --the unboxing
+           -> (a -> b)                  --the operator
+           -> GMState -> GMState        --input and output state
+primitive1 box unbox op state
+    = box (op (unbox a state)) (putStack as state)
+        where (a:as) = getStack state
+
+--the primitive2 function takes a boxing function, an unboxing function and an
+--operator (in this case dyadic) and a state to perform the operation on.
+primitive2 :: (b -> GMState -> GMState) --the boxing function 
+           -> (Addr -> GMState -> a)    --the unboxing
+           -> (a -> a -> b)             --the operator
+           -> GMState -> GMState        --input and output state
+primitive2 box unbox op state
+    = box (op (unbox a1 state) (unbox a2 state)) (putStack as state)
+        where (a1:a2:as) = getStack state
+
+{-Now we use these primitives to create unboxing-reboxing functions specifically
+ - for Integer arithmetic
+ - -}
+arithmetic1 :: (Int -> Int) -> GMState -> GMState
+arithmetic1 = primitive1 boxInteger unboxInteger
+
+arithmetic2 :: (Int -> Int -> Int) -> GMState -> GMState
+arithmetic2 = primitive2 boxInteger unboxInteger
+
+--For a comparison, we use the unboxInteger and the boxBoolean with the
+--primitive2 function
+comparison :: (Int -> Int -> Bool) -> GMState -> GMState
+comparison = primitive2 boxBoolean unboxInteger
+
+--Then each specific integer arithmetic function is just a wrapper for
+--arithmatic{1,2} with the appropriate operator
 addI :: GMState -> GMState
 addI state
-    = putStack (a:s) (putHeap heap' state)
+    = arithmetic2 (+) state
+
+subI :: GMState -> GMState
+subI state
+    = arithmetic2 (-) state
+
+mulI :: GMState -> GMState
+mulI state
+    = arithmetic2 (*) state
+
+divI :: GMState -> GMState
+divI state
+    = arithmetic2 (div) state
+
+negI :: GMState -> GMState
+negI state
+    = arithmetic1 (negate) state
+
+eqI :: GMState -> GMState
+eqI state
+    = comparison (==) state
+
+neI :: GMState -> GMState
+neI state
+    = comparison (/=) state
+
+ltI :: GMState -> GMState
+ltI state
+    = comparison (<) state
+
+leI :: GMState -> GMState
+leI state
+    = comparison (<=) state
+
+gtI :: GMState -> GMState
+gtI state
+    = comparison (>) state
+
+geI :: GMState -> GMState
+geI state
+    = comparison (<=) state
+
+condI :: (GMCode, GMCode) -> GMState -> GMState
+condI alts state
+    = putCode (res ++ i) (putStack s state)
         where
-            a1:a2:s    = getStack state
-            heap'      = getHeap state
-            num1       = hLookup heap a1
-            num2       = hLookup heap a2
-            (a, heap') = hAlloc heap (NNum (num1 + num2))
+            i   = getCode state
+            a:s = getStack state
+            b   = unboxInteger a state 
+            res | b == 1    = fst alts
+                | b == 0    = snd alts
+                | otherwise = error "Attempted boolean check on non-Boolean"
 
 --mapAccuml is a utility function that will be used frequently in the code to
 --come.
@@ -302,7 +407,7 @@ allocateSC heap (name, numArgs, gmCode) = (newHeap, (name, addr))
 --the first function to be called. So the initial gCode for every program will
 --be loading that supercombinator
 initCode :: GMCode
-initCode = [PushGlobal "main", Unwind]
+initCode = [PushGlobal "main", Eval]
 
 compileSC :: (Name, [Name], CoreExpr) -> GMCompiledSC
 compileSC (name, env, body)
@@ -365,7 +470,12 @@ argOffset n env = [(v, n+m) | (v, m) <- env]
 --In the Mark I GMachine there are no primitives, but we should still have them
 --defined
 compiledPrimitives :: [GMCompiledSC]
-compiledPrimitives = []
+compiledPrimitives 
+    = [(
+
+
+
+]
 
 
 {-The following are the printing functions needed for when viewing the results
