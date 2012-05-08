@@ -161,6 +161,13 @@ dispatch Sub            = subI
 dispatch Mul            = mulI
 dispatch Div            = divI
 dispatch Neg            = negI
+dispatch Eq             = eqI
+dispatch Ne             = neI
+dispatch Lt             = ltI
+dispatch Le             = leI
+dispatch Gt             = gtI
+dispatch Ge             = geI
+dispatch (Cond al1 al2) = condI (al1, al2)
 
 pushglobal :: Name -> GMState ->GMState
 pushglobal f state 
@@ -471,11 +478,18 @@ argOffset n env = [(v, n+m) | (v, m) <- env]
 --defined
 compiledPrimitives :: [GMCompiledSC]
 compiledPrimitives 
-    = [(
-
-
-
-]
+    = [("+", 2, [Push 1, Eval, Push 1, Eval, Add, Update 2, Pop 2, Unwind])
+      ,("-", 2, [Push 1, Eval, Push 1, Eval, Sub, Update 2, Pop 2, Unwind])
+      ,("*", 2, [Push 1, Eval, Push 1, Eval, Mul, Update 2, Pop 2, Unwind])
+      ,("/", 2, [Push 1, Eval, Push 1, Eval, Div, Update 2, Pop 2, Unwind])
+      ,("negate", 2, [Push 0, Eval, Neg, Update 1, Pop 1, Unwind])
+      ,("==", 2, [Push 1, Eval, Push 1, Eval, Eq, Update 2, Pop 2, Unwind])
+      ,("~=", 2, [Push 1, Eval, Push 1, Eval, Ne, Update 2, Pop 2, Unwind])
+      ,("<",  2, [Push 1, Eval, Push 1, Eval, Lt, Update 2, Pop 2, Unwind])
+      ,("<=", 2, [Push 1, Eval, Push 1, Eval, Le, Update 2, Pop 2, Unwind])
+      ,(">",  2, [Push 1, Eval, Push 1, Eval, Gt, Update 2, Pop 2, Unwind])
+      ,(">=", 2, [Push 1, Eval, Push 1, Eval, Ge, Update 2, Pop 2, Unwind])
+      ,("if", 3, [Push 0, Eval, Cond [Push 1] [Push 2], Update 3, Pop 3, Unwind])]
 
 
 {-The following are the printing functions needed for when viewing the results
@@ -516,6 +530,21 @@ showInstruction (Update n)     = (IStr "Update ") `IAppend` (iNum n)
 showInstruction (Pop n)        = (IStr "Pop ") `IAppend` (iNum n)   
 showInstruction (Slide n)      = (IStr "Slide ") `IAppend` (iNum n)   
 showInstruction (Alloc n)      = (IStr "Alloc ") `IAppend` (iNum n)   
+showInstruction Eval           = IStr "Eval"
+showInstruction Add            = IStr "Add"
+showInstruction Sub            = IStr "Sub"
+showInstruction Mul            = IStr "Mul"
+showInstruction Div            = IStr "Div"
+showInstruction Neg            = IStr "Neg"
+showInstruction Eq             = IStr "Eq"
+showInstruction Ne             = IStr "Ne"
+showInstruction Lt             = IStr "Lt"
+showInstruction Le             = IStr "Le"
+showInstruction Gt             = IStr "Gt"
+showInstruction Ge             = IStr "Ge"
+showInstruction (Cond a1 a2)   = IStr "Cond: " `IAppend` iConcat [
+--for above we need to map 'showInstruction over the list of each alternative
+--and make it laid out nicelye
 
 --showState will take the GCode and the stack from a given state and 
 --wrap them in Iseqs
