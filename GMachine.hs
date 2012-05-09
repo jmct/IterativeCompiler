@@ -241,10 +241,11 @@ unwind state
     where
         (a:as) = getStack state
         heap   = getHeap state
-        (dCode, dStack) = head $ getDump state
+        (dCode, dStack):dump' = getDump state
         newState (NNum n)
                 | null (getDump state) = state
-                | otherwise            = putCode dCode (putStack (a:dStack) state)
+                | otherwise            = putCode dCode (putStack (a:dStack) 
+                                                        (putDump dump' state))
         newState (NAp a1 a2) = putCode [Unwind] (putStack (a1:a:as) state)
         newState (NInd a1) = putCode [Unwind] (putStack (a1:as) state)
         newState (NGlobal n c)
@@ -393,7 +394,7 @@ mapAccuml f acc (x:xs)  = (acc2, x':xs')
 --Compile functions are broken into portions for compiling SC, R and C
 compile :: CoreProgram -> GMState
 compile prog = (initCode, [], [], heap, globals, statInitial)
-        where (heap, globals) =  buildInitialHeap (prog ++ preludeDefs)
+        where (heap, globals) =  buildInitialHeap prog
 
 --Once compiled a supercombinator for the G-Machine will be of the form:
 type GMCompiledSC = (Name, Int, GMCode)
@@ -401,7 +402,8 @@ type GMCompiledSC = (Name, Int, GMCode)
 buildInitialHeap :: CoreProgram -> (GMHeap, GMGlobals)
 buildInitialHeap prog = 
         mapAccuml allocateSC hInitial compiled
-            where compiled = map compileSC prog
+            where compiled = map compileSC (prog ++ preludeDefs)
+                             ++ compiledPrimitives
 
 --allocating SCs in the heap makes sure that there is a new heap containing the
 --new global representing the SC
@@ -542,7 +544,13 @@ showInstruction Lt             = IStr "Lt"
 showInstruction Le             = IStr "Le"
 showInstruction Gt             = IStr "Gt"
 showInstruction Ge             = IStr "Ge"
-showInstruction (Cond a1 a2)   = IStr "Cond: " `IAppend` iConcat [
+showInstruction (Cond a1 a2)   = iConcat 
+                                    [IStr "Cond: ", INewline, IStr "Alt1: ",
+                                    (iInterleave INewline (map showInstruction a1)),
+                                    INewline, IStr "Alt2: ",
+                                    (iInterleave INewline (map showInstruction a2))]
+                                         
+
 --for above we need to map 'showInstruction over the list of each alternative
 --and make it laid out nicelye
 
