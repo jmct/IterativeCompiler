@@ -423,8 +423,27 @@ compileSC (name, env, body)
     = (name, length env, compileR body (zip env [0..]))
 
 compileR :: GMCompiler
-compileR expr env = compileC expr env ++ [Update d, Pop d, Unwind]
+compileR expr env = compileE expr env ++ [Update d, Pop d, Unwind]
     where d = length env
+
+compileE :: GMCompiler
+compileE (ENum n) env = [PushInt n]
+compileE (ELet recursive defs e) args
+    | recursive             = compileLetRec compileE defs e args
+    | otherwise             = compileLet    compileE defs e args
+compileE exp@(EAp (EAp (EVar arith) e2) e1) env
+    | elem arith (aDomain builtInDyadic) = compileE e2 env ++
+                                             compileE e1 (argOffset 1 env) ++
+                                             [aLookupString builtInDyadic arith (error "Can't happen")]
+    | otherwise                          = compileC exp env ++ [Eval]
+compileE expr env           = compileC expr env ++ [Eval]
+
+builtInDyadic :: Assoc Name Instruction
+builtInDyadic
+    = [("+", Add), ("-", Sub), ("*", Mul), ("/", Div), 
+       ("==", Eq), ("~=", Ne), (">=", Ge), ("div", Div),
+       (">", Gt), ("<=", Le), ("<", Lt)] 
+
 
 compileC :: GMCompiler
 compileC (EVar v) env
