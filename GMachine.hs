@@ -12,16 +12,36 @@ import Parser
 import Heap
 
 --The state of the G-Machine will be stored in the following 5-tuple
-type GMState = (GMCode,     --Current instuction stream
+type GMState = (GMOutput,
+                GMCode,     --Current instuction stream
                 GMStack,    --Current Stack
                 GMDump,     --Stack dump for saving machine context
                 GMHeap,     --The Heap holding the program graph
                 GMGlobals,  --Addresses for globals in the heap
                 GMStats)    --Statistics about the computation
 
+--GMOutput is for the currently computed output of the program. This can be used
+--to recursively find the final output
+type GMOutput = [Char]
+
+getOutput :: GMState -> GMOutput
+getOutput (output, _, _, _, _, _, _) = output
+
+putOutput :: GMOutput -> GMState -> GMState
+putOutput output' (output, code, stack, dump, heap, globals, stats) 
+    = (output', code, stack, dump, heap, globals, stats) 
+
 --The types for the Dump and the items in the Dump are as follows
 type GMDump = [GMDumpItem]
 type GMDumpItem = (GMCode, GMStack)
+
+--'Setter and getter' for GMDump
+getDump :: GMState -> GMDump
+getDump (_, _, _, dump, _, _, _) = dump
+
+putDump :: GMDump -> GMState -> GMState
+putDump dump' (output, code, stack, dump, heap, globals, stats) 
+        = (output, code, stack, dump', heap, globals, stats) 
 
 --The code for the GMCode type and `setter and getter' functions are below.
 type GMCode = [Instruction]
@@ -43,30 +63,22 @@ data Instruction =
     deriving Eq
 
 getCode :: GMState -> GMCode
-getCode (code, _, _, _, _, _) = code
+getCode (_, code, _, _, _, _, _) = code
 
 putCode :: GMCode -> GMState -> GMState
-putCode code' (code, stack, dump, heap, globals, stats) 
-    = (code', stack, dump, heap, globals, stats)
+putCode code' (output, code, stack, dump, heap, globals, stats) 
+    = (output, code', stack, dump, heap, globals, stats)
 
 
 --The code for the GMStack is below:
 type GMStack = [Addr]
 
 getStack :: GMState -> GMStack
-getStack (_, stack, _, _, _, _) = stack
+getStack (_, _, stack, _, _, _, _) = stack
 
 putStack :: GMStack -> GMState -> GMState
-putStack stack' (code, stack, dump, heap, globals, stats) 
-    = (code, stack', dump, heap, globals, stats)
-
---'Setter and getter' for GMDump
-getDump :: GMState -> GMDump
-getDump (_, _, dump, _, _, _) = dump
-
-putDump :: GMDump -> GMState -> GMState
-putDump dump' (code, stack, dump, heap, globals, stats) 
-        = (code, stack, dump', heap, globals, stats) 
+putStack stack' (output, code, stack, dump, heap, globals, stats) 
+    = (output, code, stack', dump, heap, globals, stats)
 
 --The code for the state's heap:
 type GMHeap = Heap Node
@@ -78,15 +90,16 @@ data Node =
         | NAp Addr Addr
         | NGlobal Int GMCode
         | NInd Addr         --Indirection node
+        | NConstr Int [Addr]
     deriving Eq
 
 
 getHeap :: GMState -> GMHeap
-getHeap (_, _, _, heap, _, _) = heap
+getHeap (_, _, _, _, heap, _, _) = heap
 
 putHeap :: GMHeap -> GMState -> GMState
-putHeap heap' (code, stack, dump, heap, globals, stats) 
-    = (code, stack, dump, heap', globals, stats)
+putHeap heap' (output, code, stack, dump, heap, globals, stats) 
+    = (output, code, stack, dump, heap', globals, stats)
 
 
 --The code for GMGlobals is below. Because the globals of a program do not
@@ -94,11 +107,11 @@ putHeap heap' (code, stack, dump, heap, globals, stats)
 type GMGlobals = Assoc Name Addr
 
 getGlobals :: GMState -> GMGlobals
-getGlobals (_, _, _, _, globals, _) = globals
+getGlobals (_, _, _, _, _, globals, _) = globals
 
 putGlobals :: (Name, Addr) -> GMState -> GMState
-putGlobals global' (c, s, dump, h, globals, stats) 
-        =  (c, s, dump, h, global':globals, stats)
+putGlobals global' (output, c, s, dump, h, globals, stats) 
+        =  (output, c, s, dump, h, global':globals, stats)
 
 --GMStats:
 type GMStats = Int
@@ -113,11 +126,11 @@ statGetSteps :: GMStats -> Int
 statGetSteps s = s
 
 getStats :: GMState -> GMStats
-getStats (code, stack, dump, heap, globals, stats) = stats
+getStats (output, code, stack, dump, heap, globals, stats) = stats
 
 putStats :: GMStats -> GMState -> GMState
-putStats stats' (code, stack, dump, heap, globals, stats) = 
-        (code, stack, dump, heap, globals, stats')
+putStats stats' (output, code, stack, dump, heap, globals, stats) = 
+        (output, code, stack, dump, heap, globals, stats')
 
 --The Evaluator function takes a list of states (the first of which is created 
 --by the compiler)
@@ -259,7 +272,7 @@ unwind state
 --to be confused with the eval function, which is the evaluator (GMachine)
 --itself
 evalI :: GMState -> GMState
-evalI state@(code, (a:as), dump, _, _, _) 
+evalI state@(output, code, (a:as), dump, _, _, _) 
     = putCode [Unwind] (putStack [a] (putDump ((code, as):dump) state))
 
 rearrange :: Int -> GMHeap -> GMStack -> GMStack
@@ -395,7 +408,7 @@ mapAccuml f acc (x:xs)  = (acc2, x':xs')
 
 --Compile functions are broken into portions for compiling SC, R and C
 compile :: CoreProgram -> GMState
-compile prog = (initCode, [], [], heap, globals, statInitial)
+compile prog = ([], initCode, [], [], heap, globals, statInitial)
         where (heap, globals) =  buildInitialHeap prog
 
 --Once compiled a supercombinator for the G-Machine will be of the form:
@@ -581,9 +594,16 @@ showInstruction (Cond a1 a2)   = iConcat
 --wrap them in Iseqs
 showState :: GMState -> Iseq
 showState state
-    = iConcat [showStack state, INewline
+    = iConcat [showOutput state, INewline
+              ,showStack state, INewline
               ,showDump state, INewline
               ,showInstructions (getCode state), INewline]
+
+--showOutput is easy as its component is already a string
+showOutput :: GMState -> Iseq
+showOutput state = iConcat [IStr " Output:\""
+                           ,IStr (getOutput state)
+                           ,IStr "\""]
 
 --When preparing the stack to be printed
 showStack :: GMState -> Iseq
@@ -632,7 +652,12 @@ showNode state addr (NAp ad1 ad2)    = iConcat [IStr "Ap ", IStr (showAddr ad1)
                                                ,IStr " ", IStr (showAddr ad2)]
 showNode state addr (NGlobal n code) = iConcat [IStr "Global ", IStr v]
                     where v = head [n | (n, b) <- getGlobals state, addr == b]
-showNode state addr (NInd ad1)  = iConcat [IStr "Indirection ", IStr (showAddr ad1)]
+showNode state addr (NInd ad1)  = iConcat [IStr "Indirection "
+                                          ,IStr (showAddr ad1)]
+showNode state addr (NConstr t as) = 
+        iConcat [IStr "Constr ", INum t, IStr " ["
+                ,iInterleave (IStr ", ") (map (IStr . showAddr) as)
+                ,IStr "]"]
 
 showStats :: GMState -> Iseq
 showStats state = iConcat [IStr "Steps taken: "
