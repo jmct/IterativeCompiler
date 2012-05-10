@@ -242,6 +242,8 @@ unwind state
         (a:as) = getStack state
         heap   = getHeap state
         (dCode, dStack):dump' = getDump state
+        k      = length as
+        ak     = head $ drop k (a:as)
         newState (NNum n)
                 | null (getDump state) = state
                 | otherwise            = putCode dCode (putStack (a:dStack) 
@@ -249,9 +251,9 @@ unwind state
         newState (NAp a1 a2) = putCode [Unwind] (putStack (a1:a:as) state)
         newState (NInd a1) = putCode [Unwind] (putStack (a1:as) state)
         newState (NGlobal n c)
-                | length as < n     = error "Unwinding with too few args"
-                | otherwise         = putStack (rearrange n (getHeap state) (a:as))
-                                               (putCode c state)
+                | k < n      = putCode dCode (putStack (ak:dStack) (putDump dump' state))
+                | otherwise  = putStack (rearrange n (getHeap state) (a:as))
+                                        (putCode c state)
 
 --evalI is the code to execute when evaluating the Eval instruction. This is not
 --to be confused with the eval function, which is the evaluator (GMachine)
@@ -431,12 +433,14 @@ compileE (ENum n) env = [PushInt n]
 compileE (ELet recursive defs e) args
     | recursive             = compileLetRec compileE defs e args
     | otherwise             = compileLet    compileE defs e args
-compileE exp@(EAp (EAp (EVar arith) e2) e1) env
+compileE exp@(EVar arith `EAp` e1 `EAp` e2) env
     | elem arith (aDomain builtInDyadic) = compileE e2 env ++
-                                             compileE e1 (argOffset 1 env) ++
-                                             [aLookupString builtInDyadic arith (error "Can't happen")]
-    | otherwise                          = compileC exp env ++ [Eval]
-compileE expr env           = compileC expr env ++ [Eval]
+                                           compileE e1 (argOffset 1 env) ++
+                                           [aLookupString builtInDyadic arith (error "Can't happen")]
+compileE (EVar "negate" `EAp` e1) env    = compileE e1 env ++ [Neg]
+compileE (EVar "if" `EAp` e0 `EAp` e1 `EAp` e2) env =
+                          compileE e0 env ++ [Cond (compileE e1 env) (compileE e2 env)]
+compileE expr env                        = compileC expr env ++ [Eval]
 
 builtInDyadic :: Assoc Name Instruction
 builtInDyadic
