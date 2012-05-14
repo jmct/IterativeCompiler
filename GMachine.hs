@@ -185,6 +185,52 @@ dispatch Le             = leI
 dispatch Gt             = gtI
 dispatch Ge             = geI
 dispatch (Cond al1 al2) = condI (al1, al2)
+dispatch (Pack n1 n2)   = packI n1 n2
+dispatch (Casejump alts)= casejump alts
+dispatch (Split n)      = splitI n
+dispatch Print          = printI
+
+printI :: GMState -> GMState
+printI state
+    = case (hLookup (getHeap state) a) of
+        NNum n         -> putOutput (mkOutput n) (putStack (drop 1 $ getStack state) state)
+        NConstr tag ss -> putCode (mkCode ss) (putStack (mkStack ss) state)
+        otherwise      -> error "Trying to print non-number or non-constructor"
+      where mkOutput n = (getOutput state) ++ show n
+            mkCode ss  = (concat $ take (length ss) $ repeat [Eval, Print]) ++ (getCode state)
+            (a:as)     = getStack state
+            mkStack ss = ss ++ as
+
+getConstrTag :: Node -> Int
+getConstrTag (NConstr tag ss) = tag
+getConstrTag _                = error "Trying to get tag from non-constructor Node"
+
+getConstrArgs :: Node -> [Addr]
+getConstrArgs (NConstr tag ss) = ss
+getConstrArgs _                = error "Trying to get arguments from non-constructor"
+
+splitI :: Int -> GMState -> GMState
+splitI n state 
+    = if (length newAs == n) then putStack (newAs ++ as) state
+                             else error "Arity of Constr does not match Split"
+        where (a:as) = getStack state
+              newAs  = getConstrArgs $ hLookup (getHeap state) a
+
+casejump :: [(Int, GMCode)] -> GMState -> GMState
+casejump alts state
+    = putCode code' state
+        where heap           = getHeap state
+              (a:as)         = getStack state
+              tag            = getConstrTag $ hLookup heap a
+              selectCase a t = aLookup a t (error "Non-exhaustive patterns")
+              code'          = (selectCase alts tag) ++ (getCode state)
+
+packI :: Int -> Int -> GMState -> GMState
+packI tag ar state 
+    = putStack stack' (putHeap heap' state)
+        where stack      = getStack state
+              (heap', a) = hAlloc (getHeap state) (NConstr tag (take ar stack))
+              stack'     = a:(drop ar stack)
 
 pushglobal :: Name -> GMState ->GMState
 pushglobal f state 
@@ -262,6 +308,10 @@ unwind state
         k      = length as
         ak     = head $ drop k (a:as)
         newState (NNum n)
+                | null (getDump state) = state
+                | otherwise            = putCode dCode (putStack (a:dStack) 
+                                                        (putDump dump' state))
+        newState (NConstr tag ss)
                 | null (getDump state) = state
                 | otherwise            = putCode dCode (putStack (a:dStack) 
                                                         (putDump dump' state))
@@ -586,8 +636,8 @@ showInstruction Gt             = IStr "Gt"
 showInstruction Ge             = IStr "Ge"
 showInstruction (Pack n1 n2)   = iConcat [IStr "Pack{", iNum n1, IStr ","
                                          ,iNum n2, IStr "}"]
-showInstruction (Casejump as)  = iConcat [IStr "Casejump: ", INewline
-                                         ,map showCasejump as]
+showInstruction (Casejump as)  = iConcat ([IStr "Casejump: ", INewline] 
+                                         ++ map showCasejump as)
 showInstruction (Split n)      = iConcat [IStr "Split ", iNum n]
 showInstruction Print          = IStr "Print"
 showInstruction (Cond a1 a2)   = iConcat 
@@ -669,7 +719,7 @@ showNode state addr (NGlobal n code) = iConcat [IStr "Global ", IStr v]
 showNode state addr (NInd ad1)  = iConcat [IStr "Indirection "
                                           ,IStr (showAddr ad1)]
 showNode state addr (NConstr t as) = 
-        iConcat [IStr "Constr ", INum t, IStr " ["
+        iConcat [IStr "Constr ", iNum t, IStr " ["
                 ,iInterleave (IStr ", ") (map (IStr . showAddr) as)
                 ,IStr "]"]
 
