@@ -60,6 +60,10 @@ data Instruction =
         | Add | Sub | Mul | Div | Neg   --Arithmetic instructions
         | Eq | Ne | Lt | Le | Gt | Ge        --comparison instructions
         | Cond GMCode GMCode            --conditional with alternatives
+        | Pack Int Int
+        | Casejump [(Int, GMCode)]
+        | Split Int
+        | Print
     deriving Eq
 
 getCode :: GMState -> GMCode
@@ -580,12 +584,22 @@ showInstruction Lt             = IStr "Lt"
 showInstruction Le             = IStr "Le"
 showInstruction Gt             = IStr "Gt"
 showInstruction Ge             = IStr "Ge"
+showInstruction (Pack n1 n2)   = iConcat [IStr "Pack{", iNum n1, IStr ","
+                                         ,iNum n2, IStr "}"]
+showInstruction (Casejump as)  = iConcat [IStr "Casejump: ", INewline
+                                         ,map showCasejump as]
+showInstruction (Split n)      = iConcat [IStr "Split ", iNum n]
+showInstruction Print          = IStr "Print"
 showInstruction (Cond a1 a2)   = iConcat 
                                     [IStr "Cond: ", INewline, IStr "Alt1: ",
                                     (iInterleave INewline (map showInstruction a1)),
                                     INewline, IStr "Alt2: ",
                                     (iInterleave INewline (map showInstruction a2))]
                                          
+
+showCasejump (num, code) = iConcat [iNum num, INewline
+                                   ,IIndent (iInterleave INewline 
+                                            (map showInstruction code))]
 
 --for above we need to map 'showInstruction over the list of each alternative
 --and make it laid out nicelye
