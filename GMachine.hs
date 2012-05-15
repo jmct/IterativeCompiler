@@ -485,7 +485,7 @@ allocateSC heap (name, numArgs, gmCode) = (newHeap, (name, addr))
 --the first function to be called. So the initial gCode for every program will
 --be loading that supercombinator
 initCode :: GMCode
-initCode = [PushGlobal "main", Eval]
+initCode = [PushGlobal "main", Eval, Print]
 
 compileSC :: (Name, [Name], CoreExpr) -> GMCompiledSC
 compileSC (name, env, body)
@@ -495,6 +495,8 @@ compileR :: GMCompiler
 compileR expr env = compileE expr env ++ [Update d, Pop d, Unwind]
     where d = length env
 
+--The compileE scheme is for the expressions that inherit a strict context from
+--where they are called. 
 compileE :: GMCompiler
 compileE (ENum n) env = [PushInt n]
 compileE (ELet recursive defs e) args
@@ -507,7 +509,37 @@ compileE exp@(EVar arith `EAp` e1 `EAp` e2) env
 compileE (EVar "negate" `EAp` e1) env    = compileE e1 env ++ [Neg]
 compileE (EVar "if" `EAp` e0 `EAp` e1 `EAp` e2) env =
                           compileE e0 env ++ [Cond (compileE e1 env) (compileE e2 env)]
+compileE (ECase sub alts) env            = compileE sub ++ [Casejump compileAlts alts env]
 compileE expr env                        = compileC expr env ++ [Eval]
+
+
+{-This was my original idea for compiling constructors, now I think it's bad and
+ - that there is no difference between constructors and should treat it as EAps
+compileE (EConstr tag arity) args env    = compilePack arity (reverse args) env ++ [Pack tag arity]
+
+-}
+
+compilePack :: GMCompiler
+compilePack []     env = []
+compilePack (a:as) env
+    = compileC a env ++ compilePack as (argOffset 1 env)
+--The compileE' scheme is used to wrap a Split and Slide instruction around the
+--results of the normal compileE scheme, this is used when compiling case
+--expressions. 
+compileE' :: Int -> GMCompiler
+compileE' offset expr env
+    = [Split offset] ++ compileE expr env ++ [Slide offset]
+
+--CompileAlts corresponds to the compileD scheme in the IFL book. The arguments
+--this function takes will be described below.
+compileAlts :: (Int -> GMCompiler) --compiler for alternates
+               -> [CoreAlt]        --the list of alternates
+               -> GMEnvironment    --the current environment
+               -> [(Int, GMCode)]  --the output list of alternats sequences
+compileAlts comp alts env
+    = [(tag, 
+      comp (length names) body (zip names [0..] ++ argOffset (length names) env))
+        | (tag, names, body) <- alts]
 
 builtInDyadic :: Assoc Name Instruction
 builtInDyadic
@@ -525,6 +557,7 @@ compileC (ENum n) env       = [PushInt n]
 compileC (EAp e1 e2) env    = compileC e2 env ++ 
                               compileC e1 (argOffset 1 env) ++ 
                               [MkAp]
+compileC (EConstr tag arity) args env    = compilePack arity (reverse args) env ++ [Pack tag arity]
 compileC (ELet recursive defs e) args
     | recursive             = compileLetRec compileC defs e args
     | otherwise             = compileLet    compileC defs e args
