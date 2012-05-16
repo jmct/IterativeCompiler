@@ -509,17 +509,19 @@ compileE exp@(EVar arith `EAp` e1 `EAp` e2) env
 compileE (EVar "negate" `EAp` e1) env    = compileE e1 env ++ [Neg]
 compileE (EVar "if" `EAp` e0 `EAp` e1 `EAp` e2) env =
                           compileE e0 env ++ [Cond (compileE e1 env) (compileE e2 env)]
-compileE (ECase sub alts) env            = compileE sub ++ [Casejump compileAlts alts env]
+compileE (ECase sub alts) env            
+    = compileE sub env ++ [Casejump $ compileAlts compileE' alts env]
+compileE (EConstrAp tag arity args) env    
+    = compilePack (reverse args) env ++ [Pack tag arity]
 compileE expr env                        = compileC expr env ++ [Eval]
 
 
 {-This was my original idea for compiling constructors, now I think it's bad and
  - that there is no difference between constructors and should treat it as EAps
-compileE (EConstr tag arity) args env    = compilePack arity (reverse args) env ++ [Pack tag arity]
 
 -}
 
-compilePack :: GMCompiler
+compilePack :: [CoreExpr] -> GMEnvironment -> [Instruction]
 compilePack []     env = []
 compilePack (a:as) env
     = compileC a env ++ compilePack as (argOffset 1 env)
@@ -557,7 +559,7 @@ compileC (ENum n) env       = [PushInt n]
 compileC (EAp e1 e2) env    = compileC e2 env ++ 
                               compileC e1 (argOffset 1 env) ++ 
                               [MkAp]
-compileC (EConstr tag arity) args env    = compilePack arity (reverse args) env ++ [Pack tag arity]
+compileC (EConstrAp tag arity args) env = compilePack (reverse args) env ++ [Pack tag arity]
 compileC (ELet recursive defs e) args
     | recursive             = compileLetRec compileC defs e args
     | otherwise             = compileLet    compileC defs e args
