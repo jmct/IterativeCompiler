@@ -42,7 +42,7 @@ keywords = ["let","letrec","case","in","of","Pack"]
 --Two character operators must be a member of the following string.
 --Currently the Not-Equal-To operator is ~= This may be changed to /=
 twoCharOps :: [String]
-twoCharOps = ["==","~=",">=","<=","->"]
+twoCharOps = ["==","/=",">=","<=","->"]
 
 relOps :: [String]
 relOps = "<" : ">" : (delete "->" twoCharOps)
@@ -285,7 +285,7 @@ pExpr = pLet `pAlt` pLetRec `pAlt` pCase `pAlt` pLambda
         `pAlt` pExpr1
 
 pAexpr :: Parser CoreExpr
-pAexpr = pVarExpr `pAlt` pNumExpr `pAlt` pParen
+pAexpr = pVarExpr `pAlt` pNumExpr `pAlt` pParen `pAlt` pNullaryConstr
 
 pParen :: Parser CoreExpr
 pParen = pThen3 retEx (pLiteral "(") pExpr (pLiteral ")")
@@ -384,6 +384,11 @@ pConstr = pThen3 makeConstr (pLiteral "Pack") pBrackets pConstrArgs
         where
             makeConstr _ (num1,num2) args = EConstrAp num1 num2 args
             pConstrArgs                   = pZeroOrMore pAexpr
+
+pNullaryConstr :: Parser CoreExpr
+pNullaryConstr = pThen makeConstr (pLiteral "Pack") pBrackets 
+        where
+            makeConstr _ (num1,num2) = EConstrAp num1 num2 []
 
 pBrackets :: Parser (Int, Int)
 pBrackets = pThen3 onlyTuple (pLiteral "{") pTagArity (pLiteral "}")
