@@ -103,7 +103,7 @@ pSat p (tok:toks)
 
 --pNum to recognize Ints
 pNum :: Parser Int
-pNum = pApply (pOneOrMore $ pSat (isDigit.head)) (read.concat) 
+pNum = pApply (pSat (isDigit.head)) (read)
 --pThen takes two parsers, p1 and p2, performs the parsing with p1 then parses
 --the remaining list of tokens (from p1's result) 
 pThen :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
