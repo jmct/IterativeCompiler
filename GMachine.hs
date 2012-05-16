@@ -194,12 +194,14 @@ printI :: GMState -> GMState
 printI state
     = case (hLookup (getHeap state) a) of
         NNum n         -> putOutput (mkOutput n) (putStack (drop 1 $ getStack state) state)
-        NConstr tag ss -> putCode (mkCode ss) (putStack (mkStack ss) state)
+        NConstr t ss -> putCode (mkCode ss) (putStack (mkStack ss) 
+                                                        (putOutput (mkOutput' t) state))
         otherwise      -> error "Trying to print non-number or non-constructor"
-      where mkOutput n = (getOutput state) ++ show n
-            mkCode ss  = (concat $ take (length ss) $ repeat [Eval, Print]) ++ (getCode state)
-            (a:as)     = getStack state
-            mkStack ss = ss ++ as
+      where mkOutput n  = (getOutput state) ++ show n ++ " "
+            mkOutput' t = (getOutput state) ++ show t ++ "# "
+            mkCode ss   = (concat $ take (length ss) $ repeat [Eval, Print]) ++ (getCode state)
+            (a:as)      = getStack state
+            mkStack ss  = ss ++ as
 
 getConstrTag :: Node -> Int
 getConstrTag (NConstr tag ss) = tag
