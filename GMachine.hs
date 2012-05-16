@@ -198,7 +198,7 @@ printI state
                                                         (putOutput (mkOutput' t) state))
         otherwise      -> error "Trying to print non-number or non-constructor"
       where mkOutput n  = (getOutput state) ++ show n ++ " "
-            mkOutput' t = (getOutput state) ++ show t ++ "# "
+            mkOutput' t = (getOutput state) ++ "<" ++ show t ++ ">" ++ " "
             mkCode ss   = (concat $ take (length ss) $ repeat [Eval, Print]) ++ (getCode state)
             (a:as)      = getStack state
             mkStack ss  = ss ++ as
