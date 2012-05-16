@@ -12,7 +12,8 @@ type Alter a = (Int, [a], Expr a)
 data Expr a
     = EVar Name             --Variables (their name)
     | ENum Int              --Numbers
-    | EConstr Int Int       --Constructors (the reference tag and the arity)
+    | EConstrAp Int Int 
+                [Expr a]      --Constructors (the reference tag and the arity)
     | EAp (Expr a) (Expr a) --Application of expression
     | ELet                  --Let declaration
         IsRec               --Boolean (True == Recursive Let)

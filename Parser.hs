@@ -273,7 +273,7 @@ pExpr5c = (pThen FoundOp (pLiteral "*") pExpr5) `pAlt`
 {- expr6  -> aexpr1 ... aexprN   where N >= 1
  - -}
 pExpr6 :: Parser CoreExpr
-pExpr6 = pApplication
+pExpr6 = pConstr `pAlt` pApplication
 
 {-The parsing for Let expressions and Recursive-Let expressions are defined
 --independently, this is because the core Language uses different keywords for
@@ -285,7 +285,7 @@ pExpr = pLet `pAlt` pLetRec `pAlt` pCase `pAlt` pLambda
         `pAlt` pExpr1
 
 pAexpr :: Parser CoreExpr
-pAexpr = pVarExpr `pAlt` pNumExpr `pAlt` pConstr `pAlt` pParen
+pAexpr = pVarExpr `pAlt` pNumExpr `pAlt` pParen
 
 pParen :: Parser CoreExpr
 pParen = pThen3 retEx (pLiteral "(") pExpr (pLiteral ")")
@@ -380,9 +380,10 @@ mkApChain (x1:x2:xs) = mkApChain (EAp x1 x2 : xs)
  - the last parser puts the ints into a tuple (ignoring the comma in the
  - Pack{int1,int2} form)-}
 pConstr :: Parser CoreExpr
-pConstr = pThen makeConstr (pLiteral "Pack") pBrackets
+pConstr = pThen3 makeConstr (pLiteral "Pack") pBrackets pConstrArgs
         where
-            makeConstr _ (num1,num2) = EConstr num1 num2
+            makeConstr _ (num1,num2) args = EConstrAp num1 num2 args
+            pConstrArgs                   = pZeroOrMore pAexpr
 
 pBrackets :: Parser (Int, Int)
 pBrackets = pThen3 onlyTuple (pLiteral "{") pTagArity (pLiteral "}")
