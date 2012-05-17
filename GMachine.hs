@@ -138,12 +138,22 @@ putStats stats' (output, code, stack, dump, heap, globals, stats) =
 
 --The Evaluator function takes a list of states (the first of which is created 
 --by the compiler)
-eval :: GMState -> [GMState]
-eval state = state : restStates
+eval :: GMState -> GMState
+eval state = nextState'
+        where
+        nextState' 
+            | gmFinal state     = state
+            | otherwise         = eval nextState
+        nextState = doAdmin (step state)
+
+--The Evaluator function takes a list of states (the first of which is created 
+--by the compiler)
+evals :: GMState -> [GMState]
+evals state = state : restStates
         where
         restStates 
             | gmFinal state     = []
-            | otherwise         = eval nextState
+            | otherwise         = evals nextState
         nextState = doAdmin (step state)
 
 --doAdmin allows for any between-state calculations that need to be made. In
@@ -351,9 +361,9 @@ boxBoolean :: Bool -> GMState -> GMState
 boxBoolean b state
     = putStack (a : getStack state) (putHeap heap' state)
         where
-            (heap', a)     = hAlloc (getHeap state) (NNum b')
-            b' | b         = 1
-               | otherwise = 0
+            (heap', a)     = hAlloc (getHeap state) (NConstr b' [])
+            b' | b         = 1  --Tag for True
+               | otherwise = 0  --Tag for False
 
 unboxInteger :: Addr -> GMState -> Int
 unboxInteger ad state
@@ -624,7 +634,6 @@ compiledPrimitives
 {-The following are the printing functions needed for when viewing the results
  - of compilation in GHCI
  -}
-
 showResults :: [GMState] -> String
 showResults states
     = iDisplay (iConcat [IStr "Supercombinator definitions:", INewline
@@ -634,6 +643,13 @@ showResults states
                         ,iLayn (map showState states), INewline, INewline
                         ,showStats (last states)])
                 where (s:ss) = states
+
+--showResult is for when we only want to see the result of the computation and
+--not the intermediate steps
+showResult :: GMState -> String
+showResult state
+    = iDisplay (iConcat [IStr "Output Register: ", IStr (getOutput state)
+                        ,INewline, showStats state, INewline])
 
 showSC :: GMState -> (Name, Addr) -> Iseq
 showSC state (name, addr)
