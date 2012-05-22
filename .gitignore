@@ -1,2 +1,12 @@
 *.swp
+*.hi
+*.o
+*.txt
+*.tmp
+Parser2.hs
+*.src
+temp
+monadicParse.hs
+*.temp
+*.swp
 temp.txt
