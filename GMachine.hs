@@ -20,6 +20,31 @@ type GMState = (GMOutput,
                 GMGlobals,  --Addresses for globals in the heap
                 GMStats)    --Statistics about the computation
 
+--Similarly, for the parallel machine we have the following state tuple
+type PGMState = (PGMGlobalState, --State shared by all threads
+                 [PGMLocalState])--State for each thread
+
+--The global state for the parallel machine is similar to the GMState for the
+--sequential machine
+type PGMGlobalState = (GMOutput,
+                       GMHeap,
+                       GMGlobals,
+                       GMSparks,
+                       PGMStats)
+
+--The local state for each thread in the parallel machine will include all of
+--the data that is essential for graph reduction, but none of the data that is
+--shared between threads
+type PGMLocalState = (GMCode,
+                      GMStack,
+                      GMDump,
+                      GMClock)
+
+--We also need a w structure for holding a thread's local state AND the global
+--state
+type ThreadState = (PGMGlobalState, PGMLocalState)
+
+
 --GMOutput is for the currently computed output of the program. This can be used
 --to recursively find the final output
 type GMOutput = [Char]
@@ -30,6 +55,13 @@ getOutput (output, _, _, _, _, _, _) = output
 putOutput :: GMOutput -> GMState -> GMState
 putOutput output' (output, code, stack, dump, heap, globals, stats) 
     = (output', code, stack, dump, heap, globals, stats) 
+
+pGetOutput :: ThreadState -> GMOutput
+pGetOutput ((o, heap, globals, sparks, stats), locals) = o
+
+pPutOutput :: GMOutput -> ThreadState -> ThreadState
+pPutOutput o' ((o, heap, globals, sparks, stats), locals)
+    = ((o', heap, globals, sparks, stats), locals)
 
 --The types for the Dump and the items in the Dump are as follows
 type GMDump = [GMDumpItem]
@@ -42,6 +74,13 @@ getDump (_, _, _, dump, _, _, _) = dump
 putDump :: GMDump -> GMState -> GMState
 putDump dump' (output, code, stack, dump, heap, globals, stats) 
         = (output, code, stack, dump', heap, globals, stats) 
+
+pGetDump :: ThreadState -> GMDump
+pGetDump (globals, (code, stack, dump, clock)) = dump
+
+pPutDump :: GMDump -> ThreadState -> ThreadState
+pPutDump dump' (globals, (code, stack, dump, clock))
+    = (globals, (code, stack, dump', clock))
 
 --The code for the GMCode type and `setter and getter' functions are below.
 type GMCode = [Instruction]
@@ -73,6 +112,13 @@ putCode :: GMCode -> GMState -> GMState
 putCode code' (output, code, stack, dump, heap, globals, stats) 
     = (output, code', stack, dump, heap, globals, stats)
 
+pGetCode :: ThreadState -> GMCode
+pGetCode (globals, (code, stack, dump, clock)) = code
+
+pPutCode :: GMCode -> ThreadState -> ThreadState
+pPutCode code' (globals, (code, stack, dump, clock)) 
+    = (globals, (code', stack, dump, clock)) 
+
 
 --The code for the GMStack is below:
 type GMStack = [Addr]
@@ -83,6 +129,13 @@ getStack (_, _, stack, _, _, _, _) = stack
 putStack :: GMStack -> GMState -> GMState
 putStack stack' (output, code, stack, dump, heap, globals, stats) 
     = (output, code, stack', dump, heap, globals, stats)
+
+pGetStack :: ThreadState -> GMStack
+pGetStack (globals, (code, stack, dump, clock)) = stack
+
+pPutStack :: GMStack -> ThreadState -> ThreadState
+pPutStack stack' (globals, (code, stack, dump, clock))
+    = (globals, (code, stack', dump, clock))
 
 --The code for the state's heap:
 type GMHeap = Heap Node
@@ -105,6 +158,12 @@ putHeap :: GMHeap -> GMState -> GMState
 putHeap heap' (output, code, stack, dump, heap, globals, stats) 
     = (output, code, stack, dump, heap', globals, stats)
 
+pGetHeap :: ThreadState -> GMHeap
+pGetHeap ((o, heap, globals, sparks, stats), locals) = heap
+
+pPutHeap :: GMHeap -> ThreadState -> ThreadState
+pPutHeap h' ((o, heap, globals, sparks, stats), locals)
+    = ((o, h', globals, sparks, stats), locals)
 
 --The code for GMGlobals is below. Because the globals of a program do not
 --change during execution, a `put' function is not needed
@@ -116,6 +175,22 @@ getGlobals (_, _, _, _, _, globals, _) = globals
 putGlobals :: (Name, Addr) -> GMState -> GMState
 putGlobals global' (output, c, s, dump, h, globals, stats) 
         =  (output, c, s, dump, h, global':globals, stats)
+
+pGetGlobals :: ThreadState -> GMGlobals
+pGetGlobals ((o, heap, globals, sparks, stats), locals) = globals
+
+
+--For the parallel machine we need a way to store sparked threads. These will be
+--pointers into the heap which can then be picked up and evaluated.
+type GMSparks = [Addr]
+
+pGetSparks :: ThreadState -> GMSparks
+pGetSparks ((o, heap, globals, sparks, stats), locals) = sparks
+
+pPutSparks :: GMSparks -> ThreadState -> ThreadState
+pPutSparks sparks' ((o, heap, globals, sparks, stats), locals)
+    = ((o, heap, globals, sparks', stats), locals)
+
 
 --GMStats:
 type GMStats = Int
@@ -135,6 +210,27 @@ getStats (output, code, stack, dump, heap, globals, stats) = stats
 putStats :: GMStats -> GMState -> GMState
 putStats stats' (output, code, stack, dump, heap, globals, stats) = 
         (output, code, stack, dump, heap, globals, stats')
+
+--PGMStats will hold the number of steps that each thread takes to completion.
+--therefore it will need to be a list of strings
+type PGMStats = [Int]
+
+pGetStats :: ThreadState -> PGMStats
+pGetStats ((o, heap, globals, sparks, stats), locals) = stats
+
+pPutStats :: PGMStats -> ThreadState -> ThreadState
+pPutStats stats' ((o, heap, globals, sparks, stats), locals)
+    = ((o, heap, globals, sparks, stats'), locals)
+
+type GMClock = [Int]
+
+pGetClock :: ThreadState -> GMClock
+pGetClock (globals, (code, stack, dump, clock)) = clock
+
+pPutClock :: GMClock -> ThreadState -> ThreadState
+pPutClock clock' (globals, (code, stack, dump, clock))
+    = (globals, (code, stack, dump, clock'))
+
 
 --The Evaluator function takes a list of states (the first of which is created 
 --by the compiler)
