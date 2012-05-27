@@ -47,6 +47,9 @@ putOutput :: GMOutput -> GMState -> GMState
 putOutput o' ((o, heap, globals, sparks, stats), locals)
     = ((o', heap, globals, sparks, stats), locals)
 
+getGlobalOut ::PGMState -> GMOutput
+getGlobalOut ((o, heap, globals, sparks, stats), locals) = o
+
 --The types for the Dump and the items in the Dump are as follows
 type GMDump = [GMDumpItem]
 type GMDumpItem = (GMCode, GMStack)
@@ -80,6 +83,7 @@ data Instruction =
         | Casejump [(Int, GMCode)]
         | Split Int
         | Print
+        | Par
     deriving Eq
 
 getCode :: GMState -> GMCode
@@ -120,6 +124,9 @@ putHeap :: GMHeap -> GMState -> GMState
 putHeap h' ((o, heap, globals, sparks, stats), locals)
     = ((o, h', globals, sparks, stats), locals)
 
+getGlobalHeap :: PGMState -> GMHeap
+getGlobalHeap ((o, heap, globals, sparks, stats), locals) = heap
+
 --The code for GMGlobals is below. Because the globals of a program do not
 --change during execution, a `put' function is not needed
 type GMGlobals = Assoc Name Addr
@@ -127,15 +134,18 @@ type GMGlobals = Assoc Name Addr
 getGlobals :: GMState -> GMGlobals
 getGlobals ((o, heap, globals, sparks, stats), locals) = globals
 
-putGlobals :: GMGlobals -> GMState -> GMState
-putGlobals globals' ((o, heap, globals, sparks, stats), locals)
-    = ((o, heap, globals', sparks, stats), locals)
+putGlobals :: (Name, Addr) -> GMState -> GMState
+putGlobals global ((o, heap, globals, sparks, stats), locals)
+    = ((o, heap, global:globals, sparks, stats), locals)
+
+getGlobGlobals :: PGMState -> GMGlobals
+getGlobGlobals ((o, heap, globals, sparks, stats), locals) = globals
 
 --For the parallel machine we need a way to store sparked threads. These will be
 --pointers into the heap which can then be picked up and evaluated.
 type GMSparks = [Addr]
 
-getSparks :: GMState -> GMSparks
+getSparks :: PGMState -> GMSparks
 getSparks ((o, heap, globals, sparks, stats), locals) = sparks
 
 putSparks :: GMSparks -> GMState -> GMState
@@ -151,19 +161,23 @@ statInitial = 0
 statIncSteps :: GMStats -> GMStats
 statIncSteps s = s + 1
 
-statGetSteps :: GMStats -> Int
+statGetSteps :: GMClock -> Int
 statGetSteps s = s
 
 --PGMStats will hold the number of steps that each thread takes to completion.
 --therefore it will need to be a list of strings
 type PGMStats = [Int]
 
-getStats :: GMState -> PGMStats
+getStats :: PGMState -> PGMStats
 getStats ((o, heap, globals, sparks, stats), locals) = stats
 
 putStats :: PGMStats -> GMState -> GMState
 putStats stats' ((o, heap, globals, sparks, stats), locals)
     = ((o, heap, globals, sparks, stats'), locals)
+
+sumStats :: PGMState -> Int
+sumStats state
+    = sum $ getStats state
 
 --The GMClock keeps track of the number of steps for an individual thread
 type GMClock = Int
@@ -266,6 +280,13 @@ dispatch (Pack n1 n2)   = packI n1 n2
 dispatch (Casejump alts)= casejump alts
 dispatch (Split n)      = splitI n
 dispatch Print          = printI
+dispatch Par            = parI
+
+--The Par instruction takes the current pointer from the top of the stack
+--and adds it to the spark pool
+parI :: GMState -> GMState
+parI ((out, heap, globals, sparks, stats), (code, a:as, dump, clock))
+    = ((out, heap, globals, a:sparks, stats), (code, as, dump, clock))
 
 printI :: GMState -> GMState
 printI state
@@ -405,7 +426,7 @@ unwind state
 --to be confused with the eval function, which is the evaluator (GMachine)
 --itself
 evalI :: GMState -> GMState
-evalI state@(output, code, (a:as), dump, _, _, _) 
+evalI state@((output, heap, globals, sparks, stats), (code, (a:as), dump, clock)) 
     = putCode [Unwind] (putStack [a] (putDump ((code, as):dump) state))
 
 rearrange :: Int -> GMHeap -> GMStack -> GMStack
@@ -540,9 +561,15 @@ mapAccuml f acc (x:xs)  = (acc2, x':xs')
 
 
 --Compile functions are broken into portions for compiling SC, R and C
-compile :: CoreProgram -> GMState
-compile prog = ([], initCode, [], [], heap, globals, statInitial)
-        where (heap, globals) =  buildInitialHeap prog
+compile :: CoreProgram -> PGMState
+compile prog = (([], heap, globals, [], []), [initialTask addr])
+        where (heap, globals) = buildInitialHeap prog
+              addr            = aLookupString globals "main" 
+                                              (error "Main undefined")
+
+--InitialTask takes an address and forms a LocalState structure
+initialTask :: Addr -> PGMLocalState
+initialTask addr = (initCode, [addr], [], 0)
 
 --Once compiled a supercombinator for the G-Machine will be of the form:
 type GMCompiledSC = (Name, Int, GMCode)
@@ -564,7 +591,7 @@ allocateSC heap (name, numArgs, gmCode) = (newHeap, (name, addr))
 --the first function to be called. So the initial gCode for every program will
 --be loading that supercombinator
 initCode :: GMCode
-initCode = [PushGlobal "main", Eval, Print]
+initCode = [Eval, Print]
 
 compileSC :: (Name, [Name], CoreExpr) -> GMCompiledSC
 compileSC (name, env, body)
@@ -695,16 +722,17 @@ compiledPrimitives
       ,("<=", 2, [Push 1, Eval, Push 1, Eval, Le, Update 2, Pop 2, Unwind])
       ,(">",  2, [Push 1, Eval, Push 1, Eval, Gt, Update 2, Pop 2, Unwind])
       ,(">=", 2, [Push 1, Eval, Push 1, Eval, Ge, Update 2, Pop 2, Unwind])
+      ,("par", 2, [Push 1, Push 1, MkAp, Push 2, Par, Update 2, Pop 2, Unwind])
       ,("if", 3, [Push 0, Eval, Cond [Push 1] [Push 2], Update 3, Pop 3, Unwind])]
 
 
 {-The following are the printing functions needed for when viewing the results
  - of compilation in GHCI
  -}
-showResults :: [GMState] -> String
+showResults :: [PGMState] -> String
 showResults states
     = iDisplay (iConcat [IStr "Supercombinator definitions:", INewline
-                        ,iInterleave INewline (map (showSC s) (getGlobals s))
+                        ,iInterleave INewline (map (showSC s) (getGlobGlobals s))
                         ,INewline, INewline, IStr "State transitions:", INewline
                         ,INewline
                         ,iLayn (map showState states), INewline, INewline
@@ -713,17 +741,17 @@ showResults states
 
 --showResult is for when we only want to see the result of the computation and
 --not the intermediate steps
-showResult :: GMState -> String
+showResult :: PGMState -> String
 showResult state
-    = iDisplay (iConcat [IStr "Output Register: ", IStr (getOutput state)
+    = iDisplay (iConcat [IStr "Output Register: ", IStr (getGlobalOut state)
                         ,INewline, showStats state, INewline])
 
-showSC :: GMState -> (Name, Addr) -> Iseq
+showSC :: PGMState -> (Name, Addr) -> Iseq
 showSC state (name, addr)
     = iConcat [ IStr "Code for ", IStr name, INewline
                ,showInstructions code, INewline, INewline]
         where 
-            (NGlobal arity code) = (hLookup (getHeap state) addr)
+            (NGlobal arity code) = (hLookup (getGlobalHeap state) addr)
 
 showInstructions :: GMCode -> Iseq
 showInstructions code 
@@ -765,6 +793,7 @@ showInstruction (Cond a1 a2)   = iConcat
                                     (iInterleave INewline (map showInstruction a1)),
                                     INewline, IStr "Alt2: ",
                                     (iInterleave INewline (map showInstruction a2))]
+showInstruction Par            = IStr "Par"
                                          
 
 showCasejump (num, code) = iConcat [iNum num, INewline
@@ -776,18 +805,34 @@ showCasejump (num, code) = iConcat [iNum num, INewline
 
 --showState will take the GCode and the stack from a given state and 
 --wrap them in Iseqs
-showState :: GMState -> Iseq
+showState :: PGMState -> Iseq
 showState state
-    = iConcat [showOutput state, INewline
-              ,showStack state, INewline
-              ,showDump state, INewline
-              ,showInstructions (getCode state), INewline]
+    = iConcat ([showOutput state, INewline] ++
+              showState' states)
+      where (global, locals) = state
+            states           = [(global, a) | a <- locals]
+
+showState' :: [GMState] -> [Iseq]
+showState' states
+    = concat [[showStack (global, a), INewline,
+              showDump (global, a),  INewline,
+              showInstructions (getCode (global, a)), INewline] |
+              a <- locals]
+      where locals = [a | a <- map snd states]
+            global = fst $ head states
 
 --showOutput is easy as its component is already a string
-showOutput :: GMState -> Iseq
+showOutput :: PGMState -> Iseq
 showOutput state = iConcat [IStr " Output:\""
-                           ,IStr (getOutput state)
+                           ,IStr (getOutput state')
                            ,IStr "\""]
+                    where state' = (fst state, head $ snd state)
+
+--showStacks takes the entire PGMState and creates a list of GMStates 
+--which showStack is then mapped over
+showStacks :: [GMState] -> Iseq
+showStacks states
+    = iConcat $ map showStack states
 
 --When preparing the stack to be printed
 showStack :: GMState -> Iseq
@@ -802,6 +847,11 @@ showStackItem :: GMState -> Addr -> Iseq
 showStackItem state addr
     = iConcat [IStr (showAddr addr), IStr ": "
               ,showNode state addr (hLookup (getHeap state) addr)]
+
+--showDumps is to dumps as showStacks is to stacks
+showDumps :: [GMState] -> Iseq
+showDumps states
+    = iConcat $ map showDump states
 
 showDump :: GMState -> Iseq
 showDump state = iConcat [IStr " Dump:["
@@ -843,6 +893,5 @@ showNode state addr (NConstr t as) =
                 ,iInterleave (IStr ", ") (map (IStr . showAddr) as)
                 ,IStr "]"]
 
-showStats :: GMState -> Iseq
-showStats state = iConcat [IStr "Steps taken: "
-                          ,iNum (statGetSteps (getStats state))]
+showStats :: PGMState -> Iseq
+showStats state = iConcat [IStr "Steps taken: ", iNum (sumStats state)]
