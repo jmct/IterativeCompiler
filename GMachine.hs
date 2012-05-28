@@ -179,6 +179,10 @@ sumStats :: PGMState -> Int
 sumStats state
     = sum $ getStats state
 
+maxStat :: PGMState -> Int
+maxStat state
+    = maximum $ getStats state
+
 --The GMClock keeps track of the number of steps for an individual thread
 type GMClock = Int
 
@@ -894,4 +898,6 @@ showNode state addr (NConstr t as) =
                 ,IStr "]"]
 
 showStats :: PGMState -> Iseq
-showStats state = iConcat [IStr "Steps taken: ", iNum (sumStats state)]
+showStats state = iConcat [IStr "Steps taken: ", iNum (sumStats state)
+                          ,INewline, IStr "Max Thread length: "
+                          ,iNum (maxStat state)]
