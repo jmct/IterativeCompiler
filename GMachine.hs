@@ -113,8 +113,10 @@ data Node =
           NNum Int
         | NAp Addr Addr
         | NGlobal Int GMCode
-        | NInd Addr         --Indirection node
+        | NInd Addr             --Indirection node
         | NConstr Int [Addr]
+        | NLAp Addr Addr        --Locked Application node
+        | NLGlobal Int GMCode   --Locked global
     deriving Eq
 
 getHeap :: GMState -> GMHeap
@@ -286,6 +288,7 @@ dispatch (Split n)      = splitI n
 dispatch Print          = printI
 dispatch Par            = parI
 
+
 --The Par instruction takes the current pointer from the top of the stack
 --and adds it to the spark pool
 parI :: GMState -> GMState
@@ -389,6 +392,8 @@ alloc n state
  -}
 
 
+--update changes the node of the result to an indirection node and ensures that
+--all locked Applications are unlocked for other threads.
 update :: Int -> GMState -> GMState
 update n state
     = putStack (stack') (putHeap heap' state)
@@ -396,7 +401,19 @@ update n state
             (a:as)      = getStack state
             stack'      = drop 1 (a:as)
             an          = head (drop n stack')
-            heap'  = hUpdate (getHeap state) an (NInd a)
+            heap'  = hUpdate (getHeap (unlock an state)) an (NInd a)
+
+--The unlock function is used to signal that a reduction on a part of the graph
+--is complete and that other threads can now use the node
+unlock :: Addr -> GMState -> GMState
+unlock addr state
+    = newState (hLookup heap addr)
+        where heap = getHeap state
+              newState (NLAp a1 a2) 
+                    = unlock a1 (putHeap (hUpdate heap addr (NAp a1 a2)) state)
+              newState (NLGlobal n c)
+                    = putHeap (hUpdate heap addr (NGlobal n c)) state
+              newState n = state
 
 pop :: Int -> GMState -> GMState
 pop n state = putStack stack' state
@@ -419,12 +436,27 @@ unwind state
                 | null (getDump state) = state
                 | otherwise            = putCode dCode (putStack (a:dStack) 
                                                         (putDump dump' state))
-        newState (NAp a1 a2) = putCode [Unwind] (putStack (a1:a:as) state)
+        newState (NAp a1 a2) = putCode [Unwind] (putStack (a1:a:as) (lock a state))
+        newState (NLAp a1 a2) = putCode [Unwind] state
+        newState (NLGlobal n c) = putCode [Unwind] state
         newState (NInd a1) = putCode [Unwind] (putStack (a1:as) state)
         newState (NGlobal n c)
+                | n == 0     = putCode c (lock a state)
                 | k < n      = putCode dCode (putStack (ak:dStack) (putDump dump' state))
                 | otherwise  = putStack (rearrange n (getHeap state) (a:as))
                                         (putCode c state)
+
+--the lock function is used to lock a node that is being reduced by a thread
+--so that other threads do not interfere for repeat the work
+lock :: Addr -> GMState -> GMState
+lock addr state
+    = putHeap (newHeap (hLookup heap addr)) state
+        where heap = getHeap state
+              newHeap (NAp a1 a2) = hUpdate heap addr (NLAp a1 a2)
+              newHeap (NGlobal n c)
+                        | n == 0 = hUpdate heap addr (NLGlobal n c)
+                        | otherwise = heap
+
 
 --evalI is the code to execute when evaluating the Eval instruction. This is not
 --to be confused with the eval function, which is the evaluator (GMachine)
@@ -441,6 +473,7 @@ rearrange n heap stack
 
 getArg :: Node -> Addr
 getArg (NAp a1 a2) = a2
+getArg (NLAp a1 a2) = a2
 getArg _ = error "Error in call to getArg: not an application node."
 
 --Below are the boxing and unboxing functions for items in the heap.
@@ -896,6 +929,10 @@ showNode state addr (NConstr t as) =
         iConcat [IStr "Constr ", iNum t, IStr " ["
                 ,iInterleave (IStr ", ") (map (IStr . showAddr) as)
                 ,IStr "]"]
+showNode state addr (NLAp ad1 ad2)    = iConcat [IStr "Locked Ap ", IStr (showAddr ad1)
+                                               ,IStr " ", IStr (showAddr ad2)]
+showNode state addr (NLGlobal n code) = iConcat [IStr "Locked Global ", IStr v]
+                    where v = head [n | (n, b) <- getGlobals state, addr == b]
 
 showStats :: PGMState -> Iseq
 showStats state = iConcat [IStr "Steps taken: ", iNum (sumStats state)
