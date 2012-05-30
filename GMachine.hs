@@ -11,6 +11,15 @@ import Language
 import Parser
 import Heap
 
+machineSize :: Int
+machineSize = 4
+
+runProg :: [Char] -> [Char]
+runProg = showResult . eval . compile . parse
+
+runShowProg :: [Char] -> [Char]
+runShowProg = showResults . evals . compile . parse
+
 --Similarly, for the parallel machine we have the following state tuple
 type PGMState = (PGMGlobalState, --State shared by all threads
                  [PGMLocalState])--State for each thread
@@ -234,13 +243,28 @@ gmFinal s = snd s == [] && getSparks s == []
 --steps takes the entirety of the PGMState and carries out a 'step' on each
 --thread by mapping the same step function from the sequential machine to each
 --of the thread state's
+--New tasks are only created if there is a free processor
 steps :: PGMState -> PGMState
 steps state
-    = mapAccuml step global' local'
+    = scheduler global' local'
       where ((out, heap, globals, sparks, stats), local) = state
-            newtasks = [makeTask a | a <- sparks]
-            global'  = (out, heap, globals, [], stats)
-            local'   = map tick (local ++ newtasks)
+            global'  = (out, heap, globals, sparks', stats)
+            local'   = local ++ newtasks
+            numTasks = length local
+            sparks'   = drop (machineSize - numTasks) sparks
+            newtasks = case numTasks < machineSize of
+                            True -> take (machineSize - numTasks) 
+                                         [makeTask a | a <- sparks]
+                            otherwise -> []
+
+--The scheduler function decides how to manage the currently open tasks amongst
+--the machineSize (number of processors
+scheduler :: PGMGlobalState -> [PGMLocalState] -> PGMState
+scheduler global tasks
+    = (global', nonRunning ++ tasks')
+      where running     = map tick (take machineSize tasks)
+            nonRunning  = drop machineSize tasks
+            (global', tasks') = mapAccuml step global running
 
 --Step ensures that the next instruction in a thread is executed by the
 --appropriate function.
@@ -768,12 +792,12 @@ compiledPrimitives
  -}
 showResults :: [PGMState] -> String
 showResults states
-    = iDisplay (iConcat [IStr "Supercombinator definitions:", INewline
-                        ,iInterleave INewline (map (showSC s) (getGlobGlobals s))
-                        ,INewline, INewline, IStr "State transitions:", INewline
-                        ,INewline
-                        ,iLayn (map showState states), INewline, INewline
-                        ,showStats (last states)])
+    = iDisplay $ iConcat [IStr "Supercombinator definitions:", INewline
+                         ,iInterleave INewline (map (showSC s) (getGlobGlobals s))
+                         ,INewline, INewline, IStr "State transitions:", INewline
+                         ,INewline
+                         ,iLayn (map showState states), INewline, INewline
+                         ,showStats states]
                 where (s:ss) = states
 
 --showResult is for when we only want to see the result of the computation and
@@ -781,7 +805,7 @@ showResults states
 showResult :: PGMState -> String
 showResult state
     = iDisplay (iConcat [IStr "Output Register: ", IStr (getGlobalOut state)
-                        ,INewline, showStats state, INewline])
+                        ,INewline, showStat state, INewline])
 
 showSC :: PGMState -> (Name, Addr) -> Iseq
 showSC state (name, addr)
@@ -933,8 +957,14 @@ showNode state addr (NLAp ad1 ad2)    = iConcat [IStr "Locked Ap ", IStr (showAd
                                                ,IStr " ", IStr (showAddr ad2)]
 showNode state addr (NLGlobal n code) = iConcat [IStr "Locked Global ", IStr v]
                     where v = head [n | (n, b) <- getGlobals state, addr == b]
-
-showStats :: PGMState -> Iseq
-showStats state = iConcat [IStr "Steps taken: ", iNum (sumStats state)
+showStat :: PGMState -> Iseq
+showStat state = iConcat [IStr "Steps taken: ", iNum (sumStats state)
                           ,INewline, IStr "Max Thread length: "
-                          ,iNum (maxStat state)]
+                          ,iNum (maxStat state), INewline]
+
+showStats :: [PGMState] -> Iseq
+showStats state = iConcat [IStr "Steps taken: ", iNum (sumStats $ last state)
+                          ,INewline, IStr "Max Thread length: "
+                          ,iNum (maxStat $ last state), INewline
+                          ,IStr "Max simultaneous threads: "
+                          ,iNum $ maximum $ map (length.snd) state, INewline]
