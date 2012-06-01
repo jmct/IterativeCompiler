@@ -238,12 +238,12 @@ evals state = state : restStates
 --this case we increment the stats counter. 
 doAdmin :: PGMState -> PGMState
 doAdmin ((out, heap, globals, sparks, stats), local)
-    = ((out, heap, globals, sparks, stats'), local')
+    = ((out, heap, globals, sparks, stats'), local'')
       where (local'', stats') = foldr filt ([], stats) local'
             local' = filter isNotEmptyTask local
-            filt (i, stack, dump, clock) (local, stats)
-                | i == []   = (local, clock:stats)
-                | otherwise = ((i, stack, dump, clock):local, stats)
+            filt (i, stack, dump, clock) (tasks, stats)
+                | i == []   = (tasks, clock:stats)
+                | otherwise = ((i, stack, dump, clock):tasks, stats)
 
 isNotEmptyTask :: PGMLocalState -> Bool
 isNotEmptyTask local =
@@ -275,10 +275,12 @@ steps state
 --the machineSize (number of processors
 scheduler :: PGMGlobalState -> [PGMLocalState] -> PGMState
 scheduler global tasks
-    = (global', tasks')
+    = (global'', tasks')
       where running     = map tick (take machineSize tasks)
             nonRunning  = drop machineSize tasks
-            (global', tasks') = putPGMSparks nonRunning $ mapAccuml step global running
+            state' = mapAccuml step global running
+            tasks' = snd state'
+            global'' = fst $ putPGMSparks (nonRunning ++ getPGMSparks state') state'
 
 --Step ensures that the next instruction in a thread is executed by the
 --appropriate function.
