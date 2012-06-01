@@ -10,6 +10,7 @@
 import Language
 import Parser
 import Heap
+import Debug.Trace
 
 machineSize :: Int
 machineSize = 4
@@ -436,12 +437,13 @@ alloc n state
 --all locked Applications are unlocked for other threads.
 update :: Int -> GMState -> GMState
 update n state
-    = putStack (stack') (putHeap heap' state)
+    = putStack (stack') (putHeap heap' state')
         where 
             (a:as)      = getStack state
             stack'      = drop 1 (a:as)
             an          = head (drop n stack')
-            heap'  = hUpdate (getHeap (unlock an state)) an (NInd a)
+            state'      = unlock an state
+            heap'  = hUpdate (getHeap state') an (NInd a)
 
 --The unlock function is used to signal that a reduction on a part of the graph
 --is complete and that other threads can now use the node
