@@ -122,11 +122,13 @@ data Node =
           NNum Int
         | NAp Addr Addr
         | NGlobal Int GMCode
-        | NInd Addr             --Indirection node
+        | NInd Addr                           --Indirection node
         | NConstr Int [Addr]
-        | NLAp Addr Addr        --Locked Application node
-        | NLGlobal Int GMCode   --Locked global
+        | NLAp Addr Addr PGMPendingList       --Locked Application node
+        | NLGlobal Int GMCode PGMPendingList  --Locked global
     deriving Eq
+
+type PGMPendingList = [PGMLocalState]
 
 getHeap :: GMState -> GMHeap
 getHeap ((o, heap, globals, sparks, stats), locals) = heap
@@ -154,13 +156,20 @@ getGlobGlobals ((o, heap, globals, sparks, stats), locals) = globals
 
 --For the parallel machine we need a way to store sparked threads. These will be
 --pointers into the heap which can then be picked up and evaluated.
-type GMSparks = [Addr]
+type GMSparks = [PGMLocalState]
 
-getSparks :: PGMState -> GMSparks
+getSparks :: GMState -> GMSparks
 getSparks ((o, heap, globals, sparks, stats), locals) = sparks
+
+getPGMSparks :: PGMState -> GMSparks
+getPGMSparks ((o, heap, globals, sparks, stats), locals) = sparks
 
 putSparks :: GMSparks -> GMState -> GMState
 putSparks sparks' ((o, heap, globals, sparks, stats), locals)
+    = ((o, heap, globals, sparks', stats), locals)
+
+putPGMSparks :: GMSparks -> PGMState -> PGMState
+putPGMSparks sparks' ((o, heap, globals, sparks, stats), locals)
     = ((o, heap, globals, sparks', stats), locals)
 
 --GMStats:
@@ -230,15 +239,20 @@ evals state = state : restStates
 doAdmin :: PGMState -> PGMState
 doAdmin ((out, heap, globals, sparks, stats), local)
     = ((out, heap, globals, sparks, stats'), local')
-      where (local', stats') = foldr filt ([], stats) local
+      where (local'', stats') = foldr filt ([], stats) local'
+            local' = filter isNotEmptyTask local
             filt (i, stack, dump, clock) (local, stats)
                 | i == []   = (local, clock:stats)
                 | otherwise = ((i, stack, dump, clock):local, stats)
 
+isNotEmptyTask :: PGMLocalState -> Bool
+isNotEmptyTask local =
+    local /= emptyTask
+
 --gmFinal state checks if there is any code left to execute; if there is not,
 --we have reached the final state. 
 gmFinal :: PGMState -> Bool
-gmFinal s = snd s == [] && getSparks s == []
+gmFinal s = snd s == [] && getPGMSparks s == []
 
 --steps takes the entirety of the PGMState and carries out a 'step' on each
 --thread by mapping the same step function from the sequential machine to each
@@ -254,17 +268,17 @@ steps state
             sparks'   = drop (machineSize - numTasks) sparks
             newtasks = case numTasks < machineSize of
                             True -> take (machineSize - numTasks) 
-                                         [makeTask a | a <- sparks]
+                                         sparks
                             otherwise -> []
 
 --The scheduler function decides how to manage the currently open tasks amongst
 --the machineSize (number of processors
 scheduler :: PGMGlobalState -> [PGMLocalState] -> PGMState
 scheduler global tasks
-    = (global', nonRunning ++ tasks')
+    = (global', tasks')
       where running     = map tick (take machineSize tasks)
             nonRunning  = drop machineSize tasks
-            (global', tasks') = mapAccuml step global running
+            (global', tasks') = putPGMSparks nonRunning $ mapAccuml step global running
 
 --Step ensures that the next instruction in a thread is executed by the
 --appropriate function.
@@ -317,7 +331,7 @@ dispatch Par            = parI
 --and adds it to the spark pool
 parI :: GMState -> GMState
 parI ((out, heap, globals, sparks, stats), (code, a:as, dump, clock))
-    = ((out, heap, globals, a:sparks, stats), (code, as, dump, clock))
+    = ((out, heap, globals, (makeTask a):sparks, stats), (code, as, dump, clock))
 
 printI :: GMState -> GMState
 printI state
@@ -433,11 +447,17 @@ unlock :: Addr -> GMState -> GMState
 unlock addr state
     = newState (hLookup heap addr)
         where heap = getHeap state
-              newState (NLAp a1 a2) 
-                    = unlock a1 (putHeap (hUpdate heap addr (NAp a1 a2)) state)
-              newState (NLGlobal n c)
-                    = putHeap (hUpdate heap addr (NGlobal n c)) state
+              newState (NLAp a1 a2 blocked) 
+                    = unlock a1 (putHeap (hUpdate heap addr (NAp a1 a2)) 
+                                         (emptyPendingList blocked state))
+              newState (NLGlobal n c blocked)
+                    = putHeap (hUpdate heap addr (NGlobal n c)) 
+                              (emptyPendingList blocked state)
               newState n = state
+
+emptyPendingList :: [PGMLocalState] -> GMState -> GMState
+emptyPendingList blocked state
+    = putSparks (blocked ++ (getSparks state)) state
 
 pop :: Int -> GMState -> GMState
 pop n state = putStack stack' state
@@ -452,6 +472,7 @@ unwind state
         (dCode, dStack):dump' = getDump state
         k      = length as
         ak     = head $ drop k (a:as)
+        (global, local) = state
         newState (NNum n)
                 | null (getDump state) = state
                 | otherwise            = putCode dCode (putStack (a:dStack) 
@@ -461,8 +482,8 @@ unwind state
                 | otherwise            = putCode dCode (putStack (a:dStack) 
                                                         (putDump dump' state))
         newState (NAp a1 a2) = putCode [Unwind] (putStack (a1:a:as) (lock a state))
-        newState (NLAp a1 a2) = putCode [Unwind] state
-        newState (NLGlobal n c) = putCode [Unwind] state
+        newState (NLAp a1 a2 blocked) = addToPending state       
+        newState (NLGlobal n c blocked) = addToPending state
         newState (NInd a1) = putCode [Unwind] (putStack (a1:as) state)
         newState (NGlobal n c)
                 | n == 0     = putCode c (lock a state)
@@ -470,15 +491,35 @@ unwind state
                 | otherwise  = putStack (rearrange n (getHeap state) (a:as))
                                         (putCode c state)
 
+addToPending :: GMState -> GMState
+addToPending state@((out, heap, globals, sparks, stats), (code, a:as, dump, clock))
+    = (global', emptyTask)
+    where
+        state' = putCode [Unwind] state
+        (global, local) = state'
+        heap'  = getHeap state'
+        (global', local') = 
+            case (hLookup heap a) of
+                (NLAp a1 a2 blocked) -> putHeap (hUpdate heap' a 
+                                                         (NLAp a1 a2 (local:blocked)))
+                                                         state'
+                (NLGlobal n c blocked) -> putHeap (hUpdate heap' a 
+                                                         (NLGlobal n c (local:blocked)))
+                                                         state'
+
+emptyTask :: PGMLocalState
+emptyTask = ([], [], [], 0)
+
+
 --the lock function is used to lock a node that is being reduced by a thread
 --so that other threads do not interfere for repeat the work
 lock :: Addr -> GMState -> GMState
 lock addr state
     = putHeap (newHeap (hLookup heap addr)) state
         where heap = getHeap state
-              newHeap (NAp a1 a2) = hUpdate heap addr (NLAp a1 a2)
+              newHeap (NAp a1 a2) = hUpdate heap addr (NLAp a1 a2 [])
               newHeap (NGlobal n c)
-                        | n == 0 = hUpdate heap addr (NLGlobal n c)
+                        | n == 0 = hUpdate heap addr (NLGlobal n c [])
                         | otherwise = heap
 
 
@@ -497,7 +538,7 @@ rearrange n heap stack
 
 getArg :: Node -> Addr
 getArg (NAp a1 a2) = a2
-getArg (NLAp a1 a2) = a2
+getArg (NLAp a1 a2 blocked) = a2
 getArg _ = error "Error in call to getArg: not an application node."
 
 --Below are the boxing and unboxing functions for items in the heap.
@@ -869,6 +910,7 @@ showCasejump (num, code) = iConcat [iNum num, INewline
 showState :: PGMState -> Iseq
 showState state
     = iConcat ([showOutput state, INewline] ++
+              [showSparks state, INewline] ++
               showState' states)
       where (global, locals) = state
             states           = [(global, a) | a <- locals]
@@ -888,6 +930,10 @@ showOutput state = iConcat [IStr " Output:\""
                            ,IStr (getOutput state')
                            ,IStr "\""]
                     where state' = (fst state, head $ snd state)
+
+showSparks :: PGMState -> Iseq
+showSparks state = iConcat [IStr " Number of Sparks: "
+                           ,iNum $ length (getPGMSparks state)]
 
 --showStacks takes the entire PGMState and creates a list of GMStates 
 --which showStack is then mapped over
@@ -953,9 +999,11 @@ showNode state addr (NConstr t as) =
         iConcat [IStr "Constr ", iNum t, IStr " ["
                 ,iInterleave (IStr ", ") (map (IStr . showAddr) as)
                 ,IStr "]"]
-showNode state addr (NLAp ad1 ad2)    = iConcat [IStr "Locked Ap ", IStr (showAddr ad1)
-                                               ,IStr " ", IStr (showAddr ad2)]
-showNode state addr (NLGlobal n code) = iConcat [IStr "Locked Global ", IStr v]
+showNode state addr (NLAp ad1 ad2 blocked)    = iConcat [IStr "Locked Ap ", IStr (showAddr ad1)
+                                               ,IStr " ", IStr (showAddr ad2)
+                                               ,IStr " blocked nodes: ", iNum $ length blocked]
+showNode state addr (NLGlobal n code blocked) = iConcat [IStr "Locked Global ", IStr v
+                                               ,IStr " blocked nodes: ", iNum $ length blocked]
                     where v = head [n | (n, b) <- getGlobals state, addr == b]
 showStat :: PGMState -> Iseq
 showStat state = iConcat [IStr "Steps taken: ", iNum (sumStats state)
