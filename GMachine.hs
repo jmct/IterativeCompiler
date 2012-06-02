@@ -559,6 +559,13 @@ boxBoolean b state
             b' | b         = 1  --Tag for True
                | otherwise = 0  --Tag for False
 
+unboxBoolean :: Addr -> GMState -> Bool
+unboxBoolean addr state
+    = unB (hLookup (getHeap state) addr)
+        where unB (NConstr 1 _) = True
+              unB (NConstr 0 _) = False
+              unB _             = error "Trying to unboxBoolean on non-Boolean"
+
 unboxInteger :: Addr -> GMState -> Int
 unboxInteger ad state
     = unB (hLookup (getHeap state) ad)
@@ -651,9 +658,9 @@ condI alts state
         where
             i   = getCode state
             a:s = getStack state
-            b   = unboxInteger a state 
-            res | b == 1    = fst alts
-                | b == 0    = snd alts
+            b   = unboxBoolean a state 
+            res | b == True    = fst alts
+                | b == False   = snd alts
                 | otherwise = error "Attempted boolean check on non-Boolean"
 
 --mapAccuml is a utility function that will be used frequently in the code to
@@ -828,8 +835,8 @@ compiledPrimitives
       ,("<=", 2, [Push 1, Eval, Push 1, Eval, Le, Update 2, Pop 2, Unwind])
       ,(">",  2, [Push 1, Eval, Push 1, Eval, Gt, Update 2, Pop 2, Unwind])
       ,(">=", 2, [Push 1, Eval, Push 1, Eval, Ge, Update 2, Pop 2, Unwind])
-      ,("par", 2, [Push 1, Push 1, MkAp, Push 2, Par, Update 2, Pop 2, Unwind])
-      ,("if", 3, [Push 0, Eval, Cond [Push 1] [Push 2], Update 3, Pop 3, Unwind])]
+      ,("par", 2, [Push 1, Push 1, MkAp, Push 2, Par, Update 2, Pop 2, Unwind])]
+--      ,("if", 3, [Push 0, Eval, Cond [Push 1] [Push 2], Update 3, Pop 3, Unwind])]
 
 
 {-The following are the printing functions needed for when viewing the results
