@@ -185,9 +185,13 @@ statIncSteps s = s + 1
 statGetSteps :: GMClock -> Int
 statGetSteps s = s
 
---PGMStats will hold the number of steps that each thread takes to completion.
---therefore it will need to be a list of strings
-type PGMStats = [Int]
+--PGMStats will hold the number of blocked, running, and idle tasks for each
+--clock tick of the evaluator. The list of Ints satisfies accomodates the old
+--use of PGMStats by taking the number of clock ticks for dying tasks
+type PGMStats = ((BlockedTasks, RunningTasks, IdleTasks), [Int])
+type BlockedTasks = Int
+type RunningTasks = Int
+type IdleTasks = Int
 
 getStats :: PGMState -> PGMStats
 getStats ((o, heap, globals, sparks, stats), locals) = stats
@@ -198,11 +202,11 @@ putStats stats' ((o, heap, globals, sparks, stats), locals)
 
 sumStats :: PGMState -> Int
 sumStats state
-    = sum $ getStats state
+    = sum $ snd $ getStats state
 
 maxStat :: PGMState -> Int
 maxStat state
-    = maximum $ getStats state
+    = maximum $ snd $ getStats state
 
 --The GMClock keeps track of the number of steps for an individual thread
 type GMClock = Int
@@ -238,13 +242,13 @@ evals state = state : restStates
 --doAdmin allows for any between-state calculations that need to be made. In
 --this case we increment the stats counter. 
 doAdmin :: PGMState -> PGMState
-doAdmin ((out, heap, globals, sparks, stats), local)
-    = ((out, heap, globals, sparks, stats'), local'')
-      where (local'', stats') = foldr filt ([], stats) local'
+doAdmin ((out, heap, globals, sparks, (taskInf, clocks)), local)
+    = ((out, heap, globals, sparks, (taskInf, clocks')), local'')
+      where (local'', clocks') = foldr filt ([], clocks) local'
             local' = filter isNotEmptyTask local
-            filt (i, stack, dump, clock) (tasks, stats)
-                | i == []   = (tasks, clock:stats)
-                | otherwise = ((i, stack, dump, clock):tasks, stats)
+            filt (i, stack, dump, clock) (tasks, endClocks)
+                | i == []   = (tasks, clock:endClocks)
+                | otherwise = ((i, stack, dump, clock):tasks, endClocks)
 
 isNotEmptyTask :: PGMLocalState -> Bool
 isNotEmptyTask local =
@@ -675,7 +679,7 @@ mapAccuml f acc (x:xs)  = (acc2, x':xs')
 
 --Compile functions are broken into portions for compiling SC, R and C
 compile :: CoreProgram -> PGMState
-compile prog = (([], heap, globals, [], []), [initialTask addr])
+compile prog = (([], heap, globals, [], ((0,0,0),[])), [initialTask addr])
         where (heap, globals) = buildInitialHeap prog
               addr            = aLookupString globals "main" 
                                               (error "Main undefined")
