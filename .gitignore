@@ -10,3 +10,4 @@ monadicParse.hs
 *.temp
 *.swp
 temp.txt
+*.csv
