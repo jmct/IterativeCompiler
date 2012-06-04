@@ -10,16 +10,21 @@
 import Language
 import Parser
 import Heap
-import Debug.Trace
+import Data.List
 
 machineSize :: Int
 machineSize = 4
 
-runProg :: [Char] -> [Char]
-runProg = showResult . eval . compile . parse
+runProg :: [Char] -> IO ()
+runProg = putStr . showResult . eval . compile . parse
 
-runShowProg :: [Char] -> [Char]
-runShowProg = showResults . evals . compile . parse
+runShowProg :: [Char] -> IO ()
+runShowProg = putStr . showResults . evals . compile . parse
+
+runLogProg fileName = writeFile fileName . logStats . evals . compile . parse
+
+maximum' [] = 0
+maximum' xs  = maximum xs
 
 --Similarly, for the parallel machine we have the following state tuple
 type PGMState = (PGMGlobalState, --State shared by all threads
@@ -193,20 +198,50 @@ type BlockedTasks = Int
 type RunningTasks = Int
 type IdleTasks = Int
 
-getStats :: PGMState -> PGMStats
+getStats :: GMState -> PGMStats
 getStats ((o, heap, globals, sparks, stats), locals) = stats
+
+getPGMStats :: PGMState -> PGMStats
+getPGMStats ((o, heap, globals, sparks, stats), locals) = stats
 
 putStats :: PGMStats -> GMState -> GMState
 putStats stats' ((o, heap, globals, sparks, stats), locals)
     = ((o, heap, globals, sparks, stats'), locals)
 
+putPGMStats :: PGMStats -> PGMState -> PGMState
+putPGMStats stats' ((o, heap, globals, sparks, stats), locals)
+    = ((o, heap, globals, sparks, stats'), locals)
+
+nBlocked :: Int -> GMState -> GMState
+nBlocked n state@((o, h, globs, sparks, ((blocked, running, idle), count)), locals)
+    = putStats ((blocked+n, running, idle), count) state
+
+nFreed :: Int -> GMState -> GMState
+nFreed n state@((o, h, globs, sparks, ((blocked, running, idle), count)), locals)
+    = putStats ((blocked-n, running, idle+n), count) state
+
+nRunning :: PGMState -> PGMState
+nRunning state@((o, h, globs, sparks, ((blocked, running, idle), count)), locals)
+    = putPGMStats ((blocked, n, idle), count) state
+        where n = length locals
+
+nIdle :: PGMState -> PGMState
+nIdle state@((o, h, globs, sparks, ((blocked, running, idle), count)), locals)
+    = putPGMStats ((blocked, running, n), count) state
+        where n = length sparks
+
+getNumBlocked :: PGMState -> Int
+getNumBlocked ((o, h, glbs, sprks, ((blocked, running, idle), count)), locals)
+    = blocked
+ 
+
 sumStats :: PGMState -> Int
 sumStats state
-    = sum $ snd $ getStats state
+    = sum $ snd $ getPGMStats state
 
 maxStat :: PGMState -> Int
 maxStat state
-    = maximum $ snd $ getStats state
+    = maximum' $ snd $ getPGMStats state
 
 --The GMClock keeps track of the number of steps for an individual thread
 type GMClock = Int
@@ -243,12 +278,13 @@ evals state = state : restStates
 --this case we increment the stats counter. 
 doAdmin :: PGMState -> PGMState
 doAdmin ((out, heap, globals, sparks, (taskInf, clocks)), local)
-    = ((out, heap, globals, sparks, (taskInf, clocks')), local'')
+    = updateStats ((out, heap, globals, sparks, (taskInf, clocks')), local'')
       where (local'', clocks') = foldr filt ([], clocks) local'
             local' = filter isNotEmptyTask local
             filt (i, stack, dump, clock) (tasks, endClocks)
                 | i == []   = (tasks, clock:endClocks)
                 | otherwise = ((i, stack, dump, clock):tasks, endClocks)
+            updateStats = nRunning . nIdle
 
 isNotEmptyTask :: PGMLocalState -> Bool
 isNotEmptyTask local =
@@ -465,7 +501,7 @@ unlock addr state
 
 emptyPendingList :: [PGMLocalState] -> GMState -> GMState
 emptyPendingList blocked state
-    = putSparks (blocked ++ (getSparks state)) state
+    = nFreed (length blocked) $ putSparks (blocked ++ (getSparks state)) state
 
 pop :: Int -> GMState -> GMState
 pop n state = putStack stack' state
@@ -501,7 +537,7 @@ unwind state
 
 addToPending :: GMState -> GMState
 addToPending state@((out, heap, globals, sparks, stats), (code, a:as, dump, clock))
-    = (global', emptyTask)
+    = nBlocked 1 (global', emptyTask)
     where
         state' = putCode [Unwind] state
         (global, local) = state'
@@ -679,7 +715,7 @@ mapAccuml f acc (x:xs)  = (acc2, x':xs')
 
 --Compile functions are broken into portions for compiling SC, R and C
 compile :: CoreProgram -> PGMState
-compile prog = (([], heap, globals, [], ((0,0,0),[])), [initialTask addr])
+compile prog = (([], heap, globals, [], ((0,1,0),[])), [initialTask addr])
         where (heap, globals) = buildInitialHeap prog
               addr            = aLookupString globals "main" 
                                               (error "Main undefined")
@@ -926,6 +962,7 @@ showState :: PGMState -> Iseq
 showState state
     = iConcat ([showOutput state, INewline] ++
               [showSparks state, INewline] ++
+              [showBlocked state, INewline] ++
               showState' states)
       where (global, locals) = state
             states           = [(global, a) | a <- locals]
@@ -949,6 +986,10 @@ showOutput state = iConcat [IStr " Output:\""
 showSparks :: PGMState -> Iseq
 showSparks state = iConcat [IStr " Number of Sparks: "
                            ,iNum $ length (getPGMSparks state)]
+
+showBlocked :: PGMState -> Iseq
+showBlocked state = iConcat [IStr " Number of Blocked Tasks: "
+                            ,iNum $ getNumBlocked state]
 
 --showStacks takes the entire PGMState and creates a list of GMStates 
 --which showStack is then mapped over
@@ -1031,3 +1072,15 @@ showStats state = iConcat [IStr "Steps taken: ", iNum (sumStats $ last state)
                           ,iNum (maxStat $ last state), INewline
                           ,IStr "Max simultaneous threads: "
                           ,iNum $ maximum $ map (length.snd) state, INewline]
+{- Below this is the code for logStats, which is used for benchmarking and
+ - provides no tracing -}
+logStats :: [PGMState] -> String
+logStats states = concat $ intersperse "\n" 
+                         $ map formatStats $ zip [1..] states
+
+formatStats :: (Int, PGMState) -> String
+formatStats (n, state) = concat $ intersperse "," [show n 
+                                                  ,show blocked 
+                                                  ,show running
+                                                  ,show idle]
+    where ((blocked, running, idle), count) = getPGMStats state
