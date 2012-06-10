@@ -301,6 +301,13 @@ gmFinal s = snd s == [] && getPGMSparks s == []
 --New tasks are only created if there is a free processor
 steps :: PGMState -> PGMState
 steps state
+    = scheduler global' allTasks
+      where ((out, heap, globals, sparks, stats), local) = state
+            global'  = (out, heap, globals, [], stats)
+            allTasks   = local ++ sparks
+{-
+steps :: PGMState -> PGMState
+steps state
     = scheduler global' local'
       where ((out, heap, globals, sparks, stats), local) = state
             global'  = (out, heap, globals, sparks', stats)
@@ -310,7 +317,7 @@ steps state
             newtasks = case numTasks < machineSize of
                             True -> take (machineSize - numTasks) 
                                          sparks
-                            otherwise -> []
+                            otherwise -> [] -}
 
 --The scheduler function decides how to manage the currently open tasks amongst
 --the machineSize (number of processors
@@ -319,9 +326,12 @@ scheduler global tasks
     = (global'', tasks')
       where running     = map tick (take machineSize tasks)
             nonRunning  = drop machineSize tasks
-            state' = mapAccuml step global running
+            (global', threads) = putPGMSparks nonRunning (global, tasks)
+            (global'', tasks') = mapAccuml step global' running
+{-
             tasks' = snd state'
-            global'' = fst $ putPGMSparks (nonRunning ++ getPGMSparks state') state'
+
+            global'' = fst $ putPGMSparks (nonRunning ++ getPGMSparks state') state'-}
 
 --Step ensures that the next instruction in a thread is executed by the
 --appropriate function.
