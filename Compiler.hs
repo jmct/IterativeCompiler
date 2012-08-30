@@ -16,51 +16,6 @@ mapAccuml f acc (x:xs)  = (acc2, x':xs')
                     (acc1, x')  = f acc x
                     (acc2, xs') = mapAccuml f acc1 xs
 
-type PGMGlobalState = (GMOutput,
-                       GMHeap,
-                       GMGlobals,
-                       GMSparks,
-                       PGMStats)
-
---The local state for each thread in the parallel machine will include all of
---the data that is essential for graph reduction, but none of the data that is
---shared between threads
-type PGMLocalState = (GMCode,
-                      GMStack,
-                      GMDump,
-                      GMClock)
-
---We also need a w structure for holding a thread's local state AND the global
---state
-type GMState = (PGMGlobalState, PGMLocalState)
-
-
---GMOutput is for the currently computed output of the program. This can be used
---to recursively find the final output
-type GMOutput = [Char]
-
-getOutput :: GMState -> GMOutput
-getOutput ((o, heap, globals, sparks, stats), locals) = o
-
-putOutput :: GMOutput -> GMState -> GMState
-putOutput o' ((o, heap, globals, sparks, stats), locals)
-    = ((o', heap, globals, sparks, stats), locals)
-
-getGlobalOut ::PGMState -> GMOutput
-getGlobalOut ((o, heap, globals, sparks, stats), locals) = o
-
---The types for the Dump and the items in the Dump are as follows
-type GMDump = [GMDumpItem]
-type GMDumpItem = (GMCode, GMStack)
-
---'Setter and getter' for GMDump
-getDump :: GMState -> GMDump
-getDump (globals, (code, stack, dump, clock)) = dump
-
-putDump :: GMDump -> GMState -> GMState
-putDump dump' (globals, (code, stack, dump, clock))
-    = (globals, (code, stack, dump', clock))
-
 --The code for the GMCode type and `setter and getter' functions are below.
 type GMCode = [Instruction]
 
@@ -85,26 +40,13 @@ data Instruction =
         | Par
     deriving Eq
 
-getCode :: GMState -> GMCode
-getCode (globals, (code, stack, dump, clock)) = code
-
-putCode :: GMCode -> GMState -> GMState
-putCode code' (globals, (code, stack, dump, clock)) 
-    = (globals, (code', stack, dump, clock)) 
-
-
---The code for the GMStack is below:
-type GMStack = [Addr]
-
-getStack :: GMState -> GMStack
-getStack (globals, (code, stack, dump, clock)) = stack
-
-putStack :: GMStack -> GMState -> GMState
-putStack stack' (globals, (code, stack, dump, clock))
-    = (globals, (code, stack', dump, clock))
 
 --The code for the state's heap:
 type GMHeap = Heap Node
+
+--Globals are just an association list from the name of the function to the
+--address in the heap. 
+type GMGlobals = Assoc Name Addr
 
 --A Node is either a number (a result), an application of two other nodes, or
 --the arity & gCode sequence for when the global can be executed
@@ -114,140 +56,11 @@ data Node =
         | NGlobal Int GMCode
         | NInd Addr                           --Indirection node
         | NConstr Int [Addr]
-        | NLAp Addr Addr PGMPendingList       --Locked Application node
-        | NLGlobal Int GMCode PGMPendingList  --Locked global
     deriving Eq
 
-type PGMPendingList = [PGMLocalState]
 
-getHeap :: GMState -> GMHeap
-getHeap ((o, heap, globals, sparks, stats), locals) = heap
-
-putHeap :: GMHeap -> GMState -> GMState
-putHeap h' ((o, heap, globals, sparks, stats), locals)
-    = ((o, h', globals, sparks, stats), locals)
-
-getGlobalHeap :: PGMState -> GMHeap
-getGlobalHeap ((o, heap, globals, sparks, stats), locals) = heap
-
---The code for GMGlobals is below. Because the globals of a program do not
---change during execution, a `put' function is not needed
-type GMGlobals = Assoc Name Addr
-
-getGlobals :: GMState -> GMGlobals
-getGlobals ((o, heap, globals, sparks, stats), locals) = globals
-
-putGlobals :: (Name, Addr) -> GMState -> GMState
-putGlobals global ((o, heap, globals, sparks, stats), locals)
-    = ((o, heap, global:globals, sparks, stats), locals)
-
-getGlobGlobals :: PGMState -> GMGlobals
-getGlobGlobals ((o, heap, globals, sparks, stats), locals) = globals
-
---For the parallel machine we need a way to store sparked threads. These will be
---pointers into the heap which can then be picked up and evaluated.
-type GMSparks = [PGMLocalState]
-
-getSparks :: GMState -> GMSparks
-getSparks ((o, heap, globals, sparks, stats), locals) = sparks
-
-getPGMSparks :: PGMState -> GMSparks
-getPGMSparks ((o, heap, globals, sparks, stats), locals) = sparks
-
-putSparks :: GMSparks -> GMState -> GMState
-putSparks sparks' ((o, heap, globals, sparks, stats), locals)
-    = ((o, heap, globals, sparks', stats), locals)
-
-putPGMSparks :: GMSparks -> PGMState -> PGMState
-putPGMSparks sparks' ((o, heap, globals, sparks, stats), locals)
-    = ((o, heap, globals, sparks', stats), locals)
-
---GMStats:
-type GMStats = Int
-
-statInitial :: GMStats
-statInitial = 0
-
-statIncSteps :: GMStats -> GMStats
-statIncSteps s = s + 1
-
-statGetSteps :: GMClock -> Int
-statGetSteps s = s
-
---PGMStats will hold the number of blocked, running, and idle tasks for each
---clock tick of the evaluator. The list of Ints satisfies accomodates the old
---use of PGMStats by taking the number of clock ticks for dying tasks
-type PGMStats = ((BlockedTasks, RunningTasks, IdleTasks), [Int])
-type BlockedTasks = Int
-type RunningTasks = Int
-type IdleTasks = Int
-
-getStats :: GMState -> PGMStats
-getStats ((o, heap, globals, sparks, stats), locals) = stats
-
-getPGMStats :: PGMState -> PGMStats
-getPGMStats ((o, heap, globals, sparks, stats), locals) = stats
-
-putStats :: PGMStats -> GMState -> GMState
-putStats stats' ((o, heap, globals, sparks, stats), locals)
-    = ((o, heap, globals, sparks, stats'), locals)
-
-putPGMStats :: PGMStats -> PGMState -> PGMState
-putPGMStats stats' ((o, heap, globals, sparks, stats), locals)
-    = ((o, heap, globals, sparks, stats'), locals)
-
-nBlocked :: Int -> GMState -> GMState
-nBlocked n state@((o, h, globs, sparks, ((blocked, running, idle), count)), locals)
-    = putStats ((blocked+n, running, idle), count) state
-
-nFreed :: Int -> GMState -> GMState
-nFreed n state@((o, h, globs, sparks, ((blocked, running, idle), count)), locals)
-    = putStats ((blocked-n, running, idle+n), count) state
-
-nRunning :: PGMState -> PGMState
-nRunning state@((o, h, globs, sparks, ((blocked, running, idle), count)), locals)
-    = putPGMStats ((blocked, n, idle), count) state
-        where n = length locals
-
-nIdle :: PGMState -> PGMState
-nIdle state@((o, h, globs, sparks, ((blocked, running, idle), count)), locals)
-    = putPGMStats ((blocked, running, n), count) state
-        where n = length sparks
-
-getNumBlocked :: PGMState -> Int
-getNumBlocked ((o, h, glbs, sprks, ((blocked, running, idle), count)), locals)
-    = blocked
- 
-
-sumStats :: PGMState -> Int
-sumStats state
-    = sum $ snd $ getPGMStats state
-
-maxStat :: PGMState -> Int
-maxStat state
-    = maximum' $ snd $ getPGMStats state
-
---The GMClock keeps track of the number of steps for an individual thread
-type GMClock = Int
-
-getClock :: GMState -> GMClock
-getClock (globals, (code, stack, dump, clock)) = clock
-
-putClock :: GMClock -> GMState -> GMState
-putClock clock' (globals, (code, stack, dump, clock))
-    = (globals, (code, stack, dump, clock'))
-
---Similarly, for the parallel machine we have the following state tuple
-type PGMState = (PGMGlobalState, --State shared by all threads
-                 [PGMLocalState])--State for each thread
-
-
---InitialTask takes an address and forms a LocalState structure
-initialTask :: Addr -> PGMLocalState
-initialTask addr = (initCode, [addr], [], 0)
-
-compile :: CoreProgram -> PGMState
-compile prog = (([], heap, globals, [], ((0,1,0),[])), [initialTask addr])
+compile :: CoreProgram -> (GMHeap, GMGlobals)
+compile prog = addr `seq` (heap, globals)
         where (heap, globals) = buildInitialHeap prog
               addr            = aLookupString globals "main" 
                                               (error "Main undefined")
@@ -409,29 +222,18 @@ compiledPrimitives
 {-The following are the printing functions needed for when viewing the results
  - of compilation in GHCI
  -}
-showResults :: [PGMState] -> String
-showResults states
+showCode :: (GMHeap, GMGlobals) -> String
+showCode (heap, globals)
     = iDisplay $ iConcat [IStr "Supercombinator definitions:", INewline
-                         ,iInterleave INewline (map (showSC s) (getGlobGlobals s))
-                         ,INewline, INewline, IStr "State transitions:", INewline
-                         ,INewline
-                         ,iLayn (map showState states), INewline, INewline
-                         ,showStats states]
-                where (s:ss) = states
+                         ,iInterleave INewline (map (showSC heap) globals)
+                         ,INewline, INewline]
 
---showResult is for when we only want to see the result of the computation and
---not the intermediate steps
-showResult :: PGMState -> String
-showResult state
-    = iDisplay (iConcat [IStr "Output Register: ", IStr (getGlobalOut state)
-                        ,INewline, showStat state, INewline])
-
-showSC :: PGMState -> (Name, Addr) -> Iseq
-showSC state (name, addr)
+showSC :: GMHeap -> (Name, Addr) -> Iseq
+showSC heap (name, addr)
     = iConcat [ IStr "Code for ", IStr name, INewline
                ,showInstructions code, INewline, INewline]
         where 
-            (NGlobal arity code) = (hLookup (getGlobalHeap state) addr)
+            (NGlobal arity code) = (hLookup heap addr)
 
 showInstructions :: GMCode -> Iseq
 showInstructions code 
@@ -479,128 +281,3 @@ showInstruction Par            = IStr "Par"
 showCasejump (num, code) = iConcat [iNum num, INewline
                                    ,IIndent (iInterleave INewline 
                                             (map showInstruction code))]
-
---showState will take the GCode and the stack from a given state and 
---wrap them in Iseqs
-showState :: PGMState -> Iseq
-showState state
-    = iConcat ([showOutput state, INewline] ++
-              [showSparks state, INewline] ++
-              [showBlocked state, INewline] ++
-              showState' states)
-      where (global, locals) = state
-            states           = [(global, a) | a <- locals]
-
-showState' :: [GMState] -> [Iseq]
-showState' states
-    = concat [[showStack (global, a), INewline,
-              showDump (global, a),  INewline,
-              showInstructions (getCode (global, a)), INewline] |
-              a <- locals]
-      where locals = [a | a <- map snd states]
-            global = fst $ head states
-
-
-
-showStat :: PGMState -> Iseq
-showStat state = iConcat [IStr "Steps taken: ", iNum (sumStats state)
-                          ,INewline, IStr "Max Thread length: "
-                          ,iNum (maxStat state), INewline]
-
-showStats :: [PGMState] -> Iseq
-showStats state = iConcat [IStr "Steps taken: ", iNum (sumStats $ last state)
-                          ,INewline, IStr "Max Thread length: "
-                          ,iNum (maxStat $ last state), INewline
-                          ,IStr "Max simultaneous threads: "
-                          ,iNum $ maximum $ map (length.snd) state, INewline]
-
-
-
---showOutput is easy as its component is already a string
-showOutput :: PGMState -> Iseq
-showOutput state = iConcat [IStr " Output:\""
-                           ,IStr (getOutput state')
-                           ,IStr "\""]
-                    where state' = (fst state, head $ snd state)
-
-showSparks :: PGMState -> Iseq
-showSparks state = iConcat [IStr " Number of Sparks: "
-                           ,iNum $ length (getPGMSparks state)]
-
-showBlocked :: PGMState -> Iseq
-showBlocked state = iConcat [IStr " Number of Blocked Tasks: "
-                            ,iNum $ getNumBlocked state]
-
---showStacks takes the entire PGMState and creates a list of GMStates 
---which showStack is then mapped over
-showStacks :: [GMState] -> Iseq
-showStacks states
-    = iConcat $ map showStack states
-
---When preparing the stack to be printed
-showStack :: GMState -> Iseq
-showStack state
-    = iConcat [IStr " Stack:["
-              ,IIndent (iInterleave INewline
-                                    (map (showStackItem state)
-                                         (reverse (getStack state))))
-              ,IStr "]"]
-
-showStackItem :: GMState -> Addr -> Iseq
-showStackItem state addr
-    = iConcat [IStr (showAddr addr), IStr ": "
-              ,showNode state addr (hLookup (getHeap state) addr)]
-
---showDumps is to dumps as showStacks is to stacks
-showDumps :: [GMState] -> Iseq
-showDumps states
-    = iConcat $ map showDump states
-
-showDump :: GMState -> Iseq
-showDump state = iConcat [IStr " Dump:["
-                         ,IIndent (iInterleave INewline
-                                  (map showDumpItem (reverse (getDump state))))
-                         ,IStr "]"]
-
-showDumpItem :: GMDumpItem -> Iseq
-showDumpItem (code, stack) 
-    = iConcat [IStr "<"
-              ,shortShowInstructions 3 code, IStr ", "  
-              ,shortShowStack stack, IStr ">"]
-
-
-showNode :: GMState -> Addr -> Node -> Iseq
-showNode state addr (NNum n)         = iNum n 
-showNode state addr (NAp ad1 ad2)    = iConcat [IStr "Ap ", IStr (showAddr ad1)
-                                               ,IStr " ", IStr (showAddr ad2)]
-showNode state addr (NGlobal n code) = iConcat [IStr "Global ", IStr v]
-                    where v = head [n | (n, b) <- getGlobals state, addr == b]
-showNode state addr (NInd ad1)  = iConcat [IStr "Indirection "
-                                          ,IStr (showAddr ad1)]
-showNode state addr (NConstr t as) = 
-        iConcat [IStr "Constr ", iNum t, IStr " ["
-                ,iInterleave (IStr ", ") (map (IStr . showAddr) as)
-                ,IStr "]"]
-showNode state addr (NLAp ad1 ad2 blocked)    = iConcat [IStr "Locked Ap ", IStr (showAddr ad1)
-                                               ,IStr " ", IStr (showAddr ad2)
-                                               ,IStr " blocked nodes: ", iNum $ length blocked]
-showNode state addr (NLGlobal n code blocked) = iConcat [IStr "Locked Global ", IStr v
-                                               ,IStr " blocked nodes: ", iNum $ length blocked]
-                    where v = head [n | (n, b) <- getGlobals state, addr == b]
-
-
-shortShowStack :: GMStack -> Iseq
-shortShowStack stack
-    = iConcat [IStr "["
-              ,iInterleave (IStr ", ") (map (IStr . showAddr) stack)
-              ,IStr "]"]
-
-
-shortShowInstructions :: Int -> GMCode -> Iseq
-shortShowInstructions num code
-    = iConcat [IStr "{", iInterleave (IStr "; ") dotcodes, IStr "}"]
-    where
-        codes = map showInstruction (take num code)
-        dotcodes 
-            | length code > num = codes ++ [IStr "..."]
-            | otherwise         = codes
