@@ -58,7 +58,33 @@ data Node =
         | NConstr Int [Addr]
     deriving Eq
 
+--This is the Monad for getting fresh names based on an initial String
+data Fresh s a = Fresh { runFresh :: s -> (a, s) }
 
+instance Monad (Fresh s) where
+  return x = Fresh  $ (\s -> (x, s))
+  (Fresh x) >>= f  = Fresh  $ (\s -> case runFresh (Fresh x) s of
+                              (res, newS) -> runFresh (f res) newS)
+
+
+fresh :: Fresh String Int
+fresh = Fresh $ (\s -> (10, s ++ "That"))
+
+newFresh :: Int -> Fresh String Int
+newFresh x = Fresh $ (\s -> (x, s ++ show x))
+
+data Fresh2 a = Fresh2 { runFresh2 :: String -> Int -> (Int, a) }
+
+instance Monad Fresh2 where
+  return a = Fresh2 (\s i -> (i, a))
+  m >>= f  = Fresh2 (\s i -> case runFresh2 m s i of
+                              (j, a) -> runFresh2 (f a) s j)
+
+fresh2 :: Fresh2 String
+fresh2 = Fresh2 (\s i -> (i+1, s ++ show i))
+
+--This is the top-level compile function, it creates a heap with all of the
+--global function instances
 compile :: CoreProgram -> (GMHeap, GMGlobals)
 compile prog = addr `seq` (heap, globals)
         where (heap, globals) = buildInitialHeap prog
@@ -80,12 +106,11 @@ allocateSC heap (name, numArgs, gmCode) = (newHeap, (name, addr))
         where
             (newHeap, addr) = hAlloc heap (NGlobal numArgs gmCode)
 
---The special-case supercombinator "main" is required of every program and is
---the first function to be called. So the initial gCode for every program will
---be loading that supercombinator
-initCode :: GMCode
-initCode = [Eval, Print]
 
+{-Below is the section that compiles the coreExpr to GCode
+ - ---------------------------------------------------------------------
+ - ---------------------------------------------------------------------
+ - -}
 compileSC :: (Name, [Name], CoreExpr) -> GMCompiledSC
 compileSC (name, env, body)
     = (name, length env, compileR body (zip env [0..]))
@@ -106,8 +131,8 @@ compileE exp@(EVar arith `EAp` e1 `EAp` e2) env
                                            compileE e1 (argOffset 1 env) ++
                                            [aLookupString builtInDyadic arith (error "Can't happen")]
 compileE (EVar "negate" `EAp` e1) env    = compileE e1 env ++ [Neg]
-compileE (EVar "if" `EAp` e0 `EAp` e1 `EAp` e2) env =
-                          compileE e0 env ++ [Cond (compileE e1 env) (compileE e2 env)]
+--compileE (EVar "if" `EAp` e0 `EAp` e1 `EAp` e2) env =
+--                          compileE e0 env ++ [Cond (compileE e1 env) (compileE e2 env)]
 compileE (ECase sub alts) env            
     = compileE sub env ++ [Casejump $ compileAlts compileE' alts env]
 compileE (EConstrAp tag arity args) env    
