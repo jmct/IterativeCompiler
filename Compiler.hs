@@ -58,30 +58,35 @@ data Node =
         | NConstr Int [Addr]
     deriving Eq
 
---This is the Monad for getting fresh names based on an initial String
+{---This is the Monad for getting fresh names based on an initial String
 data Fresh s a = Fresh { runFresh :: s -> (a, s) }
 
 instance Monad (Fresh s) where
   return x = Fresh  $ (\s -> (x, s))
-  (Fresh x) >>= f  = Fresh  $ (\s -> case runFresh (Fresh x) s of
-                              (res, newS) -> runFresh (f res) newS)
-
+  (Fresh x) >>= f  = Fresh  $ \s -> let (res1, newState) = x s
+                                        (Fresh g) = f res1
+                                    in g newState
 
 fresh :: Fresh String Int
-fresh = Fresh $ (\s -> (10, s ++ "That"))
+fresh = Fresh $ (\s -> (0, s))
+
+
+
 
 newFresh :: Int -> Fresh String Int
-newFresh x = Fresh $ (\s -> (x, s ++ show x))
+newFresh = \x -> Fresh $ (\s -> (x+1, s ++ show x))
 
-data Fresh2 a = Fresh2 { runFresh2 :: String -> Int -> (Int, a) }
+----------------------------------------------------------------
+--}
+data Fresh a = Fresh { runFresh :: String -> Int -> (Int, a) }
 
-instance Monad Fresh2 where
-  return a = Fresh2 (\s i -> (i, a))
-  m >>= f  = Fresh2 (\s i -> case runFresh2 m s i of
-                              (j, a) -> runFresh2 (f a) s j)
+instance Monad Fresh where
+  return a = Fresh (\s i -> (i, a))
+  m >>= f  = Fresh (\s i -> case runFresh m s i of
+                              (j, a) -> runFresh (f a) s j)
 
-fresh2 :: Fresh2 String
-fresh2 = Fresh2 (\s i -> (i+1, s ++ show i))
+fresh :: Fresh String
+fresh = Fresh (\s i -> (i+1, s ++ show i))
 
 --This is the top-level compile function, it creates a heap with all of the
 --global function instances
