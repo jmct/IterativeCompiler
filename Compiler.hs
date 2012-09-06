@@ -88,6 +88,19 @@ instance Monad Fresh where
 fresh :: Fresh String
 fresh = Fresh (\s i -> (i+1, s ++ show i))
 
+testFresh :: GMCode -> Fresh GMCode
+testFresh [] = return []
+testFresh (x:xs) = if x == PushGlobal "test"
+                   then do
+                            a <- fresh
+                            ys <- testFresh xs
+                            return (PushGlobal a: ys)
+                   else do
+                            ys <- testFresh xs
+                            return (x : ys)
+
+labelCode = undefined
+
 --This is the top-level compile function, it creates a heap with all of the
 --global function instances
 compile :: CoreProgram -> (GMHeap, GMGlobals)
@@ -247,8 +260,10 @@ compiledPrimitives
       ,(">=", 2, [Push 1, Eval, Push 1, Eval, Ge, Update 2, Pop 2, Unwind])
       ,("par", 2, [Push 1, Push 1, MkAp, Push 2, Par, Update 2, Pop 2, Unwind])]
 --      ,("if", 3, [Push 0, Eval, Cond [Push 1] [Push 2], Update 3, Pop 3, Unwind])]
-
-
+{-
+labelSuperComb ::  GMHeap -> (Name, Addr) -> Fresh String
+labelSuperComb heap (name, addr) = runFresh labelCode name 0
+-}
 {-The following are the printing functions needed for when viewing the results
  - of compilation in GHCI
  -}
