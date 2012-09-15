@@ -38,6 +38,8 @@ data Instruction =
         | Split Int
         | Print
         | Par
+        | Label String
+        | Case
     deriving Eq
 
 
@@ -99,7 +101,44 @@ testFresh (x:xs) = if x == PushGlobal "test"
                             ys <- testFresh xs
                             return (x : ys)
 
-labelCode = undefined
+labelSC :: GMCode -> Fresh GMCode
+labelSC     [] = return []
+labelSC (xs) = do
+                top <- fresh
+                ys <- labelCode xs
+                return $ (Label top : ys) ++ [Label $ top ++ ":End"]
+
+labelCode :: GMCode -> Fresh GMCode
+labelCode     [] = return []
+labelCode (x:xs) =
+    case x of
+        Casejump alts -> do 
+                            startCase <- fresh
+                            alts' <- labelCases alts
+                            ys    <- labelCode xs
+                            return $ ((Label startCase : alts') 
+                                     ++ ys 
+                                     ++ [(Label $ startCase ++ ":EndCase")])
+        otherwise     -> do
+                            ys    <- labelCode xs
+                            return (x:ys)
+
+labelCases :: [(Int, GMCode)] -> Fresh GMCode
+labelCases     [] = return []
+labelCases (x:xs) =
+    do
+        y <- labelCaseAlt x
+        ys <- labelCases xs
+        return (y ++ ys)
+
+labelCaseAlt :: (Int, GMCode) -> Fresh GMCode
+labelCaseAlt (tag, code) = do
+    altLabel <- fresh
+    freshCode <- labelCode code
+    return (Label (altLabel ++ "::" ++ show tag) : freshCode)
+
+--tester :: Fresh [GMCode] -> Fresh GMCode
+--tester xs = return (concat xs)
 
 --This is the top-level compile function, it creates a heap with all of the
 --global function instances
@@ -321,6 +360,8 @@ showInstruction (Cond a1 a2)   = iConcat
                                     INewline, IStr "Alt2: ",
                                     (iInterleave INewline (map showInstruction a2))]
 showInstruction Par            = IStr "Par"
+showInstruction (Label str)    = IStr ("Label: " ++ str)
+showInstruction Case           = IStr "Case"
 
 
 showCasejump (num, code) = iConcat [iNum num, INewline
