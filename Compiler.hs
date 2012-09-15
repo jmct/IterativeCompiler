@@ -135,20 +135,35 @@ labelCaseAlt :: (Int, GMCode) -> Fresh GMCode
 labelCaseAlt (tag, code) = do
     altLabel <- fresh
     freshCode <- labelCode code
-    return (Label (altLabel ++ "::" ++ show tag) : freshCode)
+    return ((Label (altLabel ++ "::" ++ show tag) : freshCode) ++ 
+                                    [Label $ altLabel ++ "::EndAlt"])
+
+labelProgram :: [GMCompiledSC] -> GMCode
+labelProgram []     = []
+labelProgram ((name, arity, code):xs) = 
+    snd (runFresh (labelSC code) name arity) ++ labelProgram xs
 
 --tester :: Fresh [GMCode] -> Fresh GMCode
 --tester xs = return (concat xs)
 
+type GMCompiledSC = (Name, Int, GMCode)
+
+--This function compiles to a list of tuples (one for each supercombinator).
+--Each tuple consists of the name of the SC, its arity, and the Code for the
+--supercombinator
+compile :: CoreProgram -> [GMCompiledSC]
+compile prog = map compileSC (prog ++ preludeDefs)
+                             ++ compiledPrimitives
+
+
 --This is the top-level compile function, it creates a heap with all of the
 --global function instances
-compile :: CoreProgram -> (GMHeap, GMGlobals)
-compile prog = addr `seq` (heap, globals)
+compileToHeap :: CoreProgram -> (GMHeap, GMGlobals)
+compileToHeap prog = addr `seq` (heap, globals)
         where (heap, globals) = buildInitialHeap prog
               addr            = aLookupString globals "main" 
                                               (error "Main undefined")
 
-type GMCompiledSC = (Name, Int, GMCode)
 
 buildInitialHeap :: CoreProgram -> (GMHeap, GMGlobals)
 buildInitialHeap prog = 
