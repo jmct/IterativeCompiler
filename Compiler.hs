@@ -80,6 +80,22 @@ newFresh = \x -> Fresh $ (\s -> (x+1, s ++ show x))
 
 ----------------------------------------------------------------
 --}
+data CodeTree = Append CodeTree CodeTree
+              | Nil
+              | Code Instruction
+--              | Codes [Instruction]
+              
+codeConcat :: [CodeTree] -> CodeTree
+codeConcat [] = Nil
+codeConcat (x:xs) = x `Append` codeConcat xs
+
+flattenCode :: CodeTree -> GMCode
+flattenCode (Nil) = []
+flattenCode (Code c) = [c]
+flattenCode (Append codeL codeR) =
+    flattenCode codeL ++ flattenCode codeR
+
+
 data Fresh a = Fresh { runFresh :: String -> Int -> (Int, a) }
 
 instance Monad Fresh where
@@ -101,47 +117,47 @@ testFresh (x:xs) = if x == PushGlobal "test"
                             ys <- testFresh xs
                             return (x : ys)
 
-labelSC :: GMCode -> Fresh GMCode
-labelSC     [] = return []
+labelSC :: GMCode -> Fresh CodeTree
+labelSC     [] = return Nil
 labelSC (xs) = do
                 top <- fresh
                 ys <- labelCode xs
-                return $ (Label top : ys) ++ [Label $ top ++ ":End"]
+                return $ (Code (Label top) `Append` ys) `Append` (Code $ Label $ top ++ ":End")
 
-labelCode :: GMCode -> Fresh GMCode
-labelCode     [] = return []
+labelCode :: GMCode -> Fresh CodeTree
+labelCode     [] = return Nil
 labelCode (x:xs) =
     case x of
         Casejump alts -> do 
                             startCase <- fresh
                             alts' <- labelCases alts
                             ys    <- labelCode xs
-                            return $ ((Label startCase : alts') 
-                                     ++ ys 
-                                     ++ [(Label $ startCase ++ ":EndCase")])
+                            return $ ((Code (Label startCase) `Append` alts') 
+                                     `Append` ys 
+                                     `Append` (Code $ Label $ startCase ++ ":EndCase"))
         otherwise     -> do
                             ys    <- labelCode xs
-                            return (x:ys)
+                            return (Code x `Append` ys)
 
-labelCases :: [(Int, GMCode)] -> Fresh GMCode
-labelCases     [] = return []
+labelCases :: [(Int, GMCode)] -> Fresh CodeTree
+labelCases     [] = return Nil
 labelCases (x:xs) =
     do
         y <- labelCaseAlt x
         ys <- labelCases xs
-        return (y ++ ys)
+        return (y `Append` ys)
 
-labelCaseAlt :: (Int, GMCode) -> Fresh GMCode
+labelCaseAlt :: (Int, GMCode) -> Fresh CodeTree
 labelCaseAlt (tag, code) = do
     altLabel <- fresh
     freshCode <- labelCode code
-    return ((Label (altLabel ++ "::" ++ show tag) : freshCode) ++ 
-                                    [Label $ altLabel ++ "::EndAlt"])
+    return ( Code (Label (altLabel ++ "::" ++ show tag)) `Append` freshCode
+                            `Append` Code (Label $ altLabel ++ "::EndAlt"))
 
 labelProgram :: [GMCompiledSC] -> GMCode
 labelProgram []     = []
 labelProgram ((name, arity, code):xs) = 
-    snd (runFresh (labelSC code) name arity) ++ labelProgram xs
+    (flattenCode $ snd (runFresh (labelSC code) name arity)) ++ labelProgram xs
 
 --tester :: Fresh [GMCode] -> Fresh GMCode
 --tester xs = return (concat xs)
