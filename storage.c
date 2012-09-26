@@ -1,11 +1,16 @@
 #include <stdio.h>
+#include <stdlib.h>
+
+#define HEAPSIZE 256
 
 /* This typedef is just simple syntactic sugar for node tags */
 typedef enum {
     FUN,
     APP,
     CONSTR,
-    INTEGER 
+    INTEGER, 
+    COLLECTED,
+    INDIRECTION
 } Tag;
 
 /* This typedef is just simple syntactic sugar for bools */
@@ -13,6 +18,13 @@ typedef enum {
     FALSE,
     TRUE
 } Bool;
+
+struct atom;
+typedef struct atom HeapCell;
+
+//This is once again syntactic sugar for declaring atoms.
+//(Not having the say 'struct atom' instead just declare 'Atom')
+typedef struct atom Atom;
 
 /*The atom is the basic building block for items in the heap
  *
@@ -28,8 +40,12 @@ typedef enum {
 struct atom {
     Tag tag;
     union {
+        HeapCell * forward; //This is used for both Indirections and GC forwarding
         int num; 
-        struct atom * app;
+        struct {
+            HeapCell * leftArg;
+            HeapCell * rightArg;
+        } app;
         struct {
             int id;
             int arity;
@@ -41,9 +57,6 @@ struct atom {
     };
 };
 
-//This is once again syntactic sugar for declaring atoms.
-//(Not having the say 'struct atom' instead just declare 'Atom')
-typedef struct atom Atom;
 
 /*Because there is a bit of dependency recursion in the definiton of
  *a heapcell we have to provide a prototype definition. Basically, a heapcell
@@ -52,29 +65,20 @@ typedef struct atom Atom;
  *will most likely take the following form:
  *
  *
- * +--------+
- * | HC ptr |
- * +---+----+
- *     |        0      1     2
- *     |      +-----+-----+-----+
- *     |      |FALSE|App: |App: |
- *     +----->|_____|_____|_____|
- *            |Size:|Addr:|Addr:|               Y   (Y+1)
- *            |  2  |  X  |  Y  |            +-----+-----+
- *            +-----+--+--+--+--+            |FALSE|Int: |
- *                     |     |               |_____|     |
- *                     |     +-------------->|Size:|  5  |
- *                     |                     |  1  |     |
- *                     |      X     (X+1)    +-----+-----+
- *                     +-->+-----+--------+
- *                         |FALSE|Fun:    |
- *                         |_____|________|
- *                         |Size:|Arity: 1|
- *                         |  1  |Code ptr|
- *                         +-----+--------+
+ *    Binary Applications:
+ *
+ *       +----------+
+ *       |HC Pointer|
+ *       +-----+----+             +--------+-------+
+ *             |                  |FUN     |INT    |
+ *             |              +-->|Arity: 1|Val: 5 |
+ *             |  +--------+  |   |CodePtr |       |
+ *             |  |APP     |  |   +--------+-------+
+ *             +->|leftArg +--+               ^
+ *                |        |                  |
+ *                |rightArg+------------------+
+ *                +--------+
  * */
-union heapcell;
-typedef union heapcell HeapCell;
 
 /*A Header is used for the GC. 
  *The 'collected' Bool tells the GC whether this HeapCell has been collected
@@ -83,33 +87,15 @@ typedef union heapcell HeapCell;
  *then the Size of the HeapCell is used from the Union. This specifies how many
  *Atoms make up the HeapCell
  */
-typedef struct {
-  Bool collected;
-  union {
-       HeapCell *forward;
-       int size;
-  };
-} Header;
-
-/*This is the actual definition of a heapcell. As you can see, the header */
-union heapcell {
-    Header header;
-    Atom atom;
-};
-
 
 typedef HeapCell * Heap;
-
-HeapCell myHeap[16];
+Heap myHeap;
 
 int main() {
-    myHeap[0].header.collected = FALSE;
-    myHeap[0].header.size = 2;
-    myHeap[1].atom.tag = APP;
-    myHeap[1].atom.fun.arity = 1;
-    myHeap[1].atom.fun.code = NULL;
-    myHeap[2].atom.tag = INTEGER;
-    myHeap[2].atom.num = 2;
+    myHeap = malloc(HEAPSIZE * sizeof(HeapCell));
+    myHeap[0].tag = APP;
+    myHeap[0].app.leftArg = NULL;
+    myHeap[0].app.rightArg = NULL;
 
 
     return 0;
