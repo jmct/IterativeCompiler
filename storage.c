@@ -91,12 +91,41 @@ struct atom {
 typedef HeapCell * Heap;
 Heap myHeap;
 
+int nextFree = 0;
+
+Heap allocHeapCell(Tag tag, Heap heap) {
+    heap[nextFree].tag = tag;
+    switch (tag) {
+        case FUN:
+            heap[nextFree].fun.arity = -1;
+            heap[nextFree].fun.code  = NULL;
+            break;
+        case APP:
+            heap[nextFree].app.leftArg = NULL;
+            heap[nextFree].app.rightArg = NULL;
+            break;
+        case CONSTR:
+            heap[nextFree].constr.id = -1;
+            heap[nextFree].constr.arity = -1;
+            break;
+        case INTEGER:
+            heap[nextFree].num = 0;
+            break;
+        default:
+            heap[nextFree].forward = NULL;
+            break;
+    } //end of switch statement
+    return &heap[nextFree++];
+}
+
+
 int main() {
     myHeap = malloc(HEAPSIZE * sizeof(HeapCell));
-    myHeap[0].tag = APP;
-    myHeap[0].app.leftArg = NULL;
-    myHeap[0].app.rightArg = NULL;
-
+    printf("Free: %d, Pointer Value %p\n", nextFree, myHeap);
+    Heap point = allocHeapCell(APP, myHeap); 
+    printf("Free: %d, Pointer Value %p\n", nextFree, point);
+    point = allocHeapCell(APP, myHeap); 
+    printf("Free: %d, Pointer Value %p\n", nextFree, point);
 
     return 0;
 }
