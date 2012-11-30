@@ -118,6 +118,38 @@ Heap allocHeapCell(Tag tag, Heap heap) {
     return &heap[nextFree++];
 }
 
+Heap allocApp(Heap left, Heap right) {
+    Heap appNode = allocHeapCell(APP, myHeap);
+    appNode->app.leftArg = left;
+    appNode->app.rightArg = right;
+    return appNode;
+}
+
+Heap allocConstr(int arity1, int id1) {
+    Heap constrNode = allocHeapCell(CONSTR, myHeap);
+    constrNode->constr.id = id1;
+    constrNode->constr.arity = arity1;
+    return constrNode;
+}
+
+Heap allocFun(int arity1, void* codePtr) {
+    Heap funNode = allocHeapCell(FUN, myHeap);
+    funNode->fun.arity = arity1;
+    funNode->fun.code = codePtr;
+    return funNode;
+}
+
+Heap allocInt(int value) {
+    Heap intNode = allocHeapCell(INTEGER, myHeap);
+    intNode->num = value;
+    return intNode;
+}
+
+Heap allocIndirection(Heap forwardAdd) {
+    Heap indNode = allocHeapCell(INDIRECTION, myHeap);
+    indNode->forward = forwardAdd;
+    return indNode;
+}
 
 int main() {
     myHeap = malloc(HEAPSIZE * sizeof(HeapCell));
