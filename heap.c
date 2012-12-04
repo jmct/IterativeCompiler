@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "SymbolTable.c"
 
-#define HEAPSIZE 256
 
 /* This typedef is just simple syntactic sugar for node tags */
 typedef enum {
@@ -151,13 +151,3 @@ Heap allocIndirection(Heap forwardAdd) {
     return indNode;
 }
 
-int main() {
-    myHeap = malloc(HEAPSIZE * sizeof(HeapCell));
-    printf("Free: %d, Pointer Value %p\n", nextFree, myHeap);
-    Heap point = allocHeapCell(APP, myHeap); 
-    printf("Free: %d, Pointer Value %p\n", nextFree, point);
-    point = allocHeapCell(APP, myHeap); 
-    printf("Free: %d, Pointer Value %p\n", nextFree, point);
-
-    return 0;
-}
