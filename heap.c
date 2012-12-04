@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "SymbolTable.c"
+#include "symbolTable.c"
 
 
 /* This typedef is just simple syntactic sugar for node tags */
