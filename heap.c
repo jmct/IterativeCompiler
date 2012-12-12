@@ -52,7 +52,7 @@ struct atom {
         } constr; 
         struct {
             int arity;
-            void * code;
+            int code;
         } fun;
     };
 };
@@ -117,7 +117,7 @@ Heap allocHeapCell(Tag tag, Heap heap) {
     switch (tag) {
         case FUN:
             heap[nextFree].fun.arity = -1;
-            heap[nextFree].fun.code  = NULL;
+            heap[nextFree].fun.code  = -1;
             break;
         case APP:
             heap[nextFree].app.leftArg = NULL;

@@ -3,6 +3,8 @@ import Parser
 import Heap
 import Data.List
 
+compileToGCode = labelProgram . compile . parse
+
 maximum' [] = 0
 maximum' xs  = maximum xs
 
@@ -89,12 +91,14 @@ codeConcat :: [CodeTree] -> CodeTree
 codeConcat [] = Nil
 codeConcat (x:xs) = x `Append` codeConcat xs
 
-flattenCode :: CodeTree -> GMCode
-flattenCode (Nil) = []
-flattenCode (Code c) = [c]
-flattenCode (Append codeL codeR) =
-    flattenCode codeL ++ flattenCode codeR
-
+flattenCode' :: CodeTree -> GMCode ->GMCode
+flattenCode' (Nil) acc = acc
+flattenCode' (Code c) acc = c : acc
+flattenCode' (Append codeL codeR) acc = 
+    flattenCode'  codeL (flattenCode' codeR acc)
+    
+    
+flattenCode t = flattenCode' t []
 
 data Fresh a = Fresh { runFresh :: String -> Int -> (Int, a) }
 
@@ -104,7 +108,7 @@ instance Monad Fresh where
                               (j, a) -> runFresh (f a) s j)
 
 fresh :: Fresh String
-fresh = Fresh (\s i -> (i+1, s ++ show i))
+fresh = Fresh (\s i -> (i+1, s ++ ": " ++ show i))
 
 testFresh :: GMCode -> Fresh GMCode
 testFresh [] = return []
@@ -122,7 +126,7 @@ labelSC     [] = return Nil
 labelSC (xs) = do
                 top <- fresh
                 ys <- labelCode xs
-                return $ (Code (Label top) `Append` ys) `Append` (Code $ Label $ top ++ ":End")
+                return $ (Code (Label top) `Append` ys) --`Append` (Code $ Label $ top ++ ":End")
 
 labelCode :: GMCode -> Fresh CodeTree
 labelCode     [] = return Nil

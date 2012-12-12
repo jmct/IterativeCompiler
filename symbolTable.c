@@ -30,7 +30,7 @@ unsigned int hash(char* inputStr) {
 //When all of the necessary information is available, we can make a new bucket
 //The necessary 'next' value should be figured out by the calling function, 
 //not this one. 
-struct bucket* makeBucket(char* key1, void* binding1, struct bucket* next1) {
+struct bucket* makeBucket(char* key1, int binding1, struct bucket* next1) {
     struct bucket* b = malloc(sizeof(*b));
     b->key = key1;
     b->binding = binding1;
@@ -41,7 +41,7 @@ struct bucket* makeBucket(char* key1, void* binding1, struct bucket* next1) {
 
 //given a key and value we can create a bucket and insert it
 //into the symbol table
-void insert(char* key, void* binding) {
+void insert(char* key, int binding) {
     int index = hash(key);
     symbolTable[index] = makeBucket(key, binding, symbolTable[index]);
 }
@@ -56,7 +56,7 @@ int lookupKey(char* key) {
         }
     }
     //if we reach here, then there wasn't a match in the table
-    return NULL;
+    return -1;
 }
 
 
