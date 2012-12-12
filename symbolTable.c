@@ -7,7 +7,7 @@
 //occur
 struct bucket {
     char * key;
-    void * binding;
+    int binding;
     struct bucket * next;
 };
 
@@ -47,7 +47,7 @@ void insert(char* key, void* binding) {
 }
 
 
-void* lookupKey(char* key) {
+int lookupKey(char* key) {
     int index = hash(key);
     struct bucket* tmpBckt = NULL;
     for (tmpBckt = symbolTable[index]; tmpBckt; tmpBckt = tmpBckt->next) {

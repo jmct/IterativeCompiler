@@ -57,6 +57,25 @@ struct atom {
     };
 };
 
+void showHeapItem(HeapCell item) {
+    switch (item.tag) {
+        case FUN:
+            printf("FUN: arity %d, codePtr %p\n", item.fun.arity, item.fun.code);
+            break;
+        case APP:
+            printf("APP: leftArf %p, rightArg %p\n", item.app.leftArg, item.app.rightArg);
+            break;
+        case CONSTR:
+            printf("Constr: arity %d, id %d\n", item.constr.arity, item.constr.id);
+            break;
+        case INTEGER:
+            printf("INT: val %d\n", item.num);
+            break;
+        default:
+            printf("Indirection/forwarding MUST IMPLEMENT");
+            break;
+    } //end of switch statement
+}
 
 /*Because there is a bit of dependency recursion in the definiton of
  *a heapcell we have to provide a prototype definition. Basically, a heapcell
@@ -132,7 +151,7 @@ Heap allocConstr(int arity1, int id1) {
     return constrNode;
 }
 
-Heap allocFun(int arity1, void* codePtr) {
+Heap allocFun(int arity1, int codePtr) {
     Heap funNode = allocHeapCell(FUN, myHeap);
     funNode->fun.arity = arity1;
     funNode->fun.code = codePtr;
