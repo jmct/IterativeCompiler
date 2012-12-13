@@ -6,7 +6,9 @@
 /* This typedef is just simple syntactic sugar for node tags */
 typedef enum {
     FUN,
+    LOCKED_FUN,
     APP,
+    LOCKED_APP,
     CONSTR,
     INTEGER, 
     COLLECTED,
@@ -45,6 +47,7 @@ struct atom {
         struct {
             HeapCell * leftArg;
             HeapCell * rightArg;
+            //TODO LIst of suspended computations
         } app;
         struct {
             int id;
@@ -53,6 +56,7 @@ struct atom {
         struct {
             int arity;
             int code;
+            //TODO list of suspended computations
         } fun;
     };
 };
@@ -60,13 +64,24 @@ struct atom {
 void showHeapItem(HeapCell item) {
     switch (item.tag) {
         case FUN:
-            printf("FUN: arity %d, codePtr %d\n", item.fun.arity, item.fun.code);
+            printf("FUN: arity %d, codePtr %d\n", 
+                    item.fun.arity, item.fun.code);
+            break;
+        case LOCKED_FUN:
+            printf("LOCKED FUN: arity %d, codePtr %d\n", 
+                    item.fun.arity, item.fun.code);
             break;
         case APP:
-            printf("APP: leftArf %p, rightArg %p\n", item.app.leftArg, item.app.rightArg);
+            printf("APP: leftArf %p, rightArg %p\n", 
+                    item.app.leftArg, item.app.rightArg);
+            break;
+        case LOCKED_APP:
+            printf("LOCKED APP: leftArf %p, rightArg %p\n", 
+                    item.app.leftArg, item.app.rightArg);
             break;
         case CONSTR:
-            printf("Constr: arity %d, id %d\n", item.constr.arity, item.constr.id);
+            printf("Constr: arity %d, id %d\n", 
+                    item.constr.arity, item.constr.id);
             break;
         case INTEGER:
             printf("INT: val %d\n", item.num);

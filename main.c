@@ -67,6 +67,21 @@ typedef struct {
     Frame frameStack[FRAME_STACK_SIZE];
 } Machine;
 
+void initMachine(Machine *mach) {
+    mach->progCounter  = 0;
+    mach->stackPointer = 0;
+    mach->framePointer = 0;
+}
+
+//This pops one item off the stack for when we want to STORE the item
+//this function DOES NOT correspond to the GCode instruction 'pop'
+Heap popStack(Machine *mach) {
+    HeapCell *poppedItem;
+    poppedItem = mach->stack[mach->stackPointer];
+    mach->stackPointer--;
+    return poppedItem;
+}
+
 int numArgs(Machine *mach) {
     return mach->stackPointer - mach->framePointer;
 }
@@ -94,25 +109,24 @@ void slideNStack(int n, Machine *mach) {
     pushStack(temp, mach);
 }
 
-//This pops one item off the stack for when we want to STORE the item
-//this function DOES NOT correspond to the GCode instruction 'pop'
-Heap popStack(Machine *mach) {
-    HeapCell *poppedItem;
-    poppedItem = mach->stack[mach->stackPointer];
-    mach->stackPointer--;
-    return poppedItem;
-}
 
+//Any top-level function will be pushed onto to the stack
+//via this function
 void pushGlobal(struct instruction fun, Machine *mach) {
     int codePtr = lookupKey(fun.funVals.name);    
     Heap addr = allocFun(fun.funVals.arity, codePtr);
     pushStack(addr, mach);
 }
 
+/*
 void pushInt(int val, Machine * mach) {
     //TODO 
 }
+*/
 
+//MkAp simply takes the two topmost items on the stack
+//and replaces them with an application node pointing 
+//to both
 void mkAp(Machine *mach) {
     HeapCell *leftArg, *rightArg, *newNode;
     leftArg = popStack(mach);
@@ -121,16 +135,30 @@ void mkAp(Machine *mach) {
     pushStack(newNode, mach);
 }
 
+//After an expression is evaluated, the root node of the 
+//expression (which is n+1 items into the stack
+//must be updated in order to allow for sharing
 void update(int n, Machine *mach) {
     HeapCell *indirectTo = popStack(mach);
-    //See about unlocking. 
+    HeapCell *indirectNode = allocIndirection(indirectTo);
+    mach->stack[mach->stackPointer - n] = indirectNode;
 }
 
-void initMachine(Machine *mach) {
-    mach->progCounter  = 0;
-    mach->stackPointer = 0;
-    mach->framePointer = 0;
+//alloc is used in letrec expressions to ensure that 
+//there is heap allocated for (as of yet) unknown expressions
+void allocN(int n, Machine *mach) {
+    HeapCell *tempAddr; 
+    for (n; n > 0; n--) {
+        tempAddr = allocIndirection(NULL);
+        pushStack(tempAddr, mach);
+    }
 }
+
+/*
+void evalI(Machine *mach) {
+    
+}
+*/
 
 //When Eval is executed we must update the stack frame to 
 //represent the environment of the new function being 
@@ -193,6 +221,9 @@ int main() {
     point = allocHeapCell(APP, myHeap); 
     printf("Free: %d, Pointer Value %p\n", nextFree, point);
     pushStack(point, &machineA);
+    showMachineState(&machineA);
+    printf("Now applying mkAp:\n");
+    mkAp(&machineA);
     showMachineState(&machineA);
 
     return 0;
