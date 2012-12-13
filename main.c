@@ -77,6 +77,32 @@ void pushStack(HeapCell* item, Machine* mach) {
     mach->stackPointer++;
 }
 
+void pushNStack(int n, Machine *mach) {
+    HeapCell *toPush = mach->stack[mach->stackPointer - n];
+    pushStack(toPush, mach);
+}
+
+//This is the function that corresponds to the GCode instruction 'Pop n'
+void popNFromStack(int n, Machine *mach) {
+    mach->stackPointer -= n;
+}
+
+//This is for the GCode instruction 'Slide n'
+void slideNStack(int n, Machine *mach) {
+    HeapCell *temp = popStack(mach);
+    popNFromStack(n, mach);
+    pushStack(temp, mach);
+}
+
+//This pops one item off the stack for when we want to STORE the item
+//this function DOES NOT correspond to the GCode instruction 'pop'
+Heap popStack(Machine *mach) {
+    HeapCell *poppedItem;
+    poppedItem = mach->stack[mach->stackPointer];
+    mach->stackPointer--;
+    return poppedItem;
+}
+
 void pushGlobal(struct instruction fun, Machine *mach) {
     int codePtr = lookupKey(fun.funVals.name);    
     Heap addr = allocFun(fun.funVals.arity, codePtr);
@@ -85,6 +111,19 @@ void pushGlobal(struct instruction fun, Machine *mach) {
 
 void pushInt(int val, Machine * mach) {
     //TODO 
+}
+
+void mkAp(Machine *mach) {
+    HeapCell *leftArg, *rightArg, *newNode;
+    leftArg = popStack(mach);
+    rightArg = popStack(mach);
+    newNode = allocApp(leftArg, rightArg);
+    pushStack(newNode, mach);
+}
+
+void update(int n, Machine *mach) {
+    HeapCell *indirectTo = popStack(mach);
+    //See about unlocking. 
 }
 
 void initMachine(Machine *mach) {

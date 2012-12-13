@@ -60,7 +60,7 @@ struct atom {
 void showHeapItem(HeapCell item) {
     switch (item.tag) {
         case FUN:
-            printf("FUN: arity %d, codePtr %p\n", item.fun.arity, item.fun.code);
+            printf("FUN: arity %d, codePtr %d\n", item.fun.arity, item.fun.code);
             break;
         case APP:
             printf("APP: leftArf %p, rightArg %p\n", item.app.leftArg, item.app.rightArg);
@@ -70,6 +70,9 @@ void showHeapItem(HeapCell item) {
             break;
         case INTEGER:
             printf("INT: val %d\n", item.num);
+            break;
+        case INDIRECTION:
+            printf("IND: Address %p\n", item.forward);
             break;
         default:
             printf("Indirection/forwarding MUST IMPLEMENT");
