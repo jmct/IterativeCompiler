@@ -104,8 +104,14 @@ data Fresh a = Fresh { runFresh :: String -> Int -> (Int, a) }
 
 instance Monad Fresh where
   return a = Fresh (\s i -> (i, a))
+  (Fresh h) >>= f = Fresh $ \s i -> let (i1, s1) = h s i
+                                        (Fresh g) = f s1
+                                        in g s i1
+
+{- Naylor's bind implementation
   m >>= f  = Fresh (\s i -> case runFresh m s i of
                               (j, a) -> runFresh (f a) s j)
+ -}
 
 fresh :: Fresh String
 fresh = Fresh (\s i -> (i+1, s ++ ": " ++ show i))
@@ -136,9 +142,9 @@ labelCode (x:xs) =
                             startCase <- fresh
                             alts' <- labelCases alts
                             ys    <- labelCode xs
-                            return $ ((Code (Label startCase) `Append` alts') 
-                                     `Append` ys 
-                                     `Append` (Code $ Label $ startCase ++ ":EndCase"))
+                            return $ (Code (Label startCase) `Append` alts') 
+                                     `Append` (Code $ Label $ startCase ++ ":EndCase")
+                                     `Append` ys
         otherwise     -> do
                             ys    <- labelCode xs
                             return (Code x `Append` ys)

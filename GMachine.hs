@@ -776,8 +776,8 @@ compileE exp@(EVar arith `EAp` e1 `EAp` e2) env
                                            compileE e1 (argOffset 1 env) ++
                                            [aLookupString builtInDyadic arith (error "Can't happen")]
 compileE (EVar "negate" `EAp` e1) env    = compileE e1 env ++ [Neg]
-compileE (EVar "if" `EAp` e0 `EAp` e1 `EAp` e2) env =
-                          compileE e0 env ++ [Cond (compileE e1 env) (compileE e2 env)]
+--compileE (EVar "if" `EAp` e0 `EAp` e1 `EAp` e2) env =
+--                          compileE e0 env ++ [Cond (compileE e1 env) (compileE e2 env)]
 compileE (ECase sub alts) env            
     = compileE sub env ++ [Casejump $ compileAlts compileE' alts env]
 compileE (EConstrAp tag arity args) env    
