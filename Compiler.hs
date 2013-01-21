@@ -5,6 +5,11 @@ import Data.List
 
 compileToGCode = labelProgram . compile . parse
 
+{- 
+ - Code for testing the compilation and labelling of G-Code:
+ - readFile "prelude.src" >>= putStr. iDisplay . showInstructions . compileToGCode
+ -}
+
 maximum' [] = 0
 maximum' xs  = maximum xs
 
@@ -37,6 +42,7 @@ data Instruction =
         | Cond GMCode GMCode            --conditional with alternatives
         | Pack Int Int
         | Casejump [(Int, GMCode)]
+        | CasejumpInstr
         | Split Int
         | Print
         | Par
@@ -115,6 +121,9 @@ instance Monad Fresh where
 
 fresh :: Fresh String
 fresh = Fresh (\s i -> (i+1, s ++ ": " ++ show i))
+
+ignore :: String -> Fresh a -> Fresh a
+ignore str (Fresh f) = Fresh $ \_ i -> f str i
 
 testFresh :: GMCode -> Fresh GMCode
 testFresh [] = return []
