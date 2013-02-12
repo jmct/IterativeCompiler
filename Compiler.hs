@@ -42,7 +42,7 @@ data Instruction =
         | Cond GMCode GMCode            --conditional with alternatives
         | Pack Int Int
         | Casejump [(Int, GMCode)]
-        | CasejumpInstr
+        | CasejumpInstr String
         | Split Int
         | Print
         | Par
@@ -151,12 +151,15 @@ labelCode (x:xs) =
                             startCase <- fresh
                             alts' <- labelCases alts
                             ys    <- labelCode xs
-                            return $ (Code (Label startCase) `Append` alts') 
+                            return $ (Code (CasejumpInstr "temp") `Append` alts') 
                                      `Append` (Code $ Label $ startCase ++ ":EndCase")
                                      `Append` ys
         otherwise     -> do
                             ys    <- labelCode xs
                             return (Code x `Append` ys)
+
+labelCasejump :: GMCode -> FreshCodeTree
+labelCasejump 
 
 labelCases :: [(Int, GMCode)] -> Fresh CodeTree
 labelCases     [] = return Nil
@@ -402,6 +405,7 @@ showInstruction (Pack n1 n2)   = iConcat [IStr "Pack{", iNum n1, IStr ","
                                          ,iNum n2, IStr "}"]
 showInstruction (Casejump as)  = iConcat ([IStr "Casejump: ", INewline] 
                                          ++ map showCasejump as)
+showInstruction (CasejumpInstr s) = IStr $ "CaseJump" ++ s
 showInstruction (Split n)      = iConcat [IStr "Split ", iNum n]
 showInstruction Print          = IStr "Print"
 showInstruction (Cond a1 a2)   = iConcat 
