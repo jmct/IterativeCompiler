@@ -5,9 +5,16 @@ import Data.List
 
 compileToGCode = labelProgram . compile . parse
 
+writeGCodeFile name = 
+    writeFile name . iDisplay . printInstructions . compileToGCode
+
 {- 
  - Code for testing the compilation and labelling of G-Code:
  - readFile "prelude.src" >>= putStr. iDisplay . showInstructions . compileToGCode
+ -
+ - Typical compilation will look something like:
+ -
+ - readFile name >>= writeGCodeFile name
  -}
 
 maximum' [] = 0
@@ -392,6 +399,11 @@ showInstructions code
     = iConcat [IStr "  Code:{",
                IIndent (iInterleave INewline (map showInstruction code)),
                IStr "}", INewline]
+
+--For when printing the instructions to a file
+printInstructions :: GMCode -> Iseq
+printInstructions code 
+    = iInterleave INewline (map showInstruction code)
 
 --Functions to turn each instruction into an appropriate Iseq
 showInstruction :: Instruction -> Iseq
