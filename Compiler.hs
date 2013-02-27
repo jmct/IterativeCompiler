@@ -47,6 +47,8 @@ data Instruction =
         | Print
         | Par
         | Label String
+        | CaseAlt String
+        | CaseAltEnd String
         | Case
     deriving Eq
 
@@ -125,6 +127,16 @@ fresh = Fresh (\s i -> (i+1, s ++ ": " ++ show i))
 ignore :: String -> Fresh a -> Fresh a
 ignore str (Fresh f) = Fresh $ \_ i -> f str i
 
+
+labelNoInt :: Fresh String
+labelNoInt = Fresh (\s i -> (i, s))
+
+labelAppendInt :: Fresh a -> Fresh a
+labelAppendInt (Fresh f) = Fresh $ \s i -> f (s ++ show i) i
+
+labelNewCount :: Fresh String
+labelNewCount = Fresh $ \s i -> (1, s ++ ": 0")
+
 testFresh :: GMCode -> Fresh GMCode
 testFresh [] = return []
 testFresh (x:xs) = if x == PushGlobal "test"
@@ -148,18 +160,19 @@ labelCode     [] = return Nil
 labelCode (x:xs) =
     case x of
         Casejump alts -> do 
-                            startCase <- fresh
-                            alts' <- labelCases alts
-                            ys    <- labelCode xs
-                            return $ (Code (CasejumpInstr "temp") `Append` alts') 
-                                     `Append` (Code $ Label $ startCase ++ ":EndCase")
-                                     `Append` ys
+                    startCase <- labelNoInt
+                    alts' <- labelAppendInt $ labelCases alts
+                    ys    <- labelCode xs
+                    return $ (Code (CasejumpInstr startCase) `Append` alts') 
+                             `Append` (Code $ Label $ startCase ++ ":EndCase")
+                             `Append` ys
         otherwise     -> do
-                            ys    <- labelCode xs
-                            return (Code x `Append` ys)
-
+                    ys    <- labelCode xs
+                    return (Code x `Append` ys)
+{-
 labelCasejump :: GMCode -> FreshCodeTree
 labelCasejump 
+-}
 
 labelCases :: [(Int, GMCode)] -> Fresh CodeTree
 labelCases     [] = return Nil
@@ -173,8 +186,8 @@ labelCaseAlt :: (Int, GMCode) -> Fresh CodeTree
 labelCaseAlt (tag, code) = do
     altLabel <- fresh
     freshCode <- labelCode code
-    return ( Code (Label (altLabel ++ "::" ++ show tag)) `Append` freshCode
-                            `Append` Code (Label $ altLabel ++ "::EndAlt"))
+    return ( Code (CaseAlt (altLabel ++ "::" ++ show tag)) `Append` freshCode
+                            `Append` Code (CaseAltEnd $ altLabel))
 
 labelProgram :: [GMCompiledSC] -> GMCode
 labelProgram []     = []
@@ -405,7 +418,7 @@ showInstruction (Pack n1 n2)   = iConcat [IStr "Pack{", iNum n1, IStr ","
                                          ,iNum n2, IStr "}"]
 showInstruction (Casejump as)  = iConcat ([IStr "Casejump: ", INewline] 
                                          ++ map showCasejump as)
-showInstruction (CasejumpInstr s) = IStr $ "CaseJump" ++ s
+showInstruction (CasejumpInstr s) = IStr $ "CaseJump: " ++ s
 showInstruction (Split n)      = iConcat [IStr "Split ", iNum n]
 showInstruction Print          = IStr "Print"
 showInstruction (Cond a1 a2)   = iConcat 
@@ -416,6 +429,8 @@ showInstruction (Cond a1 a2)   = iConcat
 showInstruction Par            = IStr "Par"
 showInstruction (Label str)    = IStr ("Label: " ++ str)
 showInstruction Case           = IStr "Case"
+showInstruction (CaseAlt str)  = IStr ("CaseAlt: " ++ str)
+showInstruction (CaseAltEnd str)= IStr ("CaseAltEnd: " ++ str)
 
 
 showCasejump (num, code) = iConcat [iNum num, INewline
