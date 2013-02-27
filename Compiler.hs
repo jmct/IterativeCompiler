@@ -128,8 +128,10 @@ ignore :: String -> Fresh a -> Fresh a
 ignore str (Fresh f) = Fresh $ \_ i -> f str i
 
 
-labelNoInt :: Fresh String
-labelNoInt = Fresh (\s i -> (i, s))
+labelInt :: Fresh String
+labelInt = Fresh (\s i -> (i, s ++ show i))
+
+labelNoInt = Fresh $ \s i -> (i, s)
 
 labelAppendInt :: Fresh a -> Fresh a
 labelAppendInt (Fresh f) = Fresh $ \s i -> f (s ++ show i) i
@@ -160,7 +162,7 @@ labelCode     [] = return Nil
 labelCode (x:xs) =
     case x of
         Casejump alts -> do 
-                    startCase <- labelNoInt
+                    startCase <- labelInt
                     alts' <- labelAppendInt $ labelCases alts
                     ys    <- labelCode xs
                     return $ (Code (CasejumpInstr startCase) `Append` alts') 
@@ -184,9 +186,9 @@ labelCases (x:xs) =
 
 labelCaseAlt :: (Int, GMCode) -> Fresh CodeTree
 labelCaseAlt (tag, code) = do
-    altLabel <- fresh
+    altLabel <- labelNoInt
     freshCode <- labelCode code
-    return ( Code (CaseAlt (altLabel ++ "::" ++ show tag)) `Append` freshCode
+    return ( Code (CaseAlt (altLabel ++ ":" ++ show tag)) `Append` freshCode
                             `Append` Code (CaseAltEnd $ altLabel))
 
 labelProgram :: [GMCompiledSC] -> GMCode
