@@ -195,7 +195,7 @@ labelCaseAlt :: (Int, GMCode) -> Fresh CodeTree
 labelCaseAlt (tag, code) = do
     altLabel <- labelNoInt
     freshCode <- labelCode code
-    return ( Code (CaseAlt (altLabel ++ ":" ++ show tag)) `Append` freshCode
+    return ( Code (CaseAlt (altLabel ++ ": " ++ show tag)) `Append` freshCode
                             `Append` Code (CaseAltEnd $ altLabel))
 
 labelProgram :: [GMCompiledSC] -> GMCode
@@ -428,8 +428,8 @@ showInstruction Lt             = IStr "Lt"
 showInstruction Le             = IStr "Le"
 showInstruction Gt             = IStr "Gt"
 showInstruction Ge             = IStr "Ge"
-showInstruction (Pack n1 n2)   = iConcat [IStr "Pack{", iNum n1, IStr ","
-                                         ,iNum n2, IStr "}"]
+showInstruction (Pack n1 n2)   = iConcat [IStr "Pack ", iNum n1, IStr " "
+                                         ,iNum n2]
 showInstruction (Casejump as)  = iConcat ([IStr "Casejump: ", INewline] 
                                          ++ map showCasejump as)
 showInstruction (CasejumpInstr s) = IStr $ "CaseJump: " ++ s
