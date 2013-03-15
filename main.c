@@ -1,57 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "instructions.h"
 #include "heap.c"
+#include "lex.yy.c"
 
 #define HEAPSIZE 10000
 #define STACK_SIZE 3000
 #define FRAME_STACK_SIZE 1000
 
-typedef enum {
-         Unwind, 
-         PushGlobal,
-         PushInt,
-         Push,
-         MkAp,
-         Update,
-         Pop,
-         Slide,
-         Alloc,
-         Eval,
-         Add, Sub, Mul, Div, Neg,
-         Eq, Ne, Lt, Le, Gt, Ge,
-         Cond,
-         Pack,
-         Casejump,
-         Split, 
-         Print,
-         Par,
-} GCode;
 
-typedef int codePtr;
-
-struct instruction {
-    GCode type;
-    union {
-        int pushIntVal;
-        int pushVal;
-        int updateVal;
-        int popVal;
-        int slideVal;
-        int allocVal;
-        int splitVal;
-        struct {
-            int arity;
-            char *name;
-        } funVals;
-        struct {
-            codePtr tr, fa;
-        } condVals;
-        struct {
-            int tag, arity;
-        } packVals;
-    };
-
-};
 
 typedef struct {
     int currentFP;
@@ -112,7 +69,7 @@ void slideNStack(int n, Machine *mach) {
 
 //Any top-level function will be pushed onto to the stack
 //via this function
-void pushGlobal(struct instruction fun, Machine *mach) {
+void pushGlobal(instruction fun, Machine *mach) {
     int codePtr = lookupKey(fun.funVals.name);    
     Heap addr = allocFun(fun.funVals.arity, codePtr);
     pushStack(addr, mach);
@@ -210,6 +167,7 @@ void showMachineState(Machine *mach) {
 
 
 int main() {
+    /* Old test code, will be used again
     Machine machineA;
     printf("machineA's stack pointer is at: %d\n", machineA.stackPointer);
     myHeap = malloc(HEAPSIZE * sizeof(HeapCell));
@@ -225,6 +183,45 @@ int main() {
     printf("Now applying mkAp:\n");
     mkAp(&machineA);
     showMachineState(&machineA);
+    */
+    GCode tesafsdf = Unwind;
+    tokenTag res;
+    res = yylex();
+    while (res != END) {
+        if (res == Instruction)
+            printf("Instruction(%s)", yyval.strVal);
+        else if (res == Label)
+            printf("Label(%s)", yyval.strVal);
+        else if (res == Argument)
+            printf("Arg(%d)", yyval.intVal);
+        res = yylex();
+    } 
 
     return 0;
 }
+/*
+main() {
+    tokenTag res;
+    res = yylex();
+    while (res != END) {
+        if (res == Instruction)
+            printf("Instruction(%s)", yyval.strVal);
+        else if (res == Label)
+            printf("Label(%s)", yyval.strVal);
+        else if (res == Argument)
+            printf("Arg(%d)", yyval.intVal);
+        res = yylex();
+    } 
+}
+typedef enum {
+    Instruction,
+    Label,
+    Argument,
+    END
+} tokenTag;
+
+union {
+    int intVal;
+    char* strVal;
+} yyval;
+*/

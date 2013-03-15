@@ -33,17 +33,3 @@ arg     [0-9]+
 
 .           printf("Something we weren't expecting: \"%s\"", yytext);
 
-%%
-main() {
-    tokenTag res;
-    do {
-        res = yylex();
-        if (res == Instruction)
-            printf("Instruction(%s)", yyval.strVal);
-        else if (res == Label)
-            printf("Label(%s)", yyval.strVal);
-        else if (res == Argument)
-            printf("Arg(%d)", yyval.intVal);
-        
-    } while (res != END);
-}
