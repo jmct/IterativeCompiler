@@ -359,6 +359,8 @@ instruction makeInstruction(char *instr) {
     else if (strcmp(instr, "CaseAlt:") == 0) {
         newInstr.type = CaseAlt;
         newRes = yylex();
+        char tempStr[10];
+        char tempIntToStr[10];
         if (newRes == Instruction) {
             printf("GCode badly formatted at: CaseAlt: %s\nExiting.\n", yyval.strVal);
             exit(1);
@@ -367,8 +369,17 @@ instruction makeInstruction(char *instr) {
             printf("GCode badly formatted at: CaseAlt: %d\nExiting.\n", yyval.intVal);
             exit(1);
         }
-        newInstr.caseAltVal = malloc(strlen(yyval.strVal) + 1);
-        strcpy(newInstr.caseAltVal, yyval.strVal);
+        strcpy(tempStr, yyval.strVal);
+        newRes = yylex();
+        if (newRes != Argument) {
+            printf("GCode badly formatted at: CaseAlt: (something) %s\nExiting.\n", yyval.strVal);
+            exit(1);
+        }
+        sprintf(tempIntToStr, "%d", yyval.intVal);
+        newInstr.caseAltVal = malloc(strlen(tempStr) + strlen(tempIntToStr) + 1);
+        strcpy(newInstr.caseAltVal, tempStr);
+        strcat(newInstr.caseAltVal, tempIntToStr);
+        //old below
         return newInstr;
     }
     else if (strcmp(instr, "CaseAltEnd:") == 0) {
