@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "instructions.h"
 #include "heap.c"
 #include "lex.yy.c"
@@ -165,6 +166,208 @@ void showMachineState(Machine *mach) {
     }
 }
 
+instruction *parseGCode() {
+    instruction * prog = malloc(sizeof(instruction)* 100);
+    int currentSize = 100;
+    tokenTag res;
+    res = yylex();
+    while (res != END) {
+        if (res == Instruction)
+            printf("Instruction(%s)", yyval.strVal);
+        else if (res == Label)
+            printf("Label(%s)", yyval.strVal);
+        else if (res == Argument)
+            printf("Arg(%d)", yyval.intVal);
+        res = yylex();
+    } 
+}
+
+instruction makeInstruction(char *instr) {
+    instruction newInstr;
+    tokenTag newRes;
+    if (strcmp(instr, "Unwind") == 0) {
+        newInstr.type = Unwind;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Eval") == 0) {
+        newInstr.type = Eval;
+        return newInstr;
+    }
+    else if (strcmp(instr, "MkAp") == 0) {
+        newInstr.type = MkAp;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Print") == 0) {
+        newInstr.type = Print;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Par") == 0) {
+        newInstr.type = Par;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Add") == 0) {
+        newInstr.type = Add;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Sub") == 0) {
+        newInstr.type = Sub;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Mul") == 0) {
+        newInstr.type = Mul;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Div") == 0) {
+        newInstr.type = Div;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Neg") == 0) {
+        newInstr.type = Neg;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Eq") == 0) {
+        newInstr.type = Eq;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Lt") == 0) {
+        newInstr.type = Lt;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Le") == 0) {
+        newInstr.type = Le;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Gt") == 0) {
+        newInstr.type = Gt;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Ge") == 0) {
+        newInstr.type = Ge;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Ne") == 0) {
+        newInstr.type = Ne;
+        return newInstr;
+    }
+    else if (strcmp(instr, "PushGlobal") == 0) {
+        newInstr.type = PushGlobal;
+        newRes = yylex();
+        if (newRes == Arg) {
+            printf("GCode badly formatted at: PushGlobal %d\nExiting.\n", yyval.intVal);
+            exit -1;
+        }
+        else if (newRes == Instruction) {
+            printf("GCode badly formatted at: PushGlobal %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        strcpy(newInstr.pushGlobVal, yyval.strVal);
+        return newInstr;
+    }
+    else if (strcmp(instr, "PushInt") == 0) {
+        newInstr.type = PushInt;
+        newRes = yylex();
+        if (newRes != Arg) {
+            printf("GCode badly formatted at: PushInt %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        newInstr.pushIntVal = yyval.intVal;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Push") == 0) {
+        newInstr.type = Push;
+        newRes = yylex();
+        if (newRes != Arg) {
+            printf("GCode badly formatted at: Push %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        newInstr.pushVal = yyval.intVal;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Update") == 0) {
+        newInstr.type = Update;
+        newRes = yylex();
+        if (newRes != Arg) {
+            printf("GCode badly formatted at: Update %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        newInstr.updateVal = yyval.intVal;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Pop") == 0) {
+        newInstr.type = Pop;
+        newRes = yylex();
+        if (newRes != Arg) {
+            printf("GCode badly formatted at: Pop %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        newInstr.popVal = yyval.intVal;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Slide") == 0) {
+        newInstr.type = Slide;
+        newRes = yylex();
+        if (newRes != Arg) {
+            printf("GCode badly formatted at: Slide %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        newInstr.slideVal = yyval.intVal;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Alloc") == 0) {
+        newInstr.type = Alloc;
+        newRes = yylex();
+        if (newRes != Arg) {
+            printf("GCode badly formatted at: Alloc %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        newInstr.allocVal = yyval.intVal;
+        return newInstr;
+    }
+    else if (strcmp(instr, "Pack") == 0) {
+        newInstr.type = Pack;
+        newRes = yylex();
+        if (newRes != Arg) {
+            printf("GCode badly formatted at: Pack %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        newInstr.packVals.tag = yyval.intVal;
+        newRes = yylex();
+        if (newRes != Arg) {
+            printf("GCode badly formatted at: Pack (tag) %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        newInstr.packVals.arity = yyval.intVal;
+        return newInstr;
+    }
+    else if (strcmp(instr, "CaseJump:") == 0) {
+        newInstr.type = CaseJump;
+        newRes = yylex();
+        if (newRes == Instruction) {
+            printf("GCode badly formatted at: CaseJump: %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        else if (newRes == Arg) {
+            printf("GCode badly formatted at: CaseJump: %d\nExiting.\n", yyval.intVal);
+            exit -1;
+        }
+        newInstr.caseJumpVal = yyval.strVal;
+        return newInstr;
+    }
+    //NOTHING BELOW THIS LINE (in this function) IS FINISHED!!!!!
+    else if (strcmp(instr, "CaseAlt:") == 0) {
+        newInstr.type = CaseAlt;
+        newRes = yylex();
+        if (newRes != Arg) {
+            printf("GCode badly formatted at: Slide %s\nExiting.\n", yyval.strVal);
+            exit -1;
+        }
+        newInstr.slideVal = yyval.intVal;
+        return newInstr;
+    }
+
+}
+
+
 
 int main() {
     /* Old test code, will be used again
@@ -185,17 +388,6 @@ int main() {
     showMachineState(&machineA);
     */
     GCode tesafsdf = Unwind;
-    tokenTag res;
-    res = yylex();
-    while (res != END) {
-        if (res == Instruction)
-            printf("Instruction(%s)", yyval.strVal);
-        else if (res == Label)
-            printf("Label(%s)", yyval.strVal);
-        else if (res == Argument)
-            printf("Arg(%d)", yyval.intVal);
-        res = yylex();
-    } 
 
     return 0;
 }

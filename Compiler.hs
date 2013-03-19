@@ -54,6 +54,7 @@ data Instruction =
         | Print
         | Par
         | Label String
+        | FunDef String
         | CaseAlt String
         | CaseAltEnd String
         | Case
@@ -131,6 +132,9 @@ instance Monad Fresh where
 fresh :: Fresh String
 fresh = Fresh (\s i -> (i+1, s ++ ": " ++ show i))
 
+scfresh :: Fresh String
+scfresh = Fresh (\s i -> (i+1, s ++ " " ++ show i))
+
 ignore :: String -> Fresh a -> Fresh a
 ignore str (Fresh f) = Fresh $ \_ i -> f str i
 
@@ -160,9 +164,9 @@ testFresh (x:xs) = if x == PushGlobal "test"
 labelSC :: GMCode -> Fresh CodeTree
 labelSC     [] = return Nil
 labelSC (xs) = do
-                top <- fresh
+                top <- scfresh
                 ys <- labelCode xs
-                return $ (Code (Label top) `Append` ys) --`Append` (Code $ Label $ top ++ ":End")
+                return $ (Code (FunDef top) `Append` ys) --`Append` (Code $ Label $ top ++ ":End")
 
 labelCode :: GMCode -> Fresh CodeTree
 labelCode     [] = return Nil
@@ -408,9 +412,9 @@ printInstructions code
 --Functions to turn each instruction into an appropriate Iseq
 showInstruction :: Instruction -> Iseq
 showInstruction Unwind         = IStr "Unwind"
-showInstruction (PushGlobal f) = (IStr "Pushglobal ") `IAppend` (IStr f)
+showInstruction (PushGlobal f) = (IStr "PushGlobal ") `IAppend` (IStr f)
 showInstruction (Push n)       = (IStr "Push ") `IAppend` (iNum n)
-showInstruction (PushInt n)    = (IStr "Pushint ") `IAppend` (iNum n)   
+showInstruction (PushInt n)    = (IStr "PushInt ") `IAppend` (iNum n)   
 showInstruction MkAp           = IStr "MkAp"
 showInstruction (Update n)     = (IStr "Update ") `IAppend` (iNum n)   
 showInstruction (Pop n)        = (IStr "Pop ") `IAppend` (iNum n)   
@@ -442,6 +446,7 @@ showInstruction (Cond a1 a2)   = iConcat
                                     (iInterleave INewline (map showInstruction a2))]
 showInstruction Par            = IStr "Par"
 showInstruction (Label str)    = IStr ("Label: " ++ str)
+showInstruction (FunDef str)    = IStr ("FunDef: " ++ str)
 showInstruction Case           = IStr "Case"
 showInstruction (CaseAlt str)  = IStr ("CaseAlt: " ++ str)
 showInstruction (CaseAltEnd str)= IStr ("CaseAltEnd: " ++ str)
