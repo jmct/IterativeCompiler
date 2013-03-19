@@ -20,8 +20,8 @@ typedef enum {       //Number of Arguments
          CaseAlt,    //1
          CaseAltEnd, //1
          Split,      //1
-         Label,      //1
-         FunDef,      //1
+         GLabel,      //1
+         FunDef,      //2
          Print,      //0
          Par         //0
 } GCode;
@@ -31,9 +31,11 @@ typedef int codePtr;
 struct _instruction {
     GCode type;
     union {
-        char * pughGlobVal;
+        char * pushGlobVal;
         char * caseJumpVal;
         char * caseAltVal;
+        char * caseAltEndVal;
+        char * labelVal;
         int pushIntVal;
         int pushVal;
         int updateVal;
