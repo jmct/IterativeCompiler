@@ -359,7 +359,7 @@ instruction makeInstruction(char *instr) {
     else if (strcmp(instr, "CaseAlt:") == 0) {
         newInstr.type = CaseAlt;
         newRes = yylex();
-        char tempStr[10];
+        char tempStr[100];
         char tempIntToStr[10];
         if (newRes == Instruction) {
             printf("GCode badly formatted at: CaseAlt: %s\nExiting.\n", yyval.strVal);
@@ -490,7 +490,7 @@ int main() {
     instruction *prog = NULL;
     prog = parseGCode();
 
-    printf("Size of program: %d instructions.\n", (sizeof(prog)/sizeof(prog[0])));
+    printf("Test\n");
 
     return 0;
 }
