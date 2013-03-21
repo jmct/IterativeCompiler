@@ -3,6 +3,7 @@
 #define INSTRUCTION_H
 
 typedef enum {       //Number of Arguments
+         End,
          Unwind,     //0 
          PushGlobal, //1 
          PushInt,    //1

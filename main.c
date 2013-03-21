@@ -431,6 +431,8 @@ instruction *parseGCode() {
     int currentSize = 100;
     int curInstr = 0;
     tokenTag res;
+    instruction endInstr;
+    endInstr.type = End;
     res = yylex();
     while (res != END) {
         if (res == Instruction) {
@@ -455,10 +457,11 @@ instruction *parseGCode() {
         }
         res = yylex();
     } 
-    if (curInstr < currentSize) {
-        temp = realloc(prog, sizeof(instruction) * curInstr);
+    if ((curInstr + 1) < currentSize) { //the + 1 is for the End instruction 
+        temp = realloc(prog, sizeof(instruction) * (curInstr + 1));
         if (temp != NULL) {
             prog = temp;
+            prog[curInstr + 1] = endInstr;
         }
         else {
             printf("Error in allocating memory when loading GCode into memory. Exiting\n");
@@ -489,9 +492,11 @@ int main() {
     */
     instruction *prog = NULL;
     prog = parseGCode();
-
-    printf("Test\n");
-
+    int counter;
+    for (counter = 0; prog[counter].type != End; counter++) {
+        printf("%d\n", prog[counter].type);
+    }
+    printf("\nCounter value = %d", counter);
     return 0;
 }
 /*
