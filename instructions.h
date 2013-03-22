@@ -56,4 +56,11 @@ struct _instruction {
 };
 typedef struct _instruction instruction;
 
+//Function to iterate over and parse .gcode file. Returns a pointer to an array
+//of instructions (the program).
+instruction *parseGCode();
+
+//Take returned value from a yylex() call and create an instruction type
+instruction makeInstruction(char *instr);
+
 #endif
