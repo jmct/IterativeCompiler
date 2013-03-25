@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "symbolTable.c"
+#include "instructions.h"
+#include "symbolTable.h"
 
 
 /* This typedef is just simple syntactic sugar for node tags */
@@ -55,7 +56,7 @@ struct atom {
         } constr; 
         struct {
             int arity;
-            int code;
+            instruction * code;
             //TODO list of suspended computations
         } fun;
     };
@@ -135,7 +136,7 @@ Heap allocHeapCell(Tag tag, Heap heap) {
     switch (tag) {
         case FUN:
             heap[nextFree].fun.arity = -1;
-            heap[nextFree].fun.code  = -1;
+            heap[nextFree].fun.code  = NULL;
             break;
         case APP:
             heap[nextFree].app.leftArg = NULL;
@@ -169,7 +170,7 @@ Heap allocConstr(int arity1, int id1) {
     return constrNode;
 }
 
-Heap allocFun(int arity1, int codePtr) {
+Heap allocFun(int arity1, instruction * codePtr) {
     Heap funNode = allocHeapCell(FUN, myHeap);
     funNode->fun.arity = arity1;
     funNode->fun.code = codePtr;

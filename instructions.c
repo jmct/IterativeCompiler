@@ -3,6 +3,7 @@
 #include <string.h>
 #include "lex.yy.c"
 #include "instructions.h"
+#include "symbolTable.h"
 //The following are the definitions for the functions that parse our gcode
 //file. 
 
@@ -192,8 +193,8 @@ instruction makeInstruction(char *instr) {
             printf("GCode badly formatted at: CaseJump: %d\nExiting.\n", yyval.intVal);
             exit(1);
         }
-        newInstr.caseJumpVal = malloc(strlen(yyval.strVal) + 1);
-        strcpy(newInstr.caseJumpVal, yyval.strVal);
+        newInstr.labelVal = malloc(strlen(yyval.strVal) + 1);
+        strcpy(newInstr.labelVal, yyval.strVal);
         return newInstr;
     }
     else if (strcmp(instr, "CaseAlt:") == 0) {
@@ -216,9 +217,9 @@ instruction makeInstruction(char *instr) {
             exit(1);
         }
         sprintf(tempIntToStr, "%d", yyval.intVal);
-        newInstr.caseAltVal = malloc(strlen(tempStr) + strlen(tempIntToStr) + 1);
-        strcpy(newInstr.caseAltVal, tempStr);
-        strcat(newInstr.caseAltVal, tempIntToStr);
+        newInstr.labelVal = malloc(strlen(tempStr) + strlen(tempIntToStr) + 1);
+        strcpy(newInstr.labelVal, tempStr);
+        strcat(newInstr.labelVal, tempIntToStr);
         //old below
         return newInstr;
     }
@@ -233,8 +234,8 @@ instruction makeInstruction(char *instr) {
             printf("GCode badly formatted at: CaseAltEnd: %d\nExiting.\n", yyval.intVal);
             exit(1);
         }
-        newInstr.caseAltEndVal = malloc(strlen(yyval.strVal) + 1);
-        strcpy(newInstr.caseAltEndVal, yyval.strVal);
+        newInstr.labelVal = malloc(strlen(yyval.strVal) + 1);
+        strcpy(newInstr.labelVal, yyval.strVal);
         return newInstr;
     }
     else if (strcmp(instr, "Split") == 0) {
@@ -266,6 +267,7 @@ instruction makeInstruction(char *instr) {
 }
 
 instruction *parseGCode() {
+    printf("Entered parseGCode()\n");
     instruction * prog = malloc(sizeof(instruction)* 100);
     instruction * temp = NULL; //This is to hold a temp pointer when we realloc()
     int currentSize = 100;
@@ -278,6 +280,23 @@ instruction *parseGCode() {
         if (res == Instruction) {
 //            printf("Instruction(%s)", yyval.strVal); // <-Used for debugging 
             prog[curInstr] = makeInstruction(yyval.strVal);
+            GCode tempType = prog[curInstr].type;
+            int testIndex = 0;
+            if (tempType == GLabel || 
+                tempType == CaseAlt) {
+                printf("Inserting\n");
+                testIndex = insert(prog[curInstr].labelVal, curInstr);
+                printf("Value: %s\n"
+                       "insert addr: %d\n"
+                       "Lookup addr: %d\n",
+                       prog[curInstr].labelVal, 
+                       curInstr,
+                       lookupKey(prog[curInstr].labelVal));
+                printf("index value: %d\n\n", testIndex);
+            }
+            else if (tempType == FunDef) {
+                insert(prog[curInstr].funVals.name, curInstr);
+            }
         }
         else {
             printf("There is an error in the formatting of the GCode\n");

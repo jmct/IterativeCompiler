@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "instructions.h"
+#include "symbolTable.h"
 #include "heap.c"
 //#include "lex.yy.c"
 
@@ -19,7 +20,7 @@ typedef struct {
 
 typedef struct {
     HeapCell * stack[STACK_SIZE];
-    int progCounter;
+    instruction* progCounter;
     int stackPointer; 
     int framePointer;
     Frame frameStack[FRAME_STACK_SIZE];
@@ -71,7 +72,7 @@ void slideNStack(int n, Machine *mach) {
 //Any top-level function will be pushed onto to the stack
 //via this function
 void pushGlobal(instruction fun, Machine *mach) {
-    int codePtr = lookupKey(fun.funVals.name);    
+    instruction* codePtr = lookupKey(fun.funVals.name);    
     Heap addr = allocFun(fun.funVals.arity, codePtr);
     pushStack(addr, mach);
 }
@@ -187,9 +188,18 @@ int main() {
     showMachineState(&machineA);
     */
     instruction *prog = NULL;
+    printf("About to enter parseGCode()\n");
     prog = parseGCode();
     int counter;
+    instruction * tempLookup = NULL;
     for (counter = 0; prog[counter].type != End; counter++) {
+/*        if (prog[counter].type == CaseAlt || prog[counter].type == GLabel) {
+            tempLookup = lookupKey(prog[counter].labelVal);
+            printf("ArrayIndex ptr Value: %p\nTable lookup value: %p\n\n", &prog[counter], tempLookup);
+        }
+        else if (prog[counter].type == FunDef) {
+            printf("THis is a FunDef\n\n");
+        }*/
         printf("%d\n", prog[counter].type);
     }
     printf("\nCounter value = %d", counter);

@@ -33,9 +33,6 @@ struct _instruction {
     GCode type;
     union {
         char * pushGlobVal;
-        char * caseJumpVal;
-        char * caseAltVal;
-        char * caseAltEndVal;
         char * labelVal;
         int pushIntVal;
         int pushVal;
