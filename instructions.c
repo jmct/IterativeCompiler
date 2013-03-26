@@ -282,17 +282,8 @@ instruction *parseGCode() {
             prog[curInstr] = makeInstruction(yyval.strVal);
             GCode tempType = prog[curInstr].type;
             int testIndex = 0;
-            if (tempType == GLabel || 
-                tempType == CaseAlt) {
-                printf("Inserting\n");
-                testIndex = insert(prog[curInstr].labelVal, curInstr);
-                printf("Value: %s\n"
-                       "insert addr: %d\n"
-                       "Lookup addr: %d\n",
-                       prog[curInstr].labelVal, 
-                       curInstr,
-                       lookupKey(prog[curInstr].labelVal));
-                printf("index value: %d\n\n", testIndex);
+            if (tempType == GLabel || tempType == CaseAlt) {
+                insert(prog[curInstr].labelVal, curInstr);
             }
             else if (tempType == FunDef) {
                 insert(prog[curInstr].funVals.name, curInstr);

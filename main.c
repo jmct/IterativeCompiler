@@ -191,15 +191,16 @@ int main() {
     printf("About to enter parseGCode()\n");
     prog = parseGCode();
     int counter;
-    instruction * tempLookup = NULL;
+    int tempLookup = 0;
     for (counter = 0; prog[counter].type != End; counter++) {
-/*        if (prog[counter].type == CaseAlt || prog[counter].type == GLabel) {
+        if (prog[counter].type == CaseAlt || prog[counter].type == GLabel) {
             tempLookup = lookupKey(prog[counter].labelVal);
-            printf("ArrayIndex ptr Value: %p\nTable lookup value: %p\n\n", &prog[counter], tempLookup);
+            printf("ArrayIndex ptr Value: %d\nTable lookup value: %d\n\n", counter, tempLookup);
         }
         else if (prog[counter].type == FunDef) {
-            printf("THis is a FunDef\n\n");
-        }*/
+            tempLookup = lookupKey(prog[counter].funVals.name);
+            printf("FunDef position: %d\nLookup val: %d\n\n", counter, tempLookup);
+        }
         printf("%d\n", prog[counter].type);
     }
     printf("\nCounter value = %d", counter);
