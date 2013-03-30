@@ -1,0 +1,233 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include "stack.h"
+
+#define CHUNK_SIZE 20
+
+
+
+chunk * newChunk() {
+    HeapCell ** tempPtr = malloc(sizeof(HeapCell*) * CHUNK_SIZE);
+    chunk * tempChunkPtr = malloc(sizeof(chunk));
+    tempChunkPtr->stack = tempPtr;
+    return tempChunkPtr;
+};
+
+
+stack initStack(stack stk) {
+    stk.stackObj = newChunk();
+    stk.stackPointer = &stk.stackObj->stack[CHUNK_SIZE-1];
+    stk.framePointer = NULL;
+    return stk;
+}
+
+void stackOverflow(stack * stck) {
+    printf("Perfoming Overflow\n\n");
+    chunk *tempChunk = newChunk();
+    tempChunk->previous = stck->stackObj;
+    stck->stackObj = tempChunk;
+    stck->stackPointer = &stck->stackObj->stack[CHUNK_SIZE-1];
+}
+
+/* Pushing a Frame
+ *
+ * When we push a frame we want to store two pieces of information:
+ * The former frame pointer, and the as-of-yet computed return value.
+ *
+ * Step 1:
+ * For the return value we copy the address of what's pointed to from 
+ * the top of the stack currently and overwrite that stack slot with 
+ * NULL (this becomes the slot where we will point to our return value). 
+ *
+ * Step 2:
+ * For the previous frame pointer we push the current frame pointer onto
+ * the stack (casting it so that we don't get an error) and the update 
+ * the frame pointer to point to that slot (which will currently be the
+ * same as the stack pointer.
+ *
+ * Step 3:
+ * Push the address that we stored from the top of the last frame onto the
+ * stack, this leaves us with the new frame as it should be
+ */
+void pushFrame(stack *stck) {
+    //step 1
+    HeapCell * topOfOldStack = NULL;
+    topOfOldStack = *stck->stackPointer;
+    *stck->stackPointer = NULL;
+
+    //step 2
+    stackPush((HeapCell*)stck->framePointer, stck);
+    stck->framePointer = stck->stackPointer;
+
+    //step 3
+    stackPush(topOfOldStack, stck);
+}
+
+/*Pop stack frame:
+ *
+ * when popping a stack frame we want to revert the frame pointer to that
+ * of the previous frame and ensure that whatever was pointed to at the
+ * top of the current stack is still at the top when we complete the pop.
+ *
+ * Step 1:
+ * We must be careful,
+ * it is possible that there was a stack overflow between the return value
+ * slot and the new frame pointer, so we have to check for that. Store the
+ * value of where the return slot is into a temporary pointer. 
+ *
+ * Step 2:
+ * Save the address of what the current stack pointer points to and assign
+ * that value to the reserved spot (frame pointer + 1). 
+ *
+ * Step 3:
+ * Set the stack pointer to point at the return value slot (frame pointer + 1).
+ * 
+ * Step 4:
+ * Set the frame pointer to the value of what the previous frame pointer was.
+ * This happens to be stored where the frame pointer points to.
+ */
+void popFrame(stack * stck) {
+    if (stck->framePointer == NULL) return; //There's nothing to do!
+    printf("Pop Frame is actually doing something\n");
+    //step 1
+    HeapCell ** tempRetValPtr = NULL;
+    if (stck->framePointer == &stck->stackObj->stack[CHUNK_SIZE-1]) {
+        tempRetValPtr = stck->stackObj->previous->stack;
+    }
+    else {
+        tempRetValPtr = stck->framePointer + 1;
+    }
+
+    //step 2
+    *tempRetValPtr = *stck->stackPointer;
+
+    //step 3
+    stck->stackPointer = tempRetValPtr;
+
+    //step 4
+    stck->framePointer = (HeapCell**)(*stck->framePointer);
+}
+/*
+ * The way that push is implemented (as simply as possible) means that the
+ * first stack element will start off empty and not be used. 
+ * This is because the stack pointer is incremented before the assignment/
+ */
+void stackPush(HeapCell *addr, stack * stck) {
+    if (stck->stackPointer == stck->stackObj->stack)
+        stackOverflow(stck);
+    else
+        stck->stackPointer -= 1;
+    *(stck->stackPointer) = addr;
+}
+
+void stackUnderflow(stack * stck) {
+    if (stck->stackObj->previous == NULL) {
+        printf("Error: trying to pop more items than there are on the stack\n");
+        exit(1);
+    }
+    chunk * tempChunkPtr = stck->stackObj;
+    stck->stackObj = stck->stackObj->previous;
+    stck->stackPointer = stck->stackObj->stack;
+    free(tempChunkPtr);
+}
+
+void stackPopThrowAway(stack *stck) {
+    if (stck->stackPointer == &stck->stackObj->stack[CHUNK_SIZE-1])
+        stackUnderflow(stck);
+    else
+        stck->stackPointer += 1;
+}
+
+HeapCell * stackPopKeep(stack * stck) {
+    HeapCell * tempHCPtr = NULL;
+    tempHCPtr = *stck->stackPointer;
+    stackPopThrowAway(stck);
+    return tempHCPtr;
+}
+
+int itemsInFrame(stack * stck) {
+    if (stck->framePointer >= stck->stackObj->stack &&
+        stck->framePointer <= &stck->stackObj->stack[CHUNK_SIZE-1]) {
+        return stck->framePointer - stck->stackPointer;
+    }
+    else { // When the stack Pointer and the frame Pointer are not on the same chunk
+        int res = (int)(&stck->stackObj->stack[CHUNK_SIZE-1] - stck->stackPointer) + 1;
+        chunk* curChunk = stck->stackObj;
+        if (stck->framePointer == NULL && curChunk->previous == NULL) {
+            res = res - 1;
+            return res;
+        }
+        else if (stck->framePointer == NULL) {
+            curChunk = curChunk->previous;
+            while (curChunk->previous != NULL) {
+                res = res + CHUNK_SIZE;
+                curChunk = curChunk->previous;
+            }
+            //The last slot in the last chunk does not store an item
+            return res + (CHUNK_SIZE - 1); 
+        }
+        else {
+            curChunk = curChunk->previous;
+            while (!(stck->framePointer >= curChunk->stack &&
+                     stck->framePointer <= &curChunk->stack[CHUNK_SIZE-1]) &&
+                     stck->framePointer != NULL) {
+                res = res + CHUNK_SIZE;
+                curChunk = curChunk->previous;
+            }
+            res = res + (int)(stck->framePointer - curChunk->stack);
+            return res;
+        }
+    }
+}
+    
+/*
+void main() {
+    stack myStack;
+    myStack = initStack(myStack);
+    HeapCell testCell;
+    testCell.tag = 753;
+    HeapCell testCell2;
+    testCell2.tag = 75357;
+    stackPush(&testCell, &myStack);
+    pushFrame(&myStack);
+    stackPush(&testCell, &myStack);
+    pushFrame(&myStack);
+    stackPush(&testCell, &myStack);
+    stackPush(&testCell, &myStack);
+    stackPush(&testCell, &myStack);
+    int i;
+    for (i = 0; i < 20; i++) {
+        stackPush(&testCell2, &myStack);
+    }
+    printf("The numArgs should be low: %d\n", numArgs(&myStack));
+} 
+    //printf("Address of the heapCell: %p\nAddress pointed to at top of stack: %p\n\n", &testCell, *myStack.stackPointer);
+    printf("Address of stackObject's stack in myStack's chunk: %p\n", myStack.stackObj->stack);
+    printf("Address of stackPointer in myStack: %p\n", myStack.stackPointer);
+    printf("Subtracting the former from the latter should be equal to chunk_size: %ld\n\n", 
+            (myStack.stackPointer - myStack.stackObj->stack));
+    printf("Now pushing 25 'items'...\n");
+    int i = 0;
+    for (i; i<45; i++) {
+        printf("Push item %d\n", i+1);
+        if (i == 38) {
+            printf("testitem 2 is now pushed\n");
+            stackPush(&testCell2, &myStack);
+        }
+        else {
+            stackPush(&testCell, &myStack);
+        }
+    }
+    printf("Address of stackObject's stack in myStack's chunk: %p\n", myStack.stackObj->stack);
+    printf("Address of stackPointer in myStack: %p\n", myStack.stackPointer);
+    printf("Subtracting the former from the latter should be equal to chunk_size - 6: %ld\n\n", 
+            (myStack.stackPointer - myStack.stackObj->stack));
+    printf("Now popping 5 items...(should not underflow)\n");
+    for(i=0; i<5; i++) {
+        stackPopThrowAway(&myStack);
+    }
+    printf("Now popping 1 item...(should underflow)\n");
+    stackPopThrowAway(&myStack);
+    printf("Address of the heapCell2: %p\nAddress pointed to at top of stack: %p\n\n", &testCell2, *myStack.stackPointer);
+    printf("Now if I use stackPopKeep() I should get a pointer that points to the same thing: %p\n\n", stackPopKeep(&myStack));
+*/
