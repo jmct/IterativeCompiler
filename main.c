@@ -3,6 +3,7 @@
 #include <string.h>
 #include "instructions.h"
 #include "symbolTable.h"
+#include "stack.h"
 #include "heap.c"
 //#include "lex.yy.c"
 
@@ -13,52 +14,13 @@
 
 
 typedef struct {
-    int currentFP;
-    int retProgCounter;
-} Frame;
-
-
-typedef struct {
-    HeapCell * stack[STACK_SIZE];
+    stack stck;
     instruction* progCounter;
-    int stackPointer; 
-    int framePointer;
-    Frame frameStack[FRAME_STACK_SIZE];
 } Machine;
 
 void initMachine(Machine *mach) {
-    mach->progCounter  = 0;
-    mach->stackPointer = 0;
-    mach->framePointer = 0;
-}
-
-//This pops one item off the stack for when we want to STORE the item
-//this function DOES NOT correspond to the GCode instruction 'pop'
-Heap popStack(Machine *mach) {
-    HeapCell *poppedItem;
-    poppedItem = mach->stack[mach->stackPointer];
-    mach->stackPointer--;
-    return poppedItem;
-}
-
-int numArgs(Machine *mach) {
-    return mach->stackPointer - mach->framePointer;
-}
-
-//Pushing an arbitrary item onto the stack
-void pushStack(HeapCell* item, Machine* mach) {
-    mach->stack[mach->stackPointer + 1] = item;
-    mach->stackPointer++;
-}
-
-void pushNStack(int n, Machine *mach) {
-    HeapCell *toPush = mach->stack[mach->stackPointer - n];
-    pushStack(toPush, mach);
-}
-
-//This is the function that corresponds to the GCode instruction 'Pop n'
-void popNFromStack(int n, Machine *mach) {
-    mach->stackPointer -= n;
+    mach->progCounter  = NULL;
+    mach->stack = initStack(mach->stck);
 }
 
 //This is for the GCode instruction 'Slide n'
