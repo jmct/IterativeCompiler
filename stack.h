@@ -1,9 +1,7 @@
-struct HeapCell_ {
-    int tag;
-    char tester[10];
-};
-
-typedef struct HeapCell_ HeapCell;
+#ifndef STACK_H
+#define STACK_H
+#include "heap.h"
+#include "instructions.h"
 
 struct chunk_ {
     struct chunk_ *previous;
@@ -26,7 +24,7 @@ stack initStack(stack stk);
 
 void stackOverflow(stack * stck);
 
-void pushFrame(stack *stck);
+void pushFrame(instruction *pc, stack *stck);
 
 void stackPush(HeapCell *addr, stack * stck);
 
@@ -34,8 +32,16 @@ void stackUnderflow(stack * stck);
 
 void stackPopThrowAway(stack *stck);
 
+void popNFromStack(int n, stack* stck);
+
 HeapCell * stackPopKeep(stack * stck);
 
 int itemsInFrame(stack * stck);
 
-void popFrame(stack * stck);
+instruction *popFrame(stack *stck);
+
+HeapCell * getNthElement(int n, stack * stck);
+
+HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr);
+
+#endif

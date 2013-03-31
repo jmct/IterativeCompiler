@@ -2,65 +2,8 @@
 #include <stdlib.h>
 #include "instructions.h"
 #include "symbolTable.h"
+#include "heap.h"
 
-
-/* This typedef is just simple syntactic sugar for node tags */
-typedef enum {
-    FUN,
-    LOCKED_FUN,
-    APP,
-    LOCKED_APP,
-    CONSTR,
-    INTEGER, 
-    COLLECTED,
-    INDIRECTION
-} Tag;
-
-/* This typedef is just simple syntactic sugar for bools */
-typedef enum {
-    FALSE,
-    TRUE
-} Bool;
-
-struct atom;
-typedef struct atom HeapCell;
-
-//This is once again syntactic sugar for declaring atoms.
-//(Not having the say 'struct atom' instead just declare 'Atom')
-typedef struct atom Atom;
-
-/*The atom is the basic building block for items in the heap
- *
- *There are four 'types' of atoms: 
- *Integer, Application, Constructor, and Function
- *All atoms have a tag (based on the enumeration above).
- *The rest of the atom is made up of a union of the necessary
- *parts for the specific type. This means that even an atom tagged
- *as 'INTEGER' requires 3 words. One word for the tag, one word for the
- *int itself and one 'wasted' word that is there for use in the other atom
- *types. 
- */
-struct atom {
-    Tag tag;
-    union {
-        HeapCell * forward; //This is used for both Indirections and GC forwarding
-        int num; 
-        struct {
-            HeapCell * leftArg;
-            HeapCell * rightArg;
-            //TODO LIst of suspended computations
-        } app;
-        struct {
-            int id;
-            int arity;
-        } constr; 
-        struct {
-            int arity;
-            instruction * code;
-            //TODO list of suspended computations
-        } fun;
-    };
-};
 
 void showHeapItem(HeapCell item) {
     switch (item.tag) {
@@ -126,12 +69,9 @@ void showHeapItem(HeapCell item) {
  *Atoms make up the HeapCell
  */
 
-typedef HeapCell * Heap;
-Heap myHeap;
-
 int nextFree = 0;
 
-Heap allocHeapCell(Tag tag, Heap heap) {
+HeapPtr allocHeapCell(Tag tag, HeapPtr heap) {
     heap[nextFree].tag = tag;
     switch (tag) {
         case FUN:
@@ -156,35 +96,35 @@ Heap allocHeapCell(Tag tag, Heap heap) {
     return &heap[nextFree++];
 }
 
-Heap allocApp(Heap left, Heap right) {
-    Heap appNode = allocHeapCell(APP, myHeap);
+HeapPtr allocApp(HeapPtr left, HeapPtr right, HeapPtr myHeap) {
+    HeapPtr appNode = allocHeapCell(APP, myHeap);
     appNode->app.leftArg = left;
     appNode->app.rightArg = right;
     return appNode;
 }
 
-Heap allocConstr(int arity1, int id1) {
-    Heap constrNode = allocHeapCell(CONSTR, myHeap);
+HeapPtr allocConstr(int arity1, int id1, HeapPtr myHeap) {
+    HeapPtr constrNode = allocHeapCell(CONSTR, myHeap);
     constrNode->constr.id = id1;
     constrNode->constr.arity = arity1;
     return constrNode;
 }
 
-Heap allocFun(int arity1, instruction * codePtr) {
-    Heap funNode = allocHeapCell(FUN, myHeap);
+HeapPtr allocFun(int arity1, instruction * codePtr, HeapPtr myHeap) {
+    HeapPtr funNode = allocHeapCell(FUN, myHeap);
     funNode->fun.arity = arity1;
     funNode->fun.code = codePtr;
     return funNode;
 }
 
-Heap allocInt(int value) {
-    Heap intNode = allocHeapCell(INTEGER, myHeap);
+HeapPtr allocInt(int value, HeapPtr myHeap) {
+    HeapPtr intNode = allocHeapCell(INTEGER, myHeap);
     intNode->num = value;
     return intNode;
 }
 
-Heap allocIndirection(Heap forwardAdd) {
-    Heap indNode = allocHeapCell(INDIRECTION, myHeap);
+HeapPtr allocIndirection(HeapPtr forwardAdd, HeapPtr myHeap) {
+    HeapPtr indNode = allocHeapCell(INDIRECTION, myHeap);
     indNode->forward = forwardAdd;
     return indNode;
 }

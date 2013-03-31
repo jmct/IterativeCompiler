@@ -39,23 +39,30 @@ void stackOverflow(stack * stck) {
  * the top of the stack currently and overwrite that stack slot with 
  * NULL (this becomes the slot where we will point to our return value). 
  *
- * Step 2:
+ * Step 2a:
+ * We also need to push the current program counter so that when we pop
+ * we can return to the current instruction.
+ *
+ * Step 2b:
  * For the previous frame pointer we push the current frame pointer onto
  * the stack (casting it so that we don't get an error) and the update 
  * the frame pointer to point to that slot (which will currently be the
  * same as the stack pointer.
- *
+ * 
  * Step 3:
  * Push the address that we stored from the top of the last frame onto the
  * stack, this leaves us with the new frame as it should be
  */
-void pushFrame(stack *stck) {
+void pushFrame(instruction * pc, stack *stck) {
     //step 1
     HeapCell * topOfOldStack = NULL;
     topOfOldStack = *stck->stackPointer;
     *stck->stackPointer = NULL;
 
-    //step 2
+    //step 2a
+    stackPush((HeapCell*)pc, stck);
+
+    //step 2b
     stackPush((HeapCell*)stck->framePointer, stck);
     stck->framePointer = stck->stackPointer;
 
@@ -83,20 +90,24 @@ void pushFrame(stack *stck) {
  * Set the stack pointer to point at the return value slot (frame pointer + 1).
  * 
  * Step 4:
+ * set the Machine's progCounter to the value stored in the last frame
+ * This is 1 item below the framePointer
+ * 
+ * Step 5:
  * Set the frame pointer to the value of what the previous frame pointer was.
  * This happens to be stored where the frame pointer points to.
+ * 
+ * Step 6:
+ * Free all unneeded chunks
  */
-void popFrame(stack * stck) {
+instruction * popFrame(stack *stck) {
+    instruction * newPC = NULL;
+    chunk * curChunk = stck->stackObj;
     if (stck->framePointer == NULL) return; //There's nothing to do!
     printf("Pop Frame is actually doing something\n");
     //step 1
     HeapCell ** tempRetValPtr = NULL;
-    if (stck->framePointer == &stck->stackObj->stack[CHUNK_SIZE-1]) {
-        tempRetValPtr = stck->stackObj->previous->stack;
-    }
-    else {
-        tempRetValPtr = stck->framePointer + 1;
-    }
+    tempRetValPtr = getNthAddrFrom(2, stck, stck->framePointer);
 
     //step 2
     *tempRetValPtr = *stck->stackPointer;
@@ -105,7 +116,20 @@ void popFrame(stack * stck) {
     stck->stackPointer = tempRetValPtr;
 
     //step 4
+    newPC = (instruction*)*getNthAddrFrom(1, stck, stck->framePointer);
+    
+    //step 5
     stck->framePointer = (HeapCell**)(*stck->framePointer);
+
+    //step 6
+    chunk* oldChunk = NULL;
+    while (!(stck->stackPointer >= curChunk->stack &&
+             stck->stackPointer <= &curChunk->stack[CHUNK_SIZE-1])) {
+        oldChunk = curChunk;
+        curChunk = curChunk->previous;
+        free(oldChunk);
+    }
+    return newPC;
 }
 /*
  * The way that push is implemented (as simply as possible) means that the
@@ -136,6 +160,17 @@ void stackPopThrowAway(stack *stck) {
         stackUnderflow(stck);
     else
         stck->stackPointer += 1;
+}
+
+void popNFromStack(int n, stack* stck) {
+    for (n; n > 0; n--) {
+        if (stck->stackPointer == &stck->stackObj->stack[CHUNK_SIZE-1]) {
+            stackUnderflow(stck);
+        }
+        else {
+            stck->stackPointer -= 1;
+        }
+    }
 }
 
 HeapCell * stackPopKeep(stack * stck) {
@@ -178,6 +213,39 @@ int itemsInFrame(stack * stck) {
             return res;
         }
     }
+}
+
+HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr) {
+    chunk* curChunk = stck->stackObj;
+    while (!(fromPtr >= curChunk->stack &&
+             fromPtr <= &curChunk->stack[CHUNK_SIZE-1])) {
+        curChunk = curChunk->previous;
+    }
+    for (n; n > 0; n--) {
+        if (fromPtr == (&curChunk->stack[CHUNK_SIZE -1])) {
+            curChunk = curChunk->previous;
+            fromPtr = curChunk->stack;
+        }
+        else {
+            fromPtr = fromPtr - 1;
+        }
+    }
+    return fromPtr;
+}
+
+HeapCell * getNthElement(int n, stack* stck) {
+    HeapCell ** tempSP = stck->stackPointer;
+    chunk * curChunk = stck->stackObj;
+    for (n; n > 0; n--) {
+        if (tempSP == (&curChunk->stack[CHUNK_SIZE -1])) {
+            curChunk = curChunk->previous;
+            tempSP = curChunk->stack;
+        }
+        else {
+            tempSP = tempSP - 1;
+        }
+    }
+    return *tempSP;
 }
     
 /*

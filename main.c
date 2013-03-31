@@ -3,8 +3,8 @@
 #include <string.h>
 #include "instructions.h"
 #include "symbolTable.h"
+#include "heap.h"
 #include "stack.h"
-#include "heap.c"
 //#include "lex.yy.c"
 
 #define HEAPSIZE 10000
@@ -12,6 +12,7 @@
 #define FRAME_STACK_SIZE 1000
 
 
+HeapPtr globalHeap = NULL;
 
 typedef struct {
     stack stck;
@@ -20,14 +21,14 @@ typedef struct {
 
 void initMachine(Machine *mach) {
     mach->progCounter  = NULL;
-    mach->stack = initStack(mach->stck);
+    mach->stck = initStack(mach->stck);
 }
 
 //This is for the GCode instruction 'Slide n'
 void slideNStack(int n, Machine *mach) {
-    HeapCell *temp = popStack(mach);
-    popNFromStack(n, mach);
-    pushStack(temp, mach);
+    HeapCell *temp = stackPopKeep(&mach->stck);
+    popNFromStack(n, &mach->stck);
+    stackPush(temp, &mach->stck);
 }
 
 
@@ -35,8 +36,8 @@ void slideNStack(int n, Machine *mach) {
 //via this function
 void pushGlobal(instruction fun, Machine *mach) {
     instruction* codePtr = lookupKey(fun.funVals.name);    
-    Heap addr = allocFun(fun.funVals.arity, codePtr);
-    pushStack(addr, mach);
+    HeapPtr addr = allocFun(fun.funVals.arity, codePtr, globalHeap);
+    stackPush(addr, &mach->stck);
 }
 
 /*
@@ -50,28 +51,30 @@ void pushInt(int val, Machine * mach) {
 //to both
 void mkAp(Machine *mach) {
     HeapCell *leftArg, *rightArg, *newNode;
-    leftArg = popStack(mach);
-    rightArg = popStack(mach);
-    newNode = allocApp(leftArg, rightArg);
-    pushStack(newNode, mach);
+    leftArg = stackPopKeep(mach);
+    rightArg = stackPopKeep(mach);
+    newNode = allocApp(leftArg, rightArg, globalHeap);
+    stackPush(newNode, &mach->stck);
 }
 
+/*
 //After an expression is evaluated, the root node of the 
 //expression (which is n+1 items into the stack
 //must be updated in order to allow for sharing
 void update(int n, Machine *mach) {
     HeapCell *indirectTo = popStack(mach);
     HeapCell *indirectNode = allocIndirection(indirectTo);
-    mach->stack[mach->stackPointer - n] = indirectNode;
+    mach->stck[(int)mach->stck.stackPointer - n] = indirectNode;
 }
+*/
 
 //alloc is used in letrec expressions to ensure that 
 //there is heap allocated for (as of yet) unknown expressions
 void allocN(int n, Machine *mach) {
     HeapCell *tempAddr; 
     for (n; n > 0; n--) {
-        tempAddr = allocIndirection(NULL);
-        pushStack(tempAddr, mach);
+        tempAddr = allocIndirection(NULL, globalHeap);
+        stackPush(tempAddr, &mach->stck);
     }
 }
 
@@ -81,14 +84,8 @@ void evalI(Machine *mach) {
 }
 */
 
-//When Eval is executed we must update the stack frame to 
-//represent the environment of the new function being 
-//unwound
-void pushFrame(Machine *mach) {
-    Frame *newFrame = &(mach->frameStack[mach->framePointer +1]);
-    newFrame->retProgCounter = mach->progCounter + 1; //I am not sure about this
-    newFrame->currentFP = mach->framePointer; 
-    mach->framePointer = mach->stackPointer;
+int numArgs(Machine *mach) {
+    return itemsInFrame(&mach->stck) - 1;
 }
 
 void unwind(HeapCell* item, Machine* machine) {
@@ -96,7 +93,7 @@ void unwind(HeapCell* item, Machine* machine) {
     int nArgs = -1;
 
     while (item->tag == APP) {
-        pushStack(item->app.leftArg, machine);
+        stackPush(item->app.leftArg, &machine->stck);
         item = item->app.leftArg;
     }
 
@@ -120,6 +117,7 @@ void unwind(HeapCell* item, Machine* machine) {
     }
 }
 
+/*
 void showMachineState(Machine *mach) {
     printf("Machine Stack:\n");
     int stackDepth = mach->stackPointer;
@@ -128,6 +126,7 @@ void showMachineState(Machine *mach) {
         showHeapItem(*mach->stack[stackDepth]);
     }
 }
+*/
 
 
 
@@ -139,16 +138,17 @@ int main() {
     printf("Free: %d, Pointer Value %p\n", nextFree, myHeap);
     Heap point = allocHeapCell(APP, myHeap); 
     printf("Free: %d, Pointer Value %p\n", nextFree, point);
-    pushStack(point, &machineA);
+    stackPush(point, &machineA.stck);
     printf("machineA's stack pointer is at: %d\n", machineA.stackPointer);
     point = allocHeapCell(APP, myHeap); 
     printf("Free: %d, Pointer Value %p\n", nextFree, point);
-    pushStack(point, &machineA);
+    stackPush(point, &machineA.stck);
     showMachineState(&machineA);
     printf("Now applying mkAp:\n");
     mkAp(&machineA);
     showMachineState(&machineA);
     */
+    globalHeap = malloc(sizeof(HeapCell) * HEAPSIZE);
     instruction *prog = NULL;
     printf("About to enter parseGCode()\n");
     prog = parseGCode();
