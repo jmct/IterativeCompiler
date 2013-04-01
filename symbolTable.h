@@ -9,14 +9,14 @@
 //occur
 struct bucket {
     char * key;
-    int binding;
+    instruction * binding;
     struct bucket * next;
 };
 
 unsigned int hash(char* inputStr);
 
-struct bucket* makeBucket(char* key1, int binding1, struct bucket *next1);
-int insert(char* key, int binding);
-int lookupKey(char* key);
+struct bucket* makeBucket(char* key1, instruction * binding1, struct bucket *next1);
+int insert(char* key, instruction * binding);
+instruction *lookupKey(char* key);
 
 #endif

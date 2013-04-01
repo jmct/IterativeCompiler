@@ -263,6 +263,8 @@ instruction makeInstruction(char *instr) {
         strcpy(newInstr.labelVal, yyval.strVal);
         return newInstr;
     }
+    printf("Encountered illegal GCode instruction\nExiting...\n");
+    exit(1);
     //NOTHING BELOW THIS LINE (in this function) IS FINISHED!!!!!
 }
 
@@ -280,14 +282,6 @@ instruction *parseGCode() {
         if (res == Instruction) {
 //            printf("Instruction(%s)", yyval.strVal); // <-Used for debugging 
             prog[curInstr] = makeInstruction(yyval.strVal);
-            GCode tempType = prog[curInstr].type;
-            int testIndex = 0;
-            if (tempType == GLabel || tempType == CaseAlt) {
-                insert(prog[curInstr].labelVal, curInstr);
-            }
-            else if (tempType == FunDef) {
-                insert(prog[curInstr].funVals.name, curInstr);
-            }
         }
         else {
             printf("There is an error in the formatting of the GCode\n");
@@ -307,15 +301,27 @@ instruction *parseGCode() {
         }
         res = yylex();
     } 
-    if ((curInstr + 1) < currentSize) { //the + 1 is for the End instruction 
+    if ((curInstr) < currentSize) { //the + 1 is for the End instruction 
         temp = realloc(prog, sizeof(instruction) * (curInstr + 1));
         if (temp != NULL) {
             prog = temp;
-            prog[curInstr + 1] = endInstr;
         }
         else {
             printf("Error in allocating memory when loading GCode into memory. Exiting\n");
             exit(1);
+        }
+    }
+    prog[curInstr] = endInstr;
+    //Add necessary symbols to symbol table
+    GCode tempType = 0;
+    currentSize = curInstr;
+    for (curInstr = 0; curInstr < currentSize; curInstr++) {
+        tempType = prog[curInstr].type;
+        if (tempType == GLabel || tempType == CaseAlt) {
+            insert(prog[curInstr].labelVal, &prog[curInstr]);
+        }
+        else if (tempType == FunDef) {
+            insert(prog[curInstr].funVals.name, &prog[curInstr]);
         }
     }
     return prog;

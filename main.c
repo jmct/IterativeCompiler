@@ -40,23 +40,57 @@ void pushGlobal(instruction fun, Machine *mach) {
     stackPush(addr, &mach->stck);
 }
 
-/*
 void pushInt(int val, Machine * mach) {
-    //TODO 
+    HeapPtr addr = allocInt(val, globalHeap);
+    stackPush(addr, &mach->stck);
 }
-*/
 
 //MkAp simply takes the two topmost items on the stack
 //and replaces them with an application node pointing 
 //to both
 void mkAp(Machine *mach) {
     HeapCell *leftArg, *rightArg, *newNode;
-    leftArg = stackPopKeep(mach);
-    rightArg = stackPopKeep(mach);
+    leftArg = stackPopKeep(&mach->stck);
+    rightArg = stackPopKeep(&mach->stck);
     newNode = allocApp(leftArg, rightArg, globalHeap);
     stackPush(newNode, &mach->stck);
 }
 
+//Push the value located n elements from top of stack
+void push(int offset, Machine *mach) {
+    HeapCell* addr = getNthElement(offset, &mach->stck);
+    stackPush(addr, &mach->stck);
+}
+
+//slide the top of the stack N places
+//i.e. popAndKeep then move the SP back n spaces then push what you kept
+void slide(int num, Machine *mach) {
+    HeapCell **newSP = NULL;
+    HeapCell * top = stackPopKeep(&mach->stck);
+    newSP = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
+    mach->stck.stackPointer = newSP;
+    stackPush(top, &mach->stck);
+}
+
+//Pop the top N elements off the stack
+void pop(int num, Machine *mach) {
+    HeapCell **newSP = NULL;
+    newSP = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
+    mach->stck.stackPointer = newSP;
+}
+        
+//update the pointer to the top of the expression tree to point
+//to an indirection node (this allows for sharing)
+//TODO:
+//When locked nodes introduced, this function must take them into accont
+void update(int num, Machine *mach) {
+    HeapCell **toUpdate = NULL;
+    HeapCell * top = stackPopKeep(&mach->stck);
+    HeapCell *newNode = allocIndirection(top, globalHeap);
+    toUpdate = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
+    *toUpdate = newNode;
+}
+    
 /*
 //After an expression is evaluated, the root node of the 
 //expression (which is n+1 items into the stack
@@ -133,10 +167,11 @@ void showMachineState(Machine *mach) {
 int main() {
     /* Old test code, will be used again
     Machine machineA;
+    initMachine(&machineA);
     printf("machineA's stack pointer is at: %d\n", machineA.stackPointer);
     myHeap = malloc(HEAPSIZE * sizeof(HeapCell));
     printf("Free: %d, Pointer Value %p\n", nextFree, myHeap);
-    Heap point = allocHeapCell(APP, myHeap); 
+    HeapPtr point = allocHeapCell(APP, myHeap); 
     printf("Free: %d, Pointer Value %p\n", nextFree, point);
     stackPush(point, &machineA.stck);
     printf("machineA's stack pointer is at: %d\n", machineA.stackPointer);
@@ -153,15 +188,17 @@ int main() {
     printf("About to enter parseGCode()\n");
     prog = parseGCode();
     int counter;
-    int tempLookup = 0;
+    instruction * tempInstrPtr = NULL;
     for (counter = 0; prog[counter].type != End; counter++) {
         if (prog[counter].type == CaseAlt || prog[counter].type == GLabel) {
-            tempLookup = lookupKey(prog[counter].labelVal);
-            printf("ArrayIndex ptr Value: %d\nTable lookup value: %d\n\n", counter, tempLookup);
+            tempInstrPtr = lookupKey(prog[counter].labelVal);
+            printf("ArrayIndex ptr Value: %d\nTable lookup value: %d\n\n", counter, 
+                    (int)(tempInstrPtr - &prog[0]));
         }
         else if (prog[counter].type == FunDef) {
-            tempLookup = lookupKey(prog[counter].funVals.name);
-            printf("FunDef position: %d\nLookup val: %d\n\n", counter, tempLookup);
+            tempInstrPtr = lookupKey(prog[counter].funVals.name);
+            printf("FunDef position: %d\nLookup val: %d\n\n", counter,
+                    (int)(tempInstrPtr - &prog[0]));
         }
         printf("%d\n", prog[counter].type);
     }
