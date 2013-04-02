@@ -103,7 +103,7 @@ void pushFrame(instruction * pc, stack *stck) {
 instruction * popFrame(stack *stck) {
     instruction * newPC = NULL;
     chunk * curChunk = stck->stackObj;
-    if (stck->framePointer == NULL) return; //There's nothing to do!
+    if (stck->framePointer == NULL) return NULL; //There's nothing to do!
     printf("Pop Frame is actually doing something\n");
     //step 1
     HeapCell ** tempRetValPtr = NULL;
@@ -217,8 +217,7 @@ int itemsInFrame(stack * stck) {
 
 HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr) {
     chunk* curChunk = stck->stackObj;
-    while (!(fromPtr >= curChunk->stack &&
-             fromPtr <= &curChunk->stack[CHUNK_SIZE-1])) {
+    while (!(fromPtr >= curChunk->stack && fromPtr <= &curChunk->stack[CHUNK_SIZE-1])) {
         curChunk = curChunk->previous;
     }
     for (n; n > 0; n--) {
@@ -227,7 +226,7 @@ HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr) {
             fromPtr = curChunk->stack;
         }
         else {
-            fromPtr = fromPtr - 1;
+            fromPtr = fromPtr + 1;
         }
     }
     return fromPtr;

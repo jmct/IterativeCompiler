@@ -42,7 +42,8 @@ typedef struct atom Atom;
 struct atom {
     Tag tag;
     union {
-        HeapCell * forward; //This is used for both Indirections and GC forwarding
+        HeapCell * gcforward; //for GC forwarding
+        HeapCell * indirection; //for indirection Nodes
         int num; 
         struct {
             HeapCell * leftArg;
@@ -52,6 +53,7 @@ struct atom {
         struct {
             int id;
             int arity;
+            HeapCell ** fields;
         } constr; 
         struct {
             int arity;
@@ -66,7 +68,7 @@ typedef HeapCell * HeapPtr;
 void showHeapItem(HeapCell item);
 HeapPtr allocHeapCell(Tag tag, HeapPtr heap);
 HeapPtr allocApp(HeapPtr left, HeapPtr right, HeapPtr myHeap);
-HeapPtr allocConstr(int arity1, int id1, HeapPtr myHeap);
+HeapPtr allocConstr(int id1, int arity1, HeapPtr myHeap);
 HeapPtr allocFun(int arity1, instruction * codePtr, HeapPtr myHeap);
 HeapPtr allocInt(int value, HeapPtr myHeap);
 HeapPtr allocIndirection(HeapPtr forwardAdd, HeapPtr myHeap);

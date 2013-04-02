@@ -8,11 +8,11 @@
 void showHeapItem(HeapCell item) {
     switch (item.tag) {
         case FUN:
-            printf("FUN: arity %d, codePtr %d\n", 
+            printf("FUN: arity %d, codePtr %p\n", 
                     item.fun.arity, item.fun.code);
             break;
         case LOCKED_FUN:
-            printf("LOCKED FUN: arity %d, codePtr %d\n", 
+            printf("LOCKED FUN: arity %d, codePtr %p\n", 
                     item.fun.arity, item.fun.code);
             break;
         case APP:
@@ -31,7 +31,7 @@ void showHeapItem(HeapCell item) {
             printf("INT: val %d\n", item.num);
             break;
         case INDIRECTION:
-            printf("IND: Address %p\n", item.forward);
+            printf("IND: Address %p\n", item.indirection);
             break;
         default:
             printf("Indirection/forwarding MUST IMPLEMENT");
@@ -90,7 +90,7 @@ HeapPtr allocHeapCell(Tag tag, HeapPtr heap) {
             heap[nextFree].num = 0;
             break;
         default:
-            heap[nextFree].forward = NULL;
+            heap[nextFree].indirection = NULL;
             break;
     } //end of switch statement
     return &heap[nextFree++];
@@ -103,10 +103,14 @@ HeapPtr allocApp(HeapPtr left, HeapPtr right, HeapPtr myHeap) {
     return appNode;
 }
 
-HeapPtr allocConstr(int arity1, int id1, HeapPtr myHeap) {
+HeapPtr allocConstr(int id1, int arity1, HeapPtr myHeap) {
     HeapPtr constrNode = allocHeapCell(CONSTR, myHeap);
     constrNode->constr.id = id1;
     constrNode->constr.arity = arity1;
+    if (arity1 > 0)
+        constrNode->constr.fields = malloc(sizeof(HeapCell*) * arity1);
+    else 
+        constrNode->constr.fields = NULL;
     return constrNode;
 }
 
@@ -125,7 +129,7 @@ HeapPtr allocInt(int value, HeapPtr myHeap) {
 
 HeapPtr allocIndirection(HeapPtr forwardAdd, HeapPtr myHeap) {
     HeapPtr indNode = allocHeapCell(INDIRECTION, myHeap);
-    indNode->forward = forwardAdd;
+    indNode->indirection = forwardAdd;
     return indNode;
 }
 

@@ -50,6 +50,5 @@ instruction * lookupKey(char* key) {
         }
     }
     //if we reach here, then there wasn't a match in the table
-    printf("Symbol table lookup returned null on key: %s (This shouldn't happen!!)\n", key);
     return NULL;
 }

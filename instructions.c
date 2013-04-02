@@ -85,7 +85,7 @@ instruction makeInstruction(char *instr) {
         strcpy(newInstr.funVals.name, yyval.strVal);
         newRes = yylex();
         if (newRes != Argument) {
-            printf("GCode badly formatted at: Pack (tag) %s\nExiting.\n", yyval.strVal);
+            printf("GCode badly formatted at: FunDef (label) %s\nExiting.\n", yyval.strVal);
             exit(1);
         }
         newInstr.funVals.arity = yyval.intVal;
@@ -268,12 +268,33 @@ instruction makeInstruction(char *instr) {
     //NOTHING BELOW THIS LINE (in this function) IS FINISHED!!!!!
 }
 
+void setupIntro(instruction *prog) {
+    //Below are the three instructions that start everything off
+    //PushGlobal "main"
+    //Eval
+    //Print
+    //End
+    instruction intro1, intro2, intro3, intro4;
+    intro1.type = PushGlobal;
+    intro1.pushGlobVal = malloc(sizeof(char) * 5); //"main" + 1
+    char mn[] = "main";
+    strcpy(intro1.pushGlobVal, mn);
+    prog[0] = intro1;
+    intro2.type = Eval;
+    prog[1] = intro2;
+    intro3.type = Print;
+    prog[2] = intro3;
+    intro4.type = End;
+    prog[3] = intro4;
+}
+
 instruction *parseGCode() {
     printf("Entered parseGCode()\n");
     instruction * prog = malloc(sizeof(instruction)* 100);
+    setupIntro(prog);
     instruction * temp = NULL; //This is to hold a temp pointer when we realloc()
     int currentSize = 100;
-    int curInstr = 0;
+    int curInstr = 4; //this is because of the intro Instructions
     tokenTag res;
     instruction endInstr;
     endInstr.type = End;
