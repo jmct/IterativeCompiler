@@ -1,0 +1,5 @@
+if p t f = case p of
+            <0> -> f;
+            <1> -> t;
+fac n = if (n==0) 1 (n * fac (n-1)); 
+main = fac 5

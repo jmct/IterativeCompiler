@@ -1,0 +1,7 @@
+nil = Pack{0,0};
+cons x xs = Pack{1,2} x xs;
+length xs = case xs of
+        <0> -> 0;
+        <1> x xs -> 1 + length xs;
+
+main = length (cons 2 (cons 3 (cons 4 nil)))
