@@ -263,7 +263,7 @@ instruction makeInstruction(char *instr) {
         strcpy(newInstr.labelVal, yyval.strVal);
         return newInstr;
     }
-    printf("Encountered illegal GCode instruction\nExiting...\n");
+    printf("Encountered illegal GCode instruction: %s\nExiting...\n", instr);
     exit(1);
     //NOTHING BELOW THIS LINE (in this function) IS FINISHED!!!!!
 }

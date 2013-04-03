@@ -127,6 +127,12 @@ HeapPtr allocInt(int value, HeapPtr myHeap) {
     return intNode;
 }
 
+HeapPtr updateToInd(HeapPtr forwardAdd, HeapPtr node) {
+    node->tag = INDIRECTION;
+    node->indirection = forwardAdd;
+    return node;
+}
+
 HeapPtr allocIndirection(HeapPtr forwardAdd, HeapPtr myHeap) {
     HeapPtr indNode = allocHeapCell(INDIRECTION, myHeap);
     indNode->indirection = forwardAdd;

@@ -71,6 +71,7 @@ HeapPtr allocApp(HeapPtr left, HeapPtr right, HeapPtr myHeap);
 HeapPtr allocConstr(int id1, int arity1, HeapPtr myHeap);
 HeapPtr allocFun(int arity1, instruction * codePtr, HeapPtr myHeap);
 HeapPtr allocInt(int value, HeapPtr myHeap);
+HeapPtr updateToInd(HeapPtr forwardAdd, HeapPtr node);
 HeapPtr allocIndirection(HeapPtr forwardAdd, HeapPtr myHeap);
 
 #endif

@@ -86,9 +86,12 @@ void pop(int num, Machine *mach) {
 void update(int num, Machine *mach) {
     HeapCell **toUpdate = NULL;
     HeapCell * top = stackPopKeep(&mach->stck);
-    HeapCell *newNode = allocIndirection(top, globalHeap);
     toUpdate = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
-    *toUpdate = newNode;
+    HeapCell * newNode = updateToInd(top, *toUpdate);
+    //*toUpdate = newNode;
+    if (newNode != *toUpdate) {
+        printf("Something went wrong on update\nExiting\n");
+    }
 }
 
 //The GCode instruction Alloc is to allocate empty indirections for use
@@ -171,12 +174,14 @@ void unwind(Machine* mach) {
             if (newPC == NULL) {
                 //end thread
             }
+            mach->progCounter = newPC;
             break;
         case CONSTR:
             newPC = popFrame(&mach->stck);
             if (newPC == NULL) {
-                //end thread
+                printf("!!!! newPC from unwinding constr returned Null");//end thread
             }
+            mach->progCounter = newPC;
             break;
         case FUN:
             nArgs = numArgs(mach);
@@ -197,6 +202,7 @@ void unwind(Machine* mach) {
                     printf("Tried to pop last frame on partial application\nExiting\n");
                     exit(1);
                 }
+                mach->progCounter = newPC;
             }
             else {
                 newPC = item->fun.code;
@@ -216,7 +222,6 @@ void unwind(Machine* mach) {
 
 void eval(Machine *mach) {
     pushFrame(mach->progCounter, &mach->stck);
-    unwind(mach);
 }
 
 //Below we have all of the two operand arithmetic operators
@@ -339,6 +344,7 @@ void geI(Machine *mach) {
 //Casejump deals with checking the constructor tag at the top of the stack, and
 //then jumping to the corresponding code sequence. 
 void casejump(char *label, Machine *mach) {
+    printf("Casejump here!\n");
     HeapPtr topOfStack = *mach->stck.stackPointer;
     if (topOfStack->tag != CONSTR) {
         printf("Tried to casejump when top of stack was not a constructor\n exiting.\n");
@@ -349,13 +355,29 @@ void casejump(char *label, Machine *mach) {
     char tempIntToStr[10];
     char tempStr[100];
     //create the label
-    sprintf(tempIntToStr, "%d", constrTag);
+    sprintf(tempIntToStr, ":%d", constrTag);
     strcpy(tempStr, label);
     strcat(tempStr, tempIntToStr);
     //lookup the label
     instruction *newPC = lookupKey(tempStr);
     if (newPC == NULL) {
-        printf("Non-exhaustive patterns under label: %s\nExiting...\n", label);
+        printf("Non-exhaustive patterns under label: %s\nExiting...\n", tempStr);
+        exit(1);
+    }
+    mach->progCounter = newPC + 1;
+}
+
+void caseAltEnd(char *label, Machine *mach) {
+    //temporary storage for creatint label to lookup
+    char tempStr[100];
+    char endcase[9] = ":EndCase";
+    //create the label
+    strcpy(tempStr, label);
+    strcat(tempStr, endcase);
+    //lookup the label
+    instruction *newPC = lookupKey(tempStr);
+    if (newPC == NULL) {
+        printf("Tried to jump out of CaseAltEnd with: %s\nExiting...\n", label);
         exit(1);
     }
     mach->progCounter = newPC + 1;
@@ -378,13 +400,12 @@ void split(int num, Machine * mach) {
 }    
 
 void pack(int tag, int ar, Machine *mach) {
-    HeapPtr oldTop = stackPopKeep(&mach->stck);
     HeapPtr newConstr = allocConstr(tag, ar, globalHeap);
     int i;
     for (i = 0; i < ar; i++) {
         newConstr->constr.fields[i] = stackPopKeep(&mach->stck);
     }
-    stackPush(oldTop, &mach->stck);
+    stackPush(newConstr, &mach->stck);
 }
 
 void printI(Machine *mach) {
@@ -404,7 +425,7 @@ void printI(Machine *mach) {
     else {
         printf("Trying to print non-Int or non-Constructor!\n");
     }
-    return;
+    exit(0);
 }
 /*
 void showMachineState(Machine *mach) {
@@ -459,7 +480,6 @@ int main() {
     //    printf("%d\n", prog[counter].type);
     }
     printf("\nCounter value = %d\n", counter);
-    printf("Value of prog[0]: %d\n", prog[0].funVals.arity);
     Machine machineA;
     initMachine(&machineA);
     machineA.progCounter = prog;
@@ -497,8 +517,6 @@ void dispatchGCode(Machine *mach) {
     while (mach->progCounter->type != End) {
         instruction *oldPC = mach->progCounter;
         mach->progCounter += 1;
-        printf("In dispatch, oldPC type: %d\n", oldPC->type);
-        printf("In dispatch, SP Val: %p\n", *mach->stck.stackPointer);
         switch (oldPC->type) {
             case Unwind:
                 unwind(mach);
@@ -529,6 +547,7 @@ void dispatchGCode(Machine *mach) {
                 break;
             case Eval:
                 eval(mach);
+                unwind(mach);
                 break;
             case Add:
                 addI(mach);
@@ -574,6 +593,7 @@ void dispatchGCode(Machine *mach) {
             case CaseAltEnd:
                 //Here we need to append "EndCase" to the labelVal and 
                 //jump to the result of a lookup
+                caseAltEnd(oldPC->labelVal, mach);
                 break;
             case Split:
                 split(oldPC->splitVal, mach);
