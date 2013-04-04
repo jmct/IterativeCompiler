@@ -1,3 +1,5 @@
+module Compiler where
+
 import Language
 import Parser
 import Heap
