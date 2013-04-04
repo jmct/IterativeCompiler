@@ -4,6 +4,7 @@
 #include "symbolTable.h"
 #include "heap.h"
 
+#define HEAPSIZE 10000
 
 void showHeapItem(HeapCell item) {
     switch (item.tag) {
@@ -72,6 +73,10 @@ void showHeapItem(HeapCell item) {
 int nextFree = 0;
 
 HeapPtr allocHeapCell(Tag tag, HeapPtr heap) {
+    if (nextFree >= HEAPSIZE) {
+        printf("Heap overflow, implement GC!\nExiting");
+        exit(1);
+    }
     heap[nextFree].tag = tag;
     switch (tag) {
         case FUN:

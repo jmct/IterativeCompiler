@@ -78,6 +78,22 @@ void pop(int num, Machine *mach) {
     newSP = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
     mach->stck.stackPointer = newSP;
 }
+
+void unlock(HeapPtr node) {
+    while (node->tag == LOCKED_APP) {
+        //TODO empty pending list here
+        node->tag = APP;
+        node = node->app.leftArg;
+    }
+    if (node->tag == LOCKED_FUN) {
+        //TODO empty pending list
+        node->tag = FUN;
+    }
+    else {
+        return;
+    }
+}
+        
         
 //update the pointer to the top of the expression tree to point
 //to an indirection node (this allows for sharing)
@@ -87,6 +103,7 @@ void update(int num, Machine *mach) {
     HeapCell **toUpdate = NULL;
     HeapCell * top = stackPopKeep(&mach->stck);
     toUpdate = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
+    unlock(*toUpdate);
     HeapCell * newNode = updateToInd(top, *toUpdate);
     //*toUpdate = newNode;
     if (newNode != *toUpdate) {
@@ -214,6 +231,12 @@ void unwind(Machine* mach) {
                 mach->progCounter = newPC;
             }
             break;
+        case LOCKED_APP:
+            printf("Locked Ap case of unwind, this isn't implemented\n");
+            break;
+        case LOCKED_FUN:
+            printf("Locked function case of unwind, this isn't implemented\n");
+            break;
         default:
             printf("Default case of unwind, this shouldn't happen\n");
             break;
@@ -275,7 +298,7 @@ void eqI(Machine *mach) {
         resVal = 1;
     else
         resVal = 0;
-    HeapPtr res = allocConstr(0, resVal, globalHeap);
+    HeapPtr res = allocConstr(resVal, 0, globalHeap);
     stackPush(res, &mach->stck);
 }
     
@@ -287,7 +310,7 @@ void neI(Machine *mach) {
         resVal = 1;
     else if (resVal == 0)
         resVal = 0;
-    HeapPtr res = allocConstr(0, resVal, globalHeap);
+    HeapPtr res = allocConstr(resVal, 0, globalHeap);
     stackPush(res, &mach->stck);
 }
     
@@ -299,7 +322,7 @@ void ltI(Machine *mach) {
         resVal = 1;
     else if (resVal >= 0)
         resVal = 0;
-    HeapPtr res = allocConstr(0, resVal, globalHeap);
+    HeapPtr res = allocConstr(resVal, 0, globalHeap);
     stackPush(res, &mach->stck);
 }
 
@@ -311,7 +334,7 @@ void leI(Machine *mach) {
         resVal = 1;
     else if (resVal > 0)
         resVal = 0;
-    HeapPtr res = allocConstr(0, resVal, globalHeap);
+    HeapPtr res = allocConstr(resVal, 0, globalHeap);
     stackPush(res, &mach->stck);
 }
 
@@ -323,7 +346,7 @@ void gtI(Machine *mach) {
         resVal = 1;
     else if (resVal <= 0)
         resVal = 0;
-    HeapPtr res = allocConstr(0, resVal, globalHeap);
+    HeapPtr res = allocConstr(resVal, 0, globalHeap);
     stackPush(res, &mach->stck);
 }
 
@@ -335,7 +358,7 @@ void geI(Machine *mach) {
         resVal = 1;
     else if (resVal < 0)
         resVal = 0;
-    HeapPtr res = allocConstr(0, resVal, globalHeap);
+    HeapPtr res = allocConstr(resVal, 0, globalHeap);
     stackPush(res, &mach->stck);
 }
 //End of arithmetic and comparison operator
