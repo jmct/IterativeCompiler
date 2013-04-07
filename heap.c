@@ -3,6 +3,7 @@
 #include "instructions.h"
 #include "symbolTable.h"
 #include "heap.h"
+#include "gthread.h"
 
 #define HEAPSIZE 10000
 
@@ -144,3 +145,10 @@ HeapPtr allocIndirection(HeapPtr forwardAdd, HeapPtr myHeap) {
     return indNode;
 }
 
+void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem) {
+    threadQueueNode* newNode = malloc(sizeof(threadQueueNode));
+    newNode->current = mach;
+    newNode->next = heapItem->app.blockedQueue;
+    heapItem->app.blockedQueue = newNode;
+    heapItem->app.numBlockedThreads += 1;
+}

@@ -1,7 +1,7 @@
-interpreter : main.o instructions.o symbolTable.o stack.o heap.o
-	gcc main.o instructions.o symbolTable.o stack.o heap.o -o interpreter
+interpreter : main.o instructions.o symbolTable.o stack.o heap.o gthread.o
+	gcc main.o instructions.o symbolTable.o stack.o heap.o gthread.o -o interpreter
 
-instruction.o : instructions.h instructions.c
+instructions.o : instructions.h instructions.c
 	gcc -c instructions.c
 
 symbolTable.o : instructions.h symbolTable.h symbolTable.c
@@ -13,8 +13,11 @@ heap.o : heap.h
 stack.o : heap.h stack.h
 	gcc -c stack.c
 
-main.o : main.c
+gthread.o: gthread.h
+	gcc -c gthread.c
+
+main.o : main.c stack.c heap.c instructions.c gthread.c symbolTable.c
 	gcc -c main.c
 
 clean :
-	rm instructions.o main.o symbolTable.o stack.o heap.o
+	rm instructions.o main.o symbolTable.o stack.o heap.o gthread.o

@@ -1,6 +1,7 @@
 #ifndef HEAP_H
 #define HEAP_H
 #include "instructions.h"
+#include "gthread.h"
 
 
 /* This typedef is just simple syntactic sugar for node tags */
@@ -41,14 +42,16 @@ typedef struct atom Atom;
  */
 struct atom {
     Tag tag;
+    HeapCell * gcforward; //for GC forwarding
     union {
-        HeapCell * gcforward; //for GC forwarding
         HeapCell * indirection; //for indirection Nodes
         int num; 
         struct {
             HeapCell * leftArg;
             HeapCell * rightArg;
-            //TODO LIst of suspended computations
+            //List of suspended computations
+            int numBlockedThreads;
+            threadQueueNode* blockedQueue;
         } app;
         struct {
             int id;
@@ -58,12 +61,16 @@ struct atom {
         struct {
             int arity;
             instruction * code;
-            //TODO list of suspended computations
+            //List of suspended computations
+            int numBlockedThreads;
+            threadQueueNode* blockedQueue;
         } fun;
     };
 };
 
 typedef HeapCell * HeapPtr;
+
+void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem);
 
 void showHeapItem(HeapCell item);
 HeapPtr allocHeapCell(Tag tag, HeapPtr heap);

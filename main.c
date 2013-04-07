@@ -5,24 +5,35 @@
 #include "symbolTable.h"
 #include "heap.h"
 #include "stack.h"
+#include "gthread.h"
 //#include "lex.yy.c"
 
 #define HEAPSIZE 10000
 #define STACK_SIZE 3000
 #define FRAME_STACK_SIZE 1000
 
-
-HeapPtr globalHeap = NULL;
-
-typedef struct {
+struct Machine_ {
     stack stck;
     instruction* progCounter;
-} Machine;
+};
+
+typedef struct Machine_ Machine;
 
 void initMachine(Machine *mach) {
     mach->progCounter  = NULL;
     mach->stck = initStack(mach->stck);
 }
+
+enum ExecutionMode_ {
+    LIVE,   
+    BLOCKED,
+    FINISHED
+};
+
+typedef enum ExecutionMode_ ExecutionMode;
+
+HeapPtr globalHeap = NULL;
+
 
 //This is for the GCode instruction 'Slide n'
 void slideNStack(int n, Machine *mach) {
@@ -164,7 +175,7 @@ void rearrangeStack(int num, stack *stck) {
     }
 }
 
-void unwind(Machine* mach) {
+ExecutionMode unwind(Machine* mach) {
     HeapPtr item = *mach->stck.stackPointer;
     //this will only be used when unwinding reaches a function call
     int nArgs = -1;
@@ -209,7 +220,7 @@ void unwind(Machine* mach) {
                     printf("Tried to follow code PTR that points to NULL\nExiting\n");
                     exit(1);
                 }
-                mach->progCounter = newPC;
+                mach->progCounter = newPC + 1;
                 //Need to add sentinal for list of blocked threads
             }
             else if (nArgs < item->fun.arity) {
@@ -232,8 +243,9 @@ void unwind(Machine* mach) {
             }
             break;
         case LOCKED_APP:
-            printf("Locked Ap case of unwind, this isn't implemented\n");
-            break;
+            addToBlockedQueue(mach, item);
+            printf("Locked Ap case of unwind, set thread to BLOCKED");
+            return BLOCKED;
         case LOCKED_FUN:
             printf("Locked function case of unwind, this isn't implemented\n");
             break;
@@ -241,6 +253,7 @@ void unwind(Machine* mach) {
             printf("Default case of unwind, this shouldn't happen\n");
             break;
     }
+    return LIVE;
 }
 
 void eval(Machine *mach) {
@@ -461,7 +474,7 @@ void showMachineState(Machine *mach) {
 }
 */
 
-void dispatchGCode(Machine *mach);
+ExecutionMode dispatchGCode(Machine *mach);
 
 int main() {
     /* Old test code, will be used again
@@ -536,103 +549,105 @@ union {
 } yyval;
 */
 
-void dispatchGCode(Machine *mach) {
-    while (mach->progCounter->type != End) {
-        instruction *oldPC = mach->progCounter;
-        mach->progCounter += 1;
-        switch (oldPC->type) {
-            case Unwind:
-                unwind(mach);
-                break;
-            case PushGlobal:
-                pushGlobal(oldPC, mach);
-                break;
-            case PushInt:
-                pushInt(oldPC->pushIntVal, mach);
-                break;
-            case Push:
-                push(oldPC->pushVal, mach);
-                break;
-            case MkAp:
-                mkAp(mach);
-                break;
-            case Update:
-                update(oldPC->updateVal, mach);
-                break;
-            case Pop:
-                pop(oldPC->popVal, mach);
-                break;
-            case Slide:
-                slide(oldPC->slideVal, mach);
-                break;
-            case Alloc:
-                alloc(oldPC->allocVal, mach);
-                break;
-            case Eval:
-                eval(mach);
-                unwind(mach);
-                break;
-            case Add:
-                addI(mach);
-                break;
-            case Sub:
-                subI(mach);
-                break;
-            case Mul:
-                mulI(mach);
-                break;
-            case Div:
-                divI(mach);
-                break;
-            case Neg:
-                negI(mach);
-                break;
-            case Eq:
-                eqI(mach);
-                break;
-            case Ne:
-                neI(mach);
-                break;
-            case Lt:
-                ltI(mach);
-                break;
-            case Le:
-                leI(mach);
-                break;
-            case Gt:
-                gtI(mach);
-                break;
-            case Ge:
-                geI(mach);
-                break;
-            case Pack:
-                pack(oldPC->packVals.tag, oldPC->packVals.arity, mach);
-                break;
-            case CaseJump:
-                casejump(oldPC->labelVal, mach);
-                break;
-            case CaseAlt: //<<<<<<<<< Maybe moved to Default case?
-                break;
-            case CaseAltEnd:
-                //Here we need to append "EndCase" to the labelVal and 
-                //jump to the result of a lookup
-                caseAltEnd(oldPC->labelVal, mach);
-                break;
-            case Split:
-                split(oldPC->splitVal, mach);
-                break;
-            case GLabel: //<<<<<<<<< Maybe moved to Default case?!
-                break;
-            case FunDef: //<<<<<<<<< Maybe moved to Default case?!
-                break;
-            case Print:
-                printI(mach);
-                break;
-            case Par:
-                printf("We have not yet implemented Par!\n");
-                break;
-            default:
-                break;
-        }
+ExecutionMode dispatchGCode(Machine *mach) {
+    ExecutionMode em = LIVE;
+    instruction *oldPC = mach->progCounter;
+    mach->progCounter += 1;
+    switch (oldPC->type) {
+        case Unwind:
+            em = unwind(mach);
+            break;
+        case PushGlobal:
+            pushGlobal(oldPC, mach);
+            break;
+        case PushInt:
+            pushInt(oldPC->pushIntVal, mach);
+            break;
+        case Push:
+            push(oldPC->pushVal, mach);
+            break;
+        case MkAp:
+            mkAp(mach);
+            break;
+        case Update:
+            update(oldPC->updateVal, mach);
+            break;
+        case Pop:
+            pop(oldPC->popVal, mach);
+            break;
+        case Slide:
+            slide(oldPC->slideVal, mach);
+            break;
+        case Alloc:
+            alloc(oldPC->allocVal, mach);
+            break;
+        case Eval:
+            eval(mach);
+            em = unwind(mach);
+            break;
+        case Add:
+            addI(mach);
+            break;
+        case Sub:
+            subI(mach);
+            break;
+        case Mul:
+            mulI(mach);
+            break;
+        case Div:
+            divI(mach);
+            break;
+        case Neg:
+            negI(mach);
+            break;
+        case Eq:
+            eqI(mach);
+            break;
+        case Ne:
+            neI(mach);
+            break;
+        case Lt:
+            ltI(mach);
+            break;
+        case Le:
+            leI(mach);
+            break;
+        case Gt:
+            gtI(mach);
+            break;
+        case Ge:
+            geI(mach);
+            break;
+        case Pack:
+            pack(oldPC->packVals.tag, oldPC->packVals.arity, mach);
+            break;
+        case CaseJump:
+            casejump(oldPC->labelVal, mach);
+            break;
+        case CaseAlt: //<<<<<<<<< Maybe moved to Default case?
+            break;
+        case CaseAltEnd:
+            //Here we need to append "EndCase" to the labelVal and 
+            //jump to the result of a lookup
+            caseAltEnd(oldPC->labelVal, mach);
+            break;
+        case Split:
+            split(oldPC->splitVal, mach);
+            break;
+        case GLabel: //<<<<<<<<< Maybe moved to Default case?!
+            break;
+        case FunDef: //<<<<<<<<< Maybe moved to Default case?!
+            em = FINISHED;
+            printf("WE HAVE REACHED A FUNDEF AND FINISHED THREAD");
+            break;
+        case Print:
+            printI(mach);
+            break;
+        case Par:
+            printf("We have not yet implemented Par!\n");
+            break;
+        default:
+            break;
     }
+    return em;
 }
