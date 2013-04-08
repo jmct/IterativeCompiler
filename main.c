@@ -7,9 +7,9 @@
 #include "stack.h"
 #include "gthread.h"
 //#include "lex.yy.c"
-
-#define HEAPSIZE 10000
-#define STACK_SIZE 3000
+#define NUM_CORES 2
+#define HEAPSIZE 1000000
+#define STACK_SIZE 2000
 #define FRAME_STACK_SIZE 1000
 
 struct Machine_ {
@@ -33,6 +33,7 @@ enum ExecutionMode_ {
 typedef enum ExecutionMode_ ExecutionMode;
 
 HeapPtr globalHeap = NULL;
+threadPool* globalPool = NULL;
 
 
 //This is for the GCode instruction 'Slide n'
@@ -99,12 +100,22 @@ void pop(int num, Machine *mach) {
 
 void unlock(HeapPtr node) {
     while (node->tag == LOCKED_APP) {
-        //TODO empty pending list here
+        //TODO empty pending list <--I think it's done
+        if (node->app.numBlockedThreads > 0) {
+            addQueueToThreadPool(node->app.blockedQueue, node->app.numBlockedThreads, globalPool);
+            node->app.numBlockedThreads = 0;
+            node->app.blockedQueue = NULL;
+        }
         node->tag = APP;
         node = node->app.leftArg;
     }
     if (node->tag == LOCKED_FUN) {
-        //TODO empty pending list
+        if (node->fun.numBlockedThreads > 0) {
+            addQueueToThreadPool(node->fun.blockedQueue, node->fun.numBlockedThreads, globalPool);
+            node->fun.numBlockedThreads = 0;
+            node->fun.blockedQueue = NULL;
+        }
+        //TODO empty pending list <--I think it's done
         node->tag = FUN;
     }
     else {
@@ -121,6 +132,9 @@ void update(int num, Machine *mach) {
     HeapCell **toUpdate = NULL;
     HeapCell * top = stackPopKeep(&mach->stck);
     toUpdate = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
+    if (*toUpdate == NULL) {
+        printf("Items in frame: %d, update parameter val: %d\n", itemsInFrame(&mach->stck), num);
+    }
     unlock(*toUpdate);
     HeapCell * newNode = updateToInd(top, *toUpdate);
     //*toUpdate = newNode;
@@ -208,6 +222,7 @@ ExecutionMode unwind(Machine* mach) {
             newPC = popFrame(&mach->stck);
             if (newPC == NULL) {
                 //end thread
+                return FINISHED;
             }
             mach->progCounter = newPC;
             break;
@@ -215,6 +230,7 @@ ExecutionMode unwind(Machine* mach) {
             newPC = popFrame(&mach->stck);
             if (newPC == NULL) {
                 printf("!!!! newPC from unwinding constr returned Null");//end thread
+                return FINISHED;
             }
             mach->progCounter = newPC;
             break;
@@ -251,11 +267,11 @@ ExecutionMode unwind(Machine* mach) {
             break;
         case LOCKED_APP:
             addToBlockedQueue(mach, item);
-            printf("Locked Ap case of unwind, set thread to BLOCKED");
+            printf("Locked Ap case of unwind, set thread to BLOCKED\n");
             return BLOCKED;
         case LOCKED_FUN:
             printf("Locked function case of unwind, this isn't implemented\n");
-            break;
+            return BLOCKED;
         default:
             printf("Default case of unwind, this shouldn't happen\n");
             break;
@@ -470,6 +486,19 @@ void printI(Machine *mach) {
     }
     exit(0);
 }
+
+void parI(Machine* mach, threadPool* pool) {
+    //get heap address that the new thread will start computing from
+    HeapPtr topOfStack = stackPopKeep(&mach->stck);
+    //allocate and initialize a new Machine
+    Machine* tempMachPtr = malloc(sizeof(Machine));
+    initMachine(tempMachPtr);
+    stackPush(topOfStack, &tempMachPtr->stck);
+    //Add machine to thread pool
+    addMachToThreadPool(tempMachPtr, pool);
+}
+
+
 /*
 void showMachineState(Machine *mach) {
     printf("Machine Stack:\n");
@@ -523,12 +552,50 @@ int main() {
     //    printf("%d\n", prog[counter].type);
     }
     printf("\nCounter value = %d\n", counter);
-    Machine machineA;
-    initMachine(&machineA);
-    machineA.progCounter = prog;
-    ExecutionMode core1 = LIVE;
-    while (core1 != FINISHED) {
-        dispatchGCode(&machineA);
+    //allocate and intialize thread pool
+    globalPool = malloc(sizeof(threadPool));
+    initThreadPool(globalPool);
+
+    //allocate and initlialize Machines
+    ExecutionMode programMode, core;
+    programMode = core = LIVE;
+    Machine** cores = malloc(sizeof(Machine*) * NUM_CORES);
+    int i;
+    for (i = 0; i < NUM_CORES; i++) {
+        cores[i] = NULL;
+    }
+    cores[0] = malloc(sizeof(Machine));
+    initMachine(cores[0]);
+    cores[0]->progCounter = prog;
+
+    //TODO when core is no longer running, we need to free the machine and it's
+    //stack... etc
+    while (programMode == LIVE) {
+        programMode = FINISHED;
+        for (i = 0; i < NUM_CORES; i++) {
+            Machine* fromThreadPool = NULL;
+            //see if the core needs to pull from the spark pool
+            if (cores[i] == NULL) {
+                fromThreadPool = getMachFromPool(globalPool);
+                if (fromThreadPool != NULL) {
+                    cores[i] = fromThreadPool;
+                    programMode = LIVE;
+                    //if the thread is a new spark, the PC will be NULL
+                    if (cores[i]->progCounter == NULL) {
+                        eval(cores[i]);
+                        core = unwind(cores[i]);
+                    }
+                }
+            }
+            else { 
+                programMode = LIVE; 
+                core = dispatchGCode(cores[i]); 
+            }
+
+            if (core != LIVE) {
+                cores[i] = NULL;
+            }
+        }
     }
     return 0;
 }
@@ -560,6 +627,9 @@ union {
 */
 
 ExecutionMode dispatchGCode(Machine *mach) {
+    if (mach == NULL) {
+        return FINISHED;
+    }
     ExecutionMode em = LIVE;
     instruction *oldPC = mach->progCounter;
     mach->progCounter += 1;
@@ -654,7 +724,8 @@ ExecutionMode dispatchGCode(Machine *mach) {
             printI(mach);
             break;
         case Par:
-            printf("We have not yet implemented Par!\n");
+            parI(mach, globalPool);
+            printf("Trying Par");
             break;
         default:
             break;

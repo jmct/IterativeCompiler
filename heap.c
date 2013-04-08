@@ -4,8 +4,7 @@
 #include "symbolTable.h"
 #include "heap.h"
 #include "gthread.h"
-
-#define HEAPSIZE 10000
+#define HEAPSIZE 1000000
 
 void showHeapItem(HeapCell item) {
     switch (item.tag) {
@@ -148,7 +147,14 @@ HeapPtr allocIndirection(HeapPtr forwardAdd, HeapPtr myHeap) {
 void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem) {
     threadQueueNode* newNode = malloc(sizeof(threadQueueNode));
     newNode->current = mach;
-    newNode->next = heapItem->app.blockedQueue;
-    heapItem->app.blockedQueue = newNode;
-    heapItem->app.numBlockedThreads += 1;
+    if (heapItem->tag == LOCKED_APP) {
+        newNode->next = heapItem->app.blockedQueue;
+        heapItem->app.blockedQueue = newNode;
+        heapItem->app.numBlockedThreads += 1;
+    }
+    else if (heapItem->tag == LOCKED_FUN) {
+        newNode->next = heapItem->fun.blockedQueue;
+        heapItem->fun.blockedQueue = newNode;
+        heapItem->fun.numBlockedThreads += 1;
+    }
 }

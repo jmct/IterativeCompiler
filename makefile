@@ -10,7 +10,7 @@ symbolTable.o : instructions.h symbolTable.h symbolTable.c
 heap.o : heap.h
 	gcc -c heap.c
 
-stack.o : heap.h stack.h
+stack.o : heap.h stack.h stack.c
 	gcc -c stack.c
 
 gthread.o: gthread.h

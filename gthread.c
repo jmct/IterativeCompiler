@@ -2,6 +2,12 @@
 #include "gthread.h"
 #include "machine.h"
 
+void initThreadPool(threadPool * pool) {
+    pool->head = NULL;
+    pool->tail = NULL;
+    pool->numThreads = 0;
+}
+
 void addMachToThreadPool(Machine* mach, threadPool* pool) {
     threadQueueNode* newNode = malloc(sizeof(threadQueueNode));
     newNode->current = mach;
@@ -9,7 +15,9 @@ void addMachToThreadPool(Machine* mach, threadPool* pool) {
     if (pool->numThreads == 0) {
         pool->head = newNode;
     }
-    pool->tail->next = newNode;
+    else {
+        pool->tail->next = newNode;
+    }
     pool->tail = newNode;
     pool->numThreads += 1;
 }
@@ -37,8 +45,11 @@ Machine* getMachFromPool(threadPool* pool) {
     if (numT == 0) {
         return NULL;
     }
+    threadQueueNode* tempForFreeing = NULL;
     Machine* headThread = pool->head->current;
+    tempForFreeing = pool->head;
     pool->head = pool->head->next;
+    free(tempForFreeing);
     if (numT == 1) {
         pool->head = NULL;
         pool->tail = NULL;

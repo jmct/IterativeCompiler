@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "stack.h"
 
-#define CHUNK_SIZE 200
+#define CHUNK_SIZE 1000
 
 
 
@@ -68,7 +68,7 @@ void pushFrame(instruction * pc, stack *stck) {
 
     //step 3
     stackPush(topOfOldStack, stck);
-    printf("Pushing frame. return PC: %p\n", pc);
+//    printf("Pushing frame. return PC: %p\n", pc);
 }
 
 /*Pop stack frame:
@@ -132,7 +132,7 @@ instruction * popFrame(stack *stck) {
         curChunk = curChunk->previous;
         free(oldChunk);
     }
-    printf("Popping frame. New PC: %p\n", newPC);
+//    printf("Popping frame. New PC: %p\n", newPC);
     return newPC;
 }
 /*
