@@ -46,8 +46,15 @@ void slideNStack(int n, Machine *mach) {
 //Any top-level function will be pushed onto to the stack
 //via this function
 void pushGlobal(instruction *fun, Machine *mach) {
-    instruction* codePtr = lookupKey(fun->pushGlobVal);    
+    instruction* codePtr = lookupKey(fun->pushGlobVal);
+    //the reason we do not add 1 to codePtr above is so that we can get the
+    //arity information from the function definition instruction.
+    //this type of information could be added to the symbol table to more
+    //efficiency. (So the ST wouldn't just store addresses but structs that
+    //had all relevant information based on the tag of the result of the lookup    
     HeapPtr addr = allocFun(codePtr->funVals.arity, codePtr, globalHeap);
+    //don't do effectful expressions in parameter list! adding 1 to codePtr can break 
+    //lookup for first parameter. 
     stackPush(addr, &mach->stck);
 }
 
@@ -220,7 +227,7 @@ ExecutionMode unwind(Machine* mach) {
                     printf("Tried to follow code PTR that points to NULL\nExiting\n");
                     exit(1);
                 }
-                mach->progCounter = newPC + 1;
+                mach->progCounter = newPC + 1;//added 1 to avoid FunDef instruction
                 //Need to add sentinal for list of blocked threads
             }
             else if (nArgs < item->fun.arity) {
@@ -239,7 +246,7 @@ ExecutionMode unwind(Machine* mach) {
                     printf("Tried to follow code PTR that points to NULL\nExiting\n");
                     exit(1);
                 }
-                mach->progCounter = newPC;
+                mach->progCounter = newPC + 1; //added 1 to avoid FunDef instruction
             }
             break;
         case LOCKED_APP:
@@ -519,7 +526,10 @@ int main() {
     Machine machineA;
     initMachine(&machineA);
     machineA.progCounter = prog;
-    dispatchGCode(&machineA);
+    ExecutionMode core1 = LIVE;
+    while (core1 != FINISHED) {
+        dispatchGCode(&machineA);
+    }
     return 0;
 }
 /*
