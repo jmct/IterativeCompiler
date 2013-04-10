@@ -289,7 +289,7 @@ void setupIntro(instruction *prog) {
 }
 
 instruction *parseGCode() {
-    printf("Entered parseGCode()\n");
+    //printf("Entered parseGCode()\n");
     instruction * prog = malloc(sizeof(instruction)* 100);
     setupIntro(prog);
     instruction * temp = NULL; //This is to hold a temp pointer when we realloc()

@@ -403,7 +403,7 @@ void geI(Machine *mach) {
 //Casejump deals with checking the constructor tag at the top of the stack, and
 //then jumping to the corresponding code sequence. 
 void casejump(char *label, Machine *mach) {
-    printf("Casejump here!\n");
+    //printf("Casejump here!\n");
     HeapPtr topOfStack = *mach->stck.stackPointer;
     if (topOfStack->tag != CONSTR) {
         printf("Tried to casejump when top of stack was not a constructor\n exiting.\n");
@@ -484,6 +484,7 @@ void printI(Machine *mach) {
     else {
         printf("Trying to print non-Int or non-Constructor!\n");
     }
+    printf("\n");
     exit(0);
 }
 
@@ -533,25 +534,25 @@ int main() {
     */
     globalHeap = malloc(sizeof(HeapCell) * HEAPSIZE);
     instruction *prog = NULL;
-    printf("About to enter parseGCode()\n");
+    //printf("About to enter parseGCode()\n");
     prog = parseGCode();
     int counter;
     instruction * tempInstrPtr = NULL;
     for (counter = 4; prog[counter].type != End; counter++) {
         if (prog[counter].type == CaseAlt || prog[counter].type == GLabel) {
             tempInstrPtr = lookupKey(prog[counter].labelVal);
-            printf("ArrayIndex ptr Value: %d\nTable lookup value: %d\n", counter, 
-                    (int)(tempInstrPtr - &prog[0]));
-            printf("Label Value: %s\n\n", prog[counter].labelVal);
+     //       printf("ArrayIndex ptr Value: %d\nTable lookup value: %d\n", counter, 
+         //           (int)(tempInstrPtr - &prog[0]));
+      //      printf("Label Value: %s\n\n", prog[counter].labelVal);
         }
         else if (prog[counter].type == FunDef) {
             tempInstrPtr = lookupKey(prog[counter].funVals.name);
-            printf("FunDef position: %d\nLookup val: %d\n\n", counter,
-                    (int)(tempInstrPtr - &prog[0]));
+       //     printf("FunDef position: %d\nLookup val: %d\n\n", counter,
+        //            (int)(tempInstrPtr - &prog[0]));
         }
     //    printf("%d\n", prog[counter].type);
     }
-    printf("\nCounter value = %d\n", counter);
+   // printf("\nCounter value = %d\n", counter);
     //allocate and intialize thread pool
     globalPool = malloc(sizeof(threadPool));
     initThreadPool(globalPool);
@@ -583,6 +584,9 @@ int main() {
                     //if the thread is a new spark, the PC will be NULL
                     if (cores[i]->progCounter == NULL) {
                         eval(cores[i]);
+                        core = unwind(cores[i]);
+                    }
+                    else {
                         core = unwind(cores[i]);
                     }
                 }
@@ -725,7 +729,7 @@ ExecutionMode dispatchGCode(Machine *mach) {
             break;
         case Par:
             parI(mach, globalPool);
-            printf("Trying Par");
+            //printf("Trying Par");
             break;
         default:
             break;
