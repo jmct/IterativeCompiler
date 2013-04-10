@@ -6,22 +6,30 @@
 #include "heap.h"
 #include "stack.h"
 #include "gthread.h"
+#include "machine.h"
 //#include "lex.yy.c"
-#define NUM_CORES 2
+#define NUM_CORES 4
 #define HEAPSIZE 1000000
 #define STACK_SIZE 2000
 #define FRAME_STACK_SIZE 1000
 
+/*
 struct Machine_ {
     stack stck;
     instruction* progCounter;
 };
 
 typedef struct Machine_ Machine;
+*/
+int threadCounter;
+int globalReductions;
 
 void initMachine(Machine *mach) {
     mach->progCounter  = NULL;
     mach->stck = initStack(mach->stck);
+    mach->reductionCounter = 0;
+    mach->threadID = threadCounter;
+    threadCounter += 1;
 }
 
 enum ExecutionMode_ {
@@ -467,6 +475,9 @@ void pack(int tag, int ar, Machine *mach) {
     stackPush(newConstr, &mach->stck);
 }
 
+//TODO Printing does not work on Datastructure!!
+//This needs to return to dispatchGCode when printing data structures
+//shouldn't be too hard but requires that the PC keeps going back to Eval and Print
 void printI(Machine *mach) {
     HeapPtr oldTop = stackPopKeep(&mach->stck);
     if (oldTop->tag == INTEGER) {
@@ -484,7 +495,7 @@ void printI(Machine *mach) {
     else {
         printf("Trying to print non-Int or non-Constructor!\n");
     }
-    printf("\n");
+    printf("\nTotal Reductions: %d\n", globalReductions);
     exit(0);
 }
 
@@ -565,16 +576,19 @@ int main() {
     for (i = 0; i < NUM_CORES; i++) {
         cores[i] = NULL;
     }
+    threadCounter = 0;
+    globalReductions = 0;
     cores[0] = malloc(sizeof(Machine));
     initMachine(cores[0]);
     cores[0]->progCounter = prog;
-
     //TODO when core is no longer running, we need to free the machine and it's
     //stack... etc
     while (programMode == LIVE) {
+        globalReductions += 1;
         programMode = FINISHED;
         for (i = 0; i < NUM_CORES; i++) {
             Machine* fromThreadPool = NULL;
+            core = FINISHED;
             //see if the core needs to pull from the spark pool
             if (cores[i] == NULL) {
                 fromThreadPool = getMachFromPool(globalPool);
@@ -598,6 +612,9 @@ int main() {
 
             if (core != LIVE) {
                 cores[i] = NULL;
+            }
+            else {
+                cores[i]->reductionCounter += 1;
             }
         }
     }

@@ -7,6 +7,7 @@
 struct Machine_ {
     stack stck;
     instruction* progCounter;
+    int reductionCounter, threadID;
 };
 
 typedef struct Machine_ Machine;
