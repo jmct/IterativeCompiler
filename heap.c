@@ -4,7 +4,6 @@
 #include "symbolTable.h"
 #include "heap.h"
 #include "gthread.h"
-#define HEAPSIZE 1000000
 
 void showHeapItem(HeapCell item) {
     switch (item.tag) {
@@ -70,13 +69,15 @@ void showHeapItem(HeapCell item) {
  *Atoms make up the HeapCell
  */
 
-int nextFree = 0;
 
-HeapPtr allocHeapCell(Tag tag, HeapPtr heap) {
-    if (nextFree >= HEAPSIZE) {
+HeapPtr allocHeapCell(Tag tag, Heap* globHeap) {
+    int nextFree = globHeap->nextFreeCell;
+    globHeap->nextFreeCell += 1;
+    if (nextFree >= globHeap->maxSize) {
         printf("Heap overflow, implement GC!\nExiting");
         exit(1);
     }
+    HeapPtr heap = globHeap->toSpace;
     heap[nextFree].tag = tag;
     switch (tag) {
         case FUN:
@@ -98,17 +99,17 @@ HeapPtr allocHeapCell(Tag tag, HeapPtr heap) {
             heap[nextFree].indirection = NULL;
             break;
     } //end of switch statement
-    return &heap[nextFree++];
+    return &heap[nextFree];
 }
 
-HeapPtr allocApp(HeapPtr left, HeapPtr right, HeapPtr myHeap) {
+HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap) {
     HeapPtr appNode = allocHeapCell(APP, myHeap);
     appNode->app.leftArg = left;
     appNode->app.rightArg = right;
     return appNode;
 }
 
-HeapPtr allocConstr(int id1, int arity1, HeapPtr myHeap) {
+HeapPtr allocConstr(int id1, int arity1, Heap* myHeap) {
     HeapPtr constrNode = allocHeapCell(CONSTR, myHeap);
     constrNode->constr.id = id1;
     constrNode->constr.arity = arity1;
@@ -119,14 +120,14 @@ HeapPtr allocConstr(int id1, int arity1, HeapPtr myHeap) {
     return constrNode;
 }
 
-HeapPtr allocFun(int arity1, instruction * codePtr, HeapPtr myHeap) {
+HeapPtr allocFun(int arity1, instruction * codePtr, Heap* myHeap) {
     HeapPtr funNode = allocHeapCell(FUN, myHeap);
     funNode->fun.arity = arity1;
     funNode->fun.code = codePtr;
     return funNode;
 }
 
-HeapPtr allocInt(int value, HeapPtr myHeap) {
+HeapPtr allocInt(int value, Heap* myHeap) {
     HeapPtr intNode = allocHeapCell(INTEGER, myHeap);
     intNode->num = value;
     return intNode;
@@ -138,7 +139,7 @@ HeapPtr updateToInd(HeapPtr forwardAdd, HeapPtr node) {
     return node;
 }
 
-HeapPtr allocIndirection(HeapPtr forwardAdd, HeapPtr myHeap) {
+HeapPtr allocIndirection(HeapPtr forwardAdd, Heap* myHeap) {
     HeapPtr indNode = allocHeapCell(INDIRECTION, myHeap);
     indNode->indirection = forwardAdd;
     return indNode;

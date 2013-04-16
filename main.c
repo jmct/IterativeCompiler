@@ -8,7 +8,7 @@
 #include "gthread.h"
 #include "machine.h"
 //#include "lex.yy.c"
-#define NUM_CORES 4
+#define NUM_CORES 2
 #define HEAPSIZE 1000000
 #define STACK_SIZE 2000
 #define FRAME_STACK_SIZE 1000
@@ -40,7 +40,7 @@ enum ExecutionMode_ {
 
 typedef enum ExecutionMode_ ExecutionMode;
 
-HeapPtr globalHeap = NULL;
+Heap* globalHeap = NULL;
 threadPool* globalPool = NULL;
 
 
@@ -543,7 +543,6 @@ int main() {
     mkAp(&machineA);
     showMachineState(&machineA);
     */
-    globalHeap = malloc(sizeof(HeapCell) * HEAPSIZE);
     instruction *prog = NULL;
     //printf("About to enter parseGCode()\n");
     prog = parseGCode();
@@ -564,6 +563,16 @@ int main() {
     //    printf("%d\n", prog[counter].type);
     }
    // printf("\nCounter value = %d\n", counter);
+   
+
+    // Allocate and initialize the heap (double needed space since it's Cheney's
+    // GC)
+    globalHeap = malloc(sizeof(Heap));
+    globalHeap->nextFreeCell = 0;
+    globalHeap->maxSize = HEAPSIZE;
+    globalHeap->toSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
+    globalHeap->fromSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
+
     //allocate and intialize thread pool
     globalPool = malloc(sizeof(threadPool));
     initThreadPool(globalPool);
@@ -581,6 +590,10 @@ int main() {
     cores[0] = malloc(sizeof(Machine));
     initMachine(cores[0]);
     cores[0]->progCounter = prog;
+
+    //set roots for heap
+    globalHeap->activeCores = cores;
+    globalHeap->thrdPool = globalPool;
     //TODO when core is no longer running, we need to free the machine and it's
     //stack... etc
     while (programMode == LIVE) {
@@ -746,7 +759,7 @@ ExecutionMode dispatchGCode(Machine *mach) {
             break;
         case Par:
             parI(mach, globalPool);
-            //printf("Trying Par");
+            printf("Trying Par");
             break;
         default:
             break;

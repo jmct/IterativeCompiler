@@ -2,6 +2,7 @@
 #define HEAP_H
 #include "instructions.h"
 #include "gthread.h"
+//#include "machine.h"
 
 
 /* This typedef is just simple syntactic sugar for node tags */
@@ -70,15 +71,29 @@ struct atom {
 
 typedef HeapCell * HeapPtr;
 
+//This is a forward declaration of Machine_
+//Actual definition is in machine.h
+struct Machine_;
+
+struct Heap_ {
+    int nextFreeCell, maxSize;
+    struct Machine_** activeCores;
+    threadPool* thrdPool;
+    HeapPtr toSpace;
+    HeapPtr fromSpace;
+};
+
+typedef struct Heap_ Heap;
+
 void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem);
 
 void showHeapItem(HeapCell item);
-HeapPtr allocHeapCell(Tag tag, HeapPtr heap);
-HeapPtr allocApp(HeapPtr left, HeapPtr right, HeapPtr myHeap);
-HeapPtr allocConstr(int id1, int arity1, HeapPtr myHeap);
-HeapPtr allocFun(int arity1, instruction * codePtr, HeapPtr myHeap);
-HeapPtr allocInt(int value, HeapPtr myHeap);
+HeapPtr allocHeapCell(Tag tag, Heap* globHeap);
+HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap);
+HeapPtr allocConstr(int id1, int arity1, Heap* myHeap);
+HeapPtr allocFun(int arity1, instruction * codePtr, Heap* myHeap);
+HeapPtr allocInt(int value, Heap* myHeap);
 HeapPtr updateToInd(HeapPtr forwardAdd, HeapPtr node);
-HeapPtr allocIndirection(HeapPtr forwardAdd, HeapPtr myHeap);
+HeapPtr allocIndirection(HeapPtr forwardAdd, Heap* myHeap);
 
 #endif
