@@ -15,6 +15,7 @@ chunk * newChunk() {
 
 
 stack initStack(stack stk) {
+    stk.chunkSize = CHUNK_SIZE;
     stk.stackObj = newChunk();
     stk.stackPointer = &stk.stackObj->stack[CHUNK_SIZE-1];
     stk.framePointer = NULL;
@@ -134,6 +135,19 @@ instruction * popFrame(stack *stck) {
     }
 //    printf("Popping frame. New PC: %p\n", newPC);
     return newPC;
+}
+
+void simulateFramePop(stack* stck, HeapPtr** framePtr, HeapPtr** stackPtr) {
+    //when we actually pop the stack, we want the new stack pointer to point to
+    //the returned (from the new frame) value, in this case we can skip that
+    //therefore we look for the 3rd address from the framePointer instead of the
+    //second
+    HeapCell** tempNewStackPointer = getNthAddrFrom(3, stck, *framePtr);
+    *stackPtr = tempNewStackPointer;
+
+    //now all that is left to do is update the frame pointer, we don't have to
+    //free any of the chinks since this isn't `really' a pop
+    *framePtr = (HeapCell**)*(*framePtr);
 }
 /*
  * The way that push is implemented (as simply as possible) means that the

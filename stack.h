@@ -11,6 +11,7 @@ struct chunk_ {
 typedef struct chunk_ chunk;
 
 struct stack_ {
+    int chunkSize;
     chunk * stackObj;
     HeapCell **stackPointer;
     HeapCell **framePointer;
@@ -43,5 +44,7 @@ instruction *popFrame(stack *stck);
 HeapCell * getNthElement(int n, stack * stck);
 
 HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr);
+
+void simulateFramePop(stack* stck, HeapPtr** framePtr, HeapPtr**stackPtr);
 
 #endif

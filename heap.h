@@ -43,7 +43,7 @@ typedef struct atom Atom;
  */
 struct atom {
     Tag tag;
-    HeapCell * gcforward; //for GC forwarding
+    HeapCell * gcForward; //for GC forwarding
     union {
         HeapCell * indirection; //for indirection Nodes
         int num; 
@@ -76,7 +76,7 @@ typedef HeapCell * HeapPtr;
 struct Machine_;
 
 struct Heap_ {
-    int nextFreeCell, maxSize;
+    int nextFreeCell, maxSize, numCores;
     struct Machine_** activeCores;
     threadPool* thrdPool;
     HeapPtr toSpace;

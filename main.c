@@ -593,6 +593,7 @@ int main() {
 
     //set roots for heap
     globalHeap->activeCores = cores;
+    globalHeap->numCores = NUM_CORES;
     globalHeap->thrdPool = globalPool;
     //TODO when core is no longer running, we need to free the machine and it's
     //stack... etc

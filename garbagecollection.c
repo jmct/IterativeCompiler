@@ -17,6 +17,11 @@ int garbageCollect(Heap* heap) {
     heap->toSpace = heap->fromSpace;
 
     //traverse each stack of the active cores
+    int i;
+    for (i = 0; i < heap->numCores; i++) {
+
+        //TODO implement a new funcion itemsInFakeFrame so that we can loop
+        //around in each frame and collect all the references
 
 
     //traverse each stack of the machines in the thread pool
@@ -26,3 +31,14 @@ int garbageCollect(Heap* heap) {
     //that are stored in the heapCells that have been copied to the toSpace
 
 }
+
+HeapPtr copyHeapItem(HeapPtr item, Heap* heap) {
+    if (item->tag != COLLECTED) {
+        heap->toSpace[heap->nextFreeCell] = *item;
+        item->tag = COLLECTED;
+        item->gcForward = &(heap->toSpace[heap->nextFreeCell]);
+        heap->nextFreeCell += 1;
+    }
+    return item->gcForward;
+}
+
