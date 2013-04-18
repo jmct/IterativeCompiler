@@ -45,6 +45,10 @@ HeapCell * getNthElement(int n, stack * stck);
 
 HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr);
 
-void simulateFramePop(stack* stck, HeapPtr** framePtr, HeapPtr**stackPtr);
+//void simulateFramePop(stack* stck, HeapPtr** framePtr, HeapPtr**stackPtr);
+
+int isPtrAtEndOfStack(stack* stck, HeapPtr* stackPtr);
+
+//int itemsInFakeFrame(stack* stck, HeapPtr* frame, HeapPtr* stackPtr);
 
 #endif

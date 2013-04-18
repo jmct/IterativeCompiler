@@ -10,6 +10,10 @@
 //reurns -1 if there was an error
 int garbageCollect(Heap* heap);
 
+void collectMachine(Machine* curMach, Heap* heap);
+
+HeapPtr copyHeapItem(HeapPtr item, Heap* heap);
+
 
 
 

@@ -137,6 +137,7 @@ instruction * popFrame(stack *stck) {
     return newPC;
 }
 
+/*
 void simulateFramePop(stack* stck, HeapPtr** framePtr, HeapPtr** stackPtr) {
     //when we actually pop the stack, we want the new stack pointer to point to
     //the returned (from the new frame) value, in this case we can skip that
@@ -233,6 +234,14 @@ int itemsInFrame(stack * stck) {
     }
 }
 
+/*
+int itemsInFakeFrame(stack* stck, HeapPtr* framePtr, HeapPtr* stackPtr) {
+    //TODO we don't know if the stack pointer is on the same chunk as the fake
+    //stack pointer... it may be easier to traverse stack and ensure that each
+    //frame section is skipped
+*/
+
+
 HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr) {
     chunk* curChunk = stck->stackObj;
     while (!(fromPtr >= curChunk->stack && fromPtr <= &curChunk->stack[CHUNK_SIZE-1])) {
@@ -264,6 +273,17 @@ HeapCell * getNthElement(int n, stack* stck) {
         }
     }
     return *tempSP;
+}
+
+int isPtrAtEndOfStack(stack* stck, HeapPtr* stackPtr) {
+    if (stck->stackObj->previous == NULL &&
+            (stackPtr == &stck->stackObj->stack[CHUNK_SIZE - 1] || 
+             stackPtr == &stck->stackObj->stack[CHUNK_SIZE - 2])) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
 }
     
 /*
