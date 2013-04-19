@@ -9,7 +9,7 @@
 #include "machine.h"
 //#include "lex.yy.c"
 #define NUM_CORES 2
-#define HEAPSIZE 1000000
+#define HEAPSIZE 100000
 #define STACK_SIZE 2000
 #define FRAME_STACK_SIZE 1000
 
@@ -525,24 +525,6 @@ void showMachineState(Machine *mach) {
 ExecutionMode dispatchGCode(Machine *mach);
 
 int main() {
-    /* Old test code, will be used again
-    Machine machineA;
-    initMachine(&machineA);
-    printf("machineA's stack pointer is at: %d\n", machineA.stackPointer);
-    myHeap = malloc(HEAPSIZE * sizeof(HeapCell));
-    printf("Free: %d, Pointer Value %p\n", nextFree, myHeap);
-    HeapPtr point = allocHeapCell(APP, myHeap); 
-    printf("Free: %d, Pointer Value %p\n", nextFree, point);
-    stackPush(point, &machineA.stck);
-    printf("machineA's stack pointer is at: %d\n", machineA.stackPointer);
-    point = allocHeapCell(APP, myHeap); 
-    printf("Free: %d, Pointer Value %p\n", nextFree, point);
-    stackPush(point, &machineA.stck);
-    showMachineState(&machineA);
-    printf("Now applying mkAp:\n");
-    mkAp(&machineA);
-    showMachineState(&machineA);
-    */
     instruction *prog = NULL;
     //printf("About to enter parseGCode()\n");
     prog = parseGCode();
