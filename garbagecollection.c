@@ -90,8 +90,10 @@ int garbageCollect(Heap* heap) {
     return heap->nextFreeCell;
 }
 
+int numCopied;
 void collectMachine(Machine* curMach, Heap* heap) {
     int finished;
+    numCopied = 0;
     HeapPtr * fakeFramePtr, * fakeStackPtr;
     chunk* currentChunk = curMach->stck.stackObj;
     fakeFramePtr = curMach->stck.framePointer;
@@ -116,6 +118,7 @@ HeapPtr copyHeapItem(HeapPtr item, Heap* heap) {
         item->tag = COLLECTED;
         item->gcForward = &(heap->toSpace[heap->nextFreeCell]);
         heap->nextFreeCell += 1;
+        numCopied += 1;
     }
     return item->gcForward;
 }

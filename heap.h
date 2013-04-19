@@ -87,7 +87,7 @@ typedef struct Heap_ Heap;
 
 void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem);
 
-void showHeapItem(HeapCell item);
+void showHeapItem(HeapCell *item);
 HeapPtr allocHeapCell(Tag tag, Heap* globHeap);
 HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap);
 HeapPtr allocConstr(int id1, int arity1, Heap* myHeap);

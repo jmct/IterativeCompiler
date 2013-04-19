@@ -17,8 +17,10 @@ chunk * newChunk() {
 stack initStack(stack stk) {
     stk.chunkSize = CHUNK_SIZE;
     stk.stackObj = newChunk();
+    stk.stackObj->previous = NULL;
     stk.stackPointer = &stk.stackObj->stack[CHUNK_SIZE-1];
     stk.framePointer = NULL;
+    *stk.stackPointer = NULL;
     return stk;
 }
 
@@ -276,9 +278,12 @@ HeapCell * getNthElement(int n, stack* stck) {
 }
 
 int isPtrAtEndOfStack(stack* stck, HeapPtr* stackPtr) {
-    if (stck->stackObj->previous == NULL &&
-            (stackPtr == &stck->stackObj->stack[CHUNK_SIZE - 1] || 
-             stackPtr == &stck->stackObj->stack[CHUNK_SIZE - 2])) {
+    chunk * curChunk = stck->stackObj;
+    while (stackPtr < curChunk->stack || stackPtr > &curChunk->stack[CHUNK_SIZE -1]) {
+        curChunk = curChunk->previous;
+    }
+    if (curChunk->previous == NULL &&
+            (*stackPtr == NULL)) {
         return 1;
     }
     else {

@@ -6,38 +6,46 @@
 #include "gthread.h"
 #include "garbagecollection.h"
 
-void showHeapItem(HeapCell item) {
-    switch (item.tag) {
+void showHeapItem(HeapCell *item) {
+    switch (item->tag) {
         case FUN:
-            printf("FUN: arity %d, codePtr %p\n", 
-                    item.fun.arity, item.fun.code);
+            printf("FUN @%p: arity %d, codePtr %p\n", item, 
+                    item->fun.arity, item->fun.code);
             break;
         case LOCKED_FUN:
-            printf("LOCKED FUN: arity %d, codePtr %p\n", 
-                    item.fun.arity, item.fun.code);
+            printf("LOCKED FUN @%p: arity %d, codePtr %p\n", item, 
+                    item->fun.arity, item->fun.code);
             break;
         case APP:
-            printf("APP: leftArf %p, rightArg %p\n", 
-                    item.app.leftArg, item.app.rightArg);
+            printf("APP @%p: leftArf %p, rightArg %p\n", item, 
+                    item->app.leftArg, item->app.rightArg);
             break;
         case LOCKED_APP:
-            printf("LOCKED APP: leftArf %p, rightArg %p\n", 
-                    item.app.leftArg, item.app.rightArg);
+            printf("LOCKED APP @%p: leftArf %p, rightArg %p\n", item, 
+                    item->app.leftArg, item->app.rightArg);
             break;
         case CONSTR:
-            printf("Constr: arity %d, id %d\n", 
-                    item.constr.arity, item.constr.id);
+            printf("Constr @%p: arity %d, id %d\n", item, 
+                    item->constr.arity, item->constr.id);
             break;
         case INTEGER:
-            printf("INT: val %d\n", item.num);
+            printf("INT @%p: val %d\n", item, item->num);
             break;
         case INDIRECTION:
-            printf("IND: Address %p\n", item.indirection);
+            printf("IND @%p: Address %p\n", item, item->indirection);
             break;
         default:
             printf("Indirection/forwarding MUST IMPLEMENT");
             break;
     } //end of switch statement
+}
+
+void showHeap(Heap* heap) {
+    printf("ITEMS IN HEAP: \n\n");
+    int i;
+    for (i = 0; i < heap->nextFreeCell; i++) {
+        showHeapItem(&(heap->toSpace[i]));
+    }
 }
 
 /*Because there is a bit of dependency recursion in the definiton of

@@ -10,8 +10,6 @@
 //#include "lex.yy.c"
 #define NUM_CORES 2
 #define HEAPSIZE 100000
-#define STACK_SIZE 2000
-#define FRAME_STACK_SIZE 1000
 
 /*
 struct Machine_ {
@@ -280,6 +278,9 @@ ExecutionMode unwind(Machine* mach) {
         case LOCKED_FUN:
             printf("Locked function case of unwind, this isn't implemented\n");
             return BLOCKED;
+        case COLLECTED:
+            printf("WTF THERE ARE COLELCTED SDFLKJSDF\n");
+            break;
         default:
             printf("Default case of unwind, this shouldn't happen\n");
             break;
@@ -530,7 +531,7 @@ int main() {
     prog = parseGCode();
     int counter;
     instruction * tempInstrPtr = NULL;
-    for (counter = 4; prog[counter].type != End; counter++) {
+/*    for (counter = 4; prog[counter].type != End; counter++) {
         if (prog[counter].type == CaseAlt || prog[counter].type == GLabel) {
             tempInstrPtr = lookupKey(prog[counter].labelVal);
      //       printf("ArrayIndex ptr Value: %d\nTable lookup value: %d\n", counter, 
@@ -546,6 +547,7 @@ int main() {
     }
    // printf("\nCounter value = %d\n", counter);
    
+*/
 
     // Allocate and initialize the heap (double needed space since it's Cheney's
     // GC)
@@ -572,11 +574,45 @@ int main() {
     cores[0] = malloc(sizeof(Machine));
     initMachine(cores[0]);
     cores[0]->progCounter = prog;
-
     //set roots for heap
     globalHeap->activeCores = cores;
     globalHeap->numCores = NUM_CORES;
     globalHeap->thrdPool = globalPool;
+
+/*
+    //GC testing Code:
+    Machine *testMach = cores[0];
+    pushInt(5, testMach);
+    pushInt(4, testMach);
+    pushInt(3, testMach);
+    pushInt(2, testMach);
+    pushFrame(prog, &testMach->stck);
+    pushInt(1, testMach);
+    pushInt(9, testMach);
+    pushInt(0, testMach);
+    mkAp(testMach);
+    allocInt(10, globalHeap);
+
+    showHeap(globalHeap);
+
+    garbageCollect(globalHeap);
+
+    showHeap(globalHeap);
+    pushInt(2, testMach);
+    pushGlobal(prog, testMach);
+    mkAp(testMach);
+    allocInt(4, globalHeap);
+    allocInt(4, globalHeap);
+
+    showHeap(globalHeap);
+
+    garbageCollect(globalHeap);
+
+    showHeap(globalHeap);
+    printf("Items in frame: %d\n", itemsInFrame(&testMach->stck));
+
+*/
+    
     //TODO when core is no longer running, we need to free the machine and it's
     //stack... etc
     while (programMode == LIVE) {
