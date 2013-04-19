@@ -83,7 +83,7 @@ int garbageCollect(Heap* heap) {
                 printf("Reached default case in GC switch, this shouldn't happen\n");
         }
         nxtTI += 1;
-        if (nxtTI == heap->nextFree) {
+        if (nxtTI == &heap->toSpace[heap->nextFreeCell]) {
             i = 1;
         }
     }
