@@ -24,3 +24,6 @@ main.o : main.c stack.c heap.c instructions.c gthread.c symbolTable.c garbagecol
 
 clean :
 	rm instructions.o main.o symbolTable.o stack.o heap.o gthread.o
+
+debug :
+	gcc -g main.c instructions.c symbolTable.c stack.c heap.c gthread.c garbagecollection.c -o interpreter
