@@ -4,6 +4,7 @@
 #include "symbolTable.h"
 #include "heap.h"
 #include "gthread.h"
+#include "garbagecollection.h"
 
 void showHeapItem(HeapCell item) {
     switch (item.tag) {
@@ -72,10 +73,11 @@ void showHeapItem(HeapCell item) {
 
 HeapPtr allocHeapCell(Tag tag, Heap* globHeap) {
     int nextFree = globHeap->nextFreeCell;
-    globHeap->nextFreeCell += 1;
     if (nextFree >= globHeap->maxSize) {
-        printf("Heap overflow, implement GC!\nExiting");
-        exit(1);
+ //       printf("Heap overflow, implement GC!\nExiting\n");
+        printf("Trying GC!\n");
+        nextFree = garbageCollect(globHeap);
+        printf("%d Items copied during GC\n", nextFree);
     }
     HeapPtr heap = globHeap->toSpace;
     heap[nextFree].tag = tag;
@@ -99,6 +101,7 @@ HeapPtr allocHeapCell(Tag tag, Heap* globHeap) {
             heap[nextFree].indirection = NULL;
             break;
     } //end of switch statement
+    globHeap->nextFreeCell += 1;
     return &heap[nextFree];
 }
 
