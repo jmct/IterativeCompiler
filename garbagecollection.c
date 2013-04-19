@@ -87,6 +87,7 @@ int garbageCollect(Heap* heap) {
             i = 1;
         }
     }
+    return heap->nextFreeCell;
 }
 
 void collectMachine(Machine* curMach, Heap* heap) {
