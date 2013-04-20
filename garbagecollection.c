@@ -5,7 +5,7 @@
 #include "machine.h"
 #include "garbagecollection.h"
 
-int garbageCollect(Heap* heap) {
+int garbageCollect(Heap* heap, HeapPtr* additionalRoot1, HeapPtr* additionalRoot2) {
     //declare the two `fingers'
     HeapPtr nxtTI = NULL; //nxtTI stands for `next to inspect'
     heap->nextFreeCell = 0;
@@ -34,6 +34,13 @@ int garbageCollect(Heap* heap) {
         }
         collectMachine(curNode->current, heap);
         curNode = curNode->next;
+    }
+
+    if (additionalRoot1 != NULL) {
+        *additionalRoot1 = copyHeapItem(*additionalRoot1, globalHeap);
+    }
+    if (additionalRoot2 != NULL) {
+        *additionalRoot2 = copyHeapItem(*additionalRoot2, globalHeap);
     }
     //Now that all stacks have been traversed, inspect all pointers
     //that are stored in the heapCells that have been copied to the toSpace

@@ -6,6 +6,13 @@
 #include "gthread.h"
 #include "garbagecollection.h"
 
+int isAddrInToSpace(HeapPtr addr, Heap* heap) {
+    if (addr >= heap->toSpace && addr <= &heap->toSpace[heap->maxSize - 1])
+        return 1;
+    else
+        return 0;
+}
+
 void showHeapItem(HeapCell *item) {
     switch (item->tag) {
         case FUN:
@@ -79,12 +86,12 @@ void showHeap(Heap* heap) {
  */
 
 
-HeapPtr allocHeapCell(Tag tag, Heap* globHeap) {
+HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second) {
     int nextFree = globHeap->nextFreeCell;
     if (nextFree >= globHeap->maxSize) {
  //       printf("Heap overflow, implement GC!\nExiting\n");
         printf("Trying GC!\n");
-        nextFree = garbageCollect(globHeap);
+        nextFree = garbageCollect(globHeap, first, second);
         printf("%d Items copied during GC\n", nextFree);
     }
     HeapPtr heap = globHeap->toSpace;
@@ -114,14 +121,14 @@ HeapPtr allocHeapCell(Tag tag, Heap* globHeap) {
 }
 
 HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap) {
-    HeapPtr appNode = allocHeapCell(APP, myHeap);
+    HeapPtr appNode = allocHeapCell(APP, myHeap, &left, &right);
     appNode->app.leftArg = left;
     appNode->app.rightArg = right;
     return appNode;
 }
 
 HeapPtr allocConstr(int id1, int arity1, Heap* myHeap) {
-    HeapPtr constrNode = allocHeapCell(CONSTR, myHeap);
+    HeapPtr constrNode = allocHeapCell(CONSTR, myHeap, NULL, NULL);
     constrNode->constr.id = id1;
     constrNode->constr.arity = arity1;
     if (arity1 > 0)
@@ -132,14 +139,14 @@ HeapPtr allocConstr(int id1, int arity1, Heap* myHeap) {
 }
 
 HeapPtr allocFun(int arity1, instruction * codePtr, Heap* myHeap) {
-    HeapPtr funNode = allocHeapCell(FUN, myHeap);
+    HeapPtr funNode = allocHeapCell(FUN, myHeap, NULL, NULL);
     funNode->fun.arity = arity1;
     funNode->fun.code = codePtr;
     return funNode;
 }
 
 HeapPtr allocInt(int value, Heap* myHeap) {
-    HeapPtr intNode = allocHeapCell(INTEGER, myHeap);
+    HeapPtr intNode = allocHeapCell(INTEGER, myHeap, NULL, NULL);
     intNode->num = value;
     return intNode;
 }
@@ -151,7 +158,7 @@ HeapPtr updateToInd(HeapPtr forwardAdd, HeapPtr node) {
 }
 
 HeapPtr allocIndirection(HeapPtr forwardAdd, Heap* myHeap) {
-    HeapPtr indNode = allocHeapCell(INDIRECTION, myHeap);
+    HeapPtr indNode = allocHeapCell(INDIRECTION, myHeap, &forwardAdd, NULL);
     indNode->indirection = forwardAdd;
     return indNode;
 }

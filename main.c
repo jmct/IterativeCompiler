@@ -9,7 +9,7 @@
 #include "machine.h"
 //#include "lex.yy.c"
 #define NUM_CORES 2
-#define HEAPSIZE 100000
+#define HEAPSIZE 10000000
 
 /*
 struct Machine_ {
@@ -38,7 +38,7 @@ enum ExecutionMode_ {
 
 typedef enum ExecutionMode_ ExecutionMode;
 
-Heap* globalHeap = NULL;
+//Heap* globalHeap = NULL;
 threadPool* globalPool = NULL;
 
 
@@ -189,7 +189,7 @@ void rearrangeStack(int num, stack *stck) {
     HeapPtr *stackElem = NULL;
     HeapPtr *stackElemTo = NULL;
     stackPopThrowAway(stck);
-    stackPush(NULL, stck);
+    stackPushEval(NULL, stck);
     int i;
     for (i = 1; i <= num; i++) {
         stackElem = getNthAddrFrom(i, stck, stck->stackPointer);

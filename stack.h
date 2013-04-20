@@ -28,6 +28,7 @@ void stackOverflow(stack * stck);
 void pushFrame(instruction *pc, stack *stck);
 
 void stackPush(HeapCell *addr, stack * stck);
+void stackPushEval(HeapCell *addr, stack * stck);
 
 void stackUnderflow(stack * stck);
 

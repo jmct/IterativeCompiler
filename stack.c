@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "stack.h"
 
-#define CHUNK_SIZE 1000
+#define CHUNK_SIZE 100
 
 
 
@@ -63,10 +63,10 @@ void pushFrame(instruction * pc, stack *stck) {
     *stck->stackPointer = NULL;
 
     //step 2a
-    stackPush((HeapCell*)pc, stck);
+    stackPushEval((HeapCell*)pc, stck);
 
     //step 2b
-    stackPush((HeapCell*)stck->framePointer, stck);
+    stackPushEval((HeapCell*)stck->framePointer, stck);
     stck->framePointer = stck->stackPointer;
 
     //step 3
@@ -158,6 +158,18 @@ void simulateFramePop(stack* stck, HeapPtr** framePtr, HeapPtr** stackPtr) {
  * This is because the stack pointer is incremented before the assignment/
  */
 void stackPush(HeapCell *addr, stack * stck) {
+    if (isAddrInToSpace(addr, globalHeap) == 0)
+        printf("Address is not in toSpace ");        
+    if (stck->stackPointer == stck->stackObj->stack)
+        stackOverflow(stck);
+    else
+        stck->stackPointer -= 1;
+    *(stck->stackPointer) = addr;
+}
+
+//This is used so that the debugging code above does not fire when pushing
+//during frame push
+void stackPushEval(HeapCell *addr, stack * stck) {
     if (stck->stackPointer == stck->stackObj->stack)
         stackOverflow(stck);
     else

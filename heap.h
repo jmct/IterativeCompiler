@@ -85,10 +85,13 @@ struct Heap_ {
 
 typedef struct Heap_ Heap;
 
+Heap* globalHeap;
+
 void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem);
 
 void showHeapItem(HeapCell *item);
-HeapPtr allocHeapCell(Tag tag, Heap* globHeap);
+int isAddrInToSpace(HeapPtr addr, Heap* heap);
+HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second);
 HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap);
 HeapPtr allocConstr(int id1, int arity1, Heap* myHeap);
 HeapPtr allocFun(int arity1, instruction * codePtr, Heap* myHeap);

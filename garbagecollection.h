@@ -8,7 +8,7 @@
 
 //Returns the number of heapCells transfered over to the new heap space
 //reurns -1 if there was an error
-int garbageCollect(Heap* heap);
+int garbageCollect(Heap* heap, HeapPtr* additionalRoot1, HeapPtr* additionalRoot2);
 
 void collectMachine(Machine* curMach, Heap* heap);
 
