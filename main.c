@@ -92,7 +92,7 @@ void push(int offset, Machine *mach) {
 void slide(int num, Machine *mach) {
     HeapCell **newSP = NULL;
     HeapCell * top = stackPopKeep(&mach->stck);
-    newSP = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
+    newSP = getNthAddrFromSP(num, &mach->stck);
     mach->stck.stackPointer = newSP;
     stackPush(top, &mach->stck);
 }
