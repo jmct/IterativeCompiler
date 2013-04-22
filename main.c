@@ -578,37 +578,29 @@ int main() {
     globalHeap->activeCores = cores;
     globalHeap->numCores = NUM_CORES;
     globalHeap->thrdPool = globalPool;
-
 /*
-    //GC testing Code:
+    //Stack testing Code:
     Machine *testMach = cores[0];
     pushInt(5, testMach);
     pushInt(4, testMach);
     pushInt(3, testMach);
     pushInt(2, testMach);
+    printf("Items in frame: %d\n", itemsInFrame(&testMach->stck));
     pushFrame(prog, &testMach->stck);
+    printf("Items in frame: %d\n", itemsInFrame(&testMach->stck));
     pushInt(1, testMach);
     pushInt(9, testMach);
     pushInt(0, testMach);
+    printf("Items in frame: %d\n", itemsInFrame(&testMach->stck));
     mkAp(testMach);
-    allocInt(10, globalHeap);
 
-    showHeap(globalHeap);
 
-    garbageCollect(globalHeap);
-
-    showHeap(globalHeap);
     pushInt(2, testMach);
     pushGlobal(prog, testMach);
     mkAp(testMach);
     allocInt(4, globalHeap);
     allocInt(4, globalHeap);
 
-    showHeap(globalHeap);
-
-    garbageCollect(globalHeap);
-
-    showHeap(globalHeap);
     printf("Items in frame: %d\n", itemsInFrame(&testMach->stck));
 
 */

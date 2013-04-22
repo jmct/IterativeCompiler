@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include "stack.h"
 
-#define CHUNK_SIZE 100
+#define CHUNK_SIZE 200
 
 
 
 chunk * newChunk() {
+    printf("Perfoming newChunk()\n\n");
     HeapCell ** tempPtr = malloc(sizeof(HeapCell*) * CHUNK_SIZE);
     chunk * tempChunkPtr = malloc(sizeof(chunk));
     tempChunkPtr->stack = tempPtr;
@@ -152,7 +153,7 @@ void simulateFramePop(stack* stck, HeapPtr** framePtr, HeapPtr** stackPtr) {
     //free any of the chinks since this isn't `really' a pop
     *framePtr = (HeapCell**)*(*framePtr);
 }
-/*
+ *
  * The way that push is implemented (as simply as possible) means that the
  * first stack element will start off empty and not be used. 
  * This is because the stack pointer is incremented before the assignment/

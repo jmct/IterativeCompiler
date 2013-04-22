@@ -26,4 +26,4 @@ clean :
 	rm instructions.o main.o symbolTable.o stack.o heap.o gthread.o
 
 debug :
-	gcc -g main.c instructions.c symbolTable.c stack.c heap.c gthread.c garbagecollection.c -o interpreter
+	gcc -Wall -g main.c instructions.c symbolTable.c stack.c heap.c gthread.c garbagecollection.c -o interpreter
