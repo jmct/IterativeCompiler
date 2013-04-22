@@ -7,7 +7,6 @@
 
 
 chunk * newChunk() {
-    printf("Perfoming newChunk()\n\n");
     HeapCell ** tempPtr = malloc(sizeof(HeapCell*) * CHUNK_SIZE);
     chunk * tempChunkPtr = malloc(sizeof(chunk));
     tempChunkPtr->stack = tempPtr;
@@ -26,7 +25,6 @@ stack initStack(stack stk) {
 }
 
 void stackOverflow(stack * stck) {
-    printf("Perfoming Overflow\n\n");
     chunk *tempChunk = newChunk();
     tempChunk->previous = stck->stackObj;
     stck->stackObj = tempChunk;
@@ -137,6 +135,7 @@ instruction * popFrame(stack *stck) {
         free(oldChunk);
     }
 //    printf("Popping frame. New PC: %p\n", newPC);
+    stck->stackObj = curChunk;
     return newPC;
 }
 
@@ -179,7 +178,6 @@ void stackPushEval(HeapCell *addr, stack * stck) {
 }
 
 void stackUnderflow(stack * stck) {
-    printf("Performing Underflow!\n\n");
     if (stck->stackObj->previous == NULL) {
         printf("Error: trying to pop more items than there are on the stack\n");
         exit(1);
@@ -266,6 +264,25 @@ HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr) {
         if (fromPtr == (&curChunk->stack[CHUNK_SIZE -1])) {
             curChunk = curChunk->previous;
             fromPtr = curChunk->stack;
+        }
+        else {
+            fromPtr = fromPtr + 1;
+        }
+    }
+    return fromPtr;
+}
+
+//This function is destructive, when it moves from one chunk to another, it
+//frees the old chunk
+HeapCell ** getNthAddrFromSP(int n, stack* stck) {
+    chunk* oldChunk = NULL;
+    HeapCell **fromPtr = stck->stackPointer;
+    for (n; n > 0; n--) {
+        if (fromPtr == (&stck->stackObj->stack[CHUNK_SIZE -1])) {
+            oldChunk = stck->stackObj;
+            stck->stackObj = stck->stackObj->previous;
+            fromPtr = stck->stackObj->stack;
+            free(oldChunk);
         }
         else {
             fromPtr = fromPtr + 1;

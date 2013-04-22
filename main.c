@@ -100,7 +100,7 @@ void slide(int num, Machine *mach) {
 //Pop the top N elements off the stack
 void pop(int num, Machine *mach) {
     HeapCell **newSP = NULL;
-    newSP = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
+    newSP = getNthAddrFromSP(num, &mach->stck);
     mach->stck.stackPointer = newSP;
 }
 

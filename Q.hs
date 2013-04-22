@@ -66,5 +66,5 @@
         Pack{0,2} v_31 (toOne (v_31 - 1))
       ;
   
-  main  = nsoln 7
+  main  = nsoln 10
 
