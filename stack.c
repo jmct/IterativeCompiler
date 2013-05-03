@@ -132,6 +132,7 @@ instruction * popFrame(stack *stck) {
              stck->stackPointer <= &curChunk->stack[CHUNK_SIZE-1])) {
         oldChunk = curChunk;
         curChunk = curChunk->previous;
+        free(oldChunk->stack);
         free(oldChunk);
     }
 //    printf("Popping frame. New PC: %p\n", newPC);
@@ -185,6 +186,7 @@ void stackUnderflow(stack * stck) {
     chunk * tempChunkPtr = stck->stackObj;
     stck->stackObj = stck->stackObj->previous;
     stck->stackPointer = stck->stackObj->stack;
+    free(tempChunkPtr->stack);
     free(tempChunkPtr);
 }
 
@@ -282,6 +284,7 @@ HeapCell ** getNthAddrFromSP(int n, stack* stck) {
             oldChunk = stck->stackObj;
             stck->stackObj = stck->stackObj->previous;
             fromPtr = stck->stackObj->stack;
+            free(oldChunk->stack);
             free(oldChunk);
         }
         else {
