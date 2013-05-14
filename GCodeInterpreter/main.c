@@ -202,6 +202,7 @@ void rearrangeStack(int num, stack *stck) {
     }
 }
 
+//TODO When thread blocks, write out to file with profiling information
 ExecutionMode unwind(Machine* mach) {
     HeapPtr item = *mach->stck.stackPointer;
     //this will only be used when unwinding reaches a function call
@@ -500,6 +501,7 @@ void printI(Machine *mach) {
     exit(0);
 }
 
+//TODO initialize machine with parID and a new threadID
 void parI(Machine* mach, threadPool* pool) {
     //get heap address that the new thread will start computing from
     HeapPtr topOfStack = stackPopKeep(&mach->stck);
