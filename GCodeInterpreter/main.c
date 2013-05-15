@@ -527,10 +527,18 @@ void showMachineState(Machine *mach) {
 
 ExecutionMode dispatchGCode(Machine *mach);
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        printf("No GCode file specified\n\nUsage: %s <filename>\n", argv[0]);
+        exit (1);
+    }
     instruction *prog = NULL;
-    //printf("About to enter parseGCode()\n");
-    prog = parseGCode();
+    FILE * inputFile = fopen(argv[1], "r");
+    if (inputFile == 0) {
+        printf("Unable to open input file :(\n");
+        exit (1);
+    }
+    prog = parseGCode(inputFile);
     int counter;
     instruction * tempInstrPtr = NULL;
 /*    for (counter = 4; prog[counter].type != End; counter++) {
