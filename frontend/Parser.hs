@@ -39,6 +39,11 @@ clex line (c:cs)
 keywords :: [String]
 keywords = ["let","letrec","case","in","of","Pack"]
 
+builtInDyadicNames :: [Name]
+builtInDyadicNames
+    = ["+", "-", "*", "/", "==", "~=", ">=", "div",
+       ">", "<=", "<"] 
+
 --Two character operators must be a member of the following string.
 --Currently the Not-Equal-To operator is ~= This may be changed to /=
 twoCharOps :: [String]
