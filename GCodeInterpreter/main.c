@@ -527,12 +527,48 @@ void showMachineState(Machine *mach) {
 
 ExecutionMode dispatchGCode(Machine *mach);
 
-int main() {
+char * getLogFileName(char * gcodeFileName) {
+    char* resStr;
+    char* lastDot;
+
+    resStr = malloc(strlen(gcodeFileName) + 4); //The + 4 is to ensure there is enough space for .log
+    if (resStr == NULL) {
+        return NULL;
+    }
+    strcpy(resStr, gcodeFileName);
+    lastDot = strrchr(resStr, '.');
+    if (lastDot == NULL) {
+        strcat(resStr, ".log");
+    }
+    else {
+        strcpy(lastDot, ".log\0");
+    }
+    return resStr;
+}
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        printf("No GCode file specified\n\nUsage: %s <filename>\n", argv[0]);
+        exit (1);
+    }
     instruction *prog = NULL;
-    //printf("About to enter parseGCode()\n");
-    prog = parseGCode();
+
+    //open GCode file. Right now we ignore any additional arguments
+    FILE * inputFile = fopen(argv[1], "r");
+    if (inputFile == 0) {
+        printf("Unable to open input file :(\n");
+        exit (1);
+    }
+    char* logFileName = getLogFileName(argv[1]);
+    FILE* logFile = fopen(logFileName, "w");
+
+    prog = parseGCode(inputFile);
+    fprintf(logFile, "GCode parsed.\n");
     int counter;
     instruction * tempInstrPtr = NULL;
+
+    fclose(inputFile);
+    fclose(logFile);
 /*    for (counter = 4; prog[counter].type != End; counter++) {
         if (prog[counter].type == CaseAlt || prog[counter].type == GLabel) {
             tempInstrPtr = lookupKey(prog[counter].labelVal);

@@ -288,7 +288,7 @@ void setupIntro(instruction *prog) {
     prog[3] = intro4;
 }
 
-instruction *parseGCode() {
+instruction *parseGCode(FILE* gcodeFile) {
     //printf("Entered parseGCode()\n");
     instruction * prog = malloc(sizeof(instruction)* 100);
     setupIntro(prog);
@@ -298,6 +298,7 @@ instruction *parseGCode() {
     tokenTag res;
     instruction endInstr;
     endInstr.type = End;
+    yyin = gcodeFile;
     res = yylex();
     while (res != END) {
         if (res == Instruction) {

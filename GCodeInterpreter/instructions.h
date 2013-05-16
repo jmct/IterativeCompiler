@@ -1,6 +1,7 @@
 //These are the declarations of both the GCode type and the instruction type.
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
+#include <stdio.h>
 
 typedef enum {       //Number of Arguments
          End,
@@ -55,7 +56,7 @@ typedef struct _instruction instruction;
 
 //Function to iterate over and parse .gcode file. Returns a pointer to an array
 //of instructions (the program).
-instruction *parseGCode();
+instruction *parseGCode(FILE* gcodeFile);
 
 //Take returned value from a yylex() call and create an instruction type
 instruction makeInstruction(char *instr);
