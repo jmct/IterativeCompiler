@@ -151,6 +151,13 @@ pprExpr (ECase (e1) alts) = decla `IAppend` alters
     where 
         decla = iConcat [ IStr "Case ", pprExpr e1, IStr " of", INewline ]
         alters = iConcat [ IStr " ", IIndent (pprAlters alts) ]
+pprExpr (EConstrAp t a args) = iConcat [IStr "Pack{", IStr $ show t
+                                     ,IStr ","
+                                     ,IStr $ show a
+                                     ,IStr "}"
+                                     ,IStr " ", iConcat $ map pprExpr args
+                                     ,IStr " "
+                                     ]
 pprExpr (ELam vars e1) = iConcat [IStr "\\", 
                                   IStr (concat $ intersperse " " vars), 
                                   IStr " . ", (pprExpr e1)]
