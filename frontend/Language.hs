@@ -22,7 +22,7 @@ data Expr a
     | ECase                 --Case declaration
         (Expr a)            --expression to compare
         [Alter a]           --list of alternatives to execute
-    | ELam [a] (Expr a)     --Lambda expression
+    | ELam a (Expr a)     --Lambda expression
     deriving Show
 
 type CoreExpr = Expr Name   --An expression with its name
@@ -38,6 +38,15 @@ type Program a = [ScDef a]
 --A Core Program is the list of supercombinators with an included name
 type CoreProgram = Program Name
 
+--Functions to map onto a sub-part of a program
+onExprs :: (Expr Name -> b) -> CoreProgram -> [(Name, [Name], b)]
+onExprs f prog = [(n, args, f expr) | (n, args, expr) <- prog]
+
+onArgs :: ([Name] -> b) -> CoreProgram -> [(Name, b, Expr Name)]
+onArgs f prog = [(n, f args, expr) | (n, args, expr) <- prog]
+
+onName :: (Name -> b) -> CoreProgram -> [(b, [Name], Expr Name)]
+onName f prog = [(f n, args, expr) | (n, args, expr) <- prog]
 --Following two functions are to retrieve either the bounded variable names
 --or the expressions from a list of definitions
 bindersOf :: [(a,b)] -> [a]
@@ -158,8 +167,8 @@ pprExpr (EConstrAp t a args) = iConcat [IStr "Pack{", IStr $ show t
                                      ,IStr " ", iConcat $ map pprExpr args
                                      ,IStr " "
                                      ]
-pprExpr (ELam vars e1) = iConcat [IStr "\\", 
-                                  IStr (concat $ intersperse " " vars), 
+pprExpr (ELam var e1) = iConcat [IStr "\\", 
+                                  IStr var, 
                                   IStr " . ", (pprExpr e1)]
 
 pprProgram :: CoreProgram -> Iseq
