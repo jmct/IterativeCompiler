@@ -25,6 +25,28 @@ data Expr a
     | ELam a (Expr a)     --Lambda expression
     deriving Show
 
+descend :: (Expr a -> Expr a) -> Expr a -> Expr a
+descend f (EConstrAp t a flds) = EConstrAp t a $ map f flds
+descend f (EAp a b) = EAp (f a) (f b)
+descend f (ELet is bndgs expr) = ELet is bndgs' (f expr)
+    where bndgs' = [(n, f rhs) | (n, rhs) <- bndgs]
+descend f (ECase sub alts) = ECase (f sub) alts'
+    where alts' = [(i, args, f expr) | (i, args, expr) <- alts]
+descend f (ELam n expr) = ELam n $ f expr
+descend f e = e
+
+subInExpr :: Expr Name -> Name -> Expr Name -> Expr Name
+subInExpr sub old = subInExpr'
+    where subInExpr' (EVar n) | n == old = sub
+          subInExpr' (EConstrAp t a exprs) = EConstrAp t a $ map subInExpr' exprs
+          subInExpr' (EAp expr1 expr2) = EAp (subInExpr' expr1) (subInExpr' expr2)
+          subInExpr' (ELet b defs expr) = 
+                        let newDefs = zip (map fst defs) (map (subInExpr' . snd) defs)
+                        in ELet b newDefs (subInExpr' expr)
+          subInExpr' (ECase subj alts) =
+                        ECase (subInExpr' subj) [(x, y, subInExpr' alt) | (x, y, alt) <- alts]
+          subInExpr' expr = expr
+
 type CoreExpr = Expr Name   --An expression with its name
 type CoreAlt = Alter Name   --An aternative expression and its name for cases
 
