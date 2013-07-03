@@ -1,0 +1,53 @@
+nil = Pack{1, 0};
+
+if p t f = case p of
+    <0> -> f;
+    <1> -> t;
+
+cons a b = Pack{2, 2} a b;
+
+fcons b a = Pack{2, 2} a b;
+
+map f xs = case xs of
+            <1> -> nil;
+            <2> a b -> cons (f a) (map f b);
+
+parMap f xs = case xs of
+                <1> -> nil;
+                <2> a b -> par (fcons (parMap f b)) (f a);
+
+downfrom n = if (n == 0)
+                    nil
+                    (cons n (downfrom (n - 1)));
+
+fromTo x y = if (x > y)
+                    nil
+                    (cons x (fromTo (x+1) y));
+
+times2 x = 2 * x;
+
+gcd x y = if (y == 0)
+                 x
+                 (if (x > y) 
+                        (gcd (x - y) y)
+                        (gcd x (y - x)));
+
+relPrime x y = (gcd x y) == 1;
+
+filter p xs = case xs of
+                <1> -> nil;
+                <2> a b -> if (p a) (cons a (filter p b)) (filter p b);
+
+gt x y = x > y;
+
+length xs = case xs of
+                <1> -> 0;
+                <2> a b -> 1 + (length b);
+
+sum xs = case xs of
+            <1> -> 0;
+            <2> a b -> a + (sum b);
+
+euler n = length (filter (relPrime n) (fromTo 1 n));
+
+main = sum (parMap euler (fromTo 1 15))

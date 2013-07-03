@@ -107,9 +107,6 @@ instruction makeInstruction(char *instr) {
         newInstr.pushGlobVal = malloc(strlen(yyval.strVal) + 1);
         strcpy(newInstr.pushGlobVal, yyval.strVal);
         if (strcmp(newInstr.pushGlobVal, "par") == 0) {
-            newInstr.parTag = parTagCount; //The reason we have to tag it hear is 
-                                           //because we need the unique par positions 
-                                           //in the GCode and this is the only chance. 
             parTagCount++;
         }
         return newInstr;
@@ -296,7 +293,7 @@ void setupIntro(instruction *prog) {
     prog[3] = intro4;
 }
 
-instruction *parseGCode(FILE* gcodeFile) {
+instruction *parseGCode(FILE* gcodeFile, int* parSwitches) {
     //printf("Entered parseGCode()\n");
     instruction * prog = malloc(sizeof(instruction)* 100);
     setupIntro(prog);
@@ -304,6 +301,7 @@ instruction *parseGCode(FILE* gcodeFile) {
     int currentSize = 100;
     int curInstr = 4; //this is because of the intro Instructions
     parTagCount = 0; //Ensuring that the par tags are counted up from 0
+    int parTagDiff = 0;
     tokenTag res;
     instruction endInstr;
     endInstr.type = End;
@@ -313,6 +311,23 @@ instruction *parseGCode(FILE* gcodeFile) {
         if (res == Instruction) {
 //            printf("Instruction(%s)", yyval.strVal); // <-Used for debugging 
             prog[curInstr] = makeInstruction(yyval.strVal);
+            printf("curInstr = %d, parTagCount = %d\n", curInstr, parTagCount);
+            //If the parTagCount was incremented, then we know that the created
+            //instruction was a PushGlobal "par". Here we check to see if that 
+            //par was switched off
+            if (parTagCount > parTagDiff && parSwitches != NULL) {
+                if (parSwitches[parTagCount - 1] == 0) {
+                    if (prog[curInstr].type == PushGlobal) {
+                        printf("Type is pushglobal!\n");
+                    }
+                    else {
+                        printf("Type is NOT pushglobal!\n");
+                    }
+                    prog[curInstr].pushGlobVal = realloc(prog[curInstr].pushGlobVal, strlen(prog[curInstr].pushGlobVal) + 4);
+                    strcpy(prog[curInstr].pushGlobVal, "parOff");
+                }
+                parTagDiff++;
+            }
         }
         else {
             printf("There is an error in the formatting of the GCode\n");

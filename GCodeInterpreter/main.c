@@ -8,7 +8,7 @@
 #include "gthread.h"
 #include "machine.h"
 //#include "lex.yy.c"
-#define NUM_CORES 2
+#define NUM_CORES 1
 #define HEAPSIZE 10000000
 
 /*
@@ -59,10 +59,6 @@ void slideNStack(int n, Machine *mach) {
 //is actually off, we convert it to a "pushglobal: parOff"
 void pushGlobal(instruction *fun, Machine *mach) {
     instruction* codePtr = lookupKey(fun->pushGlobVal);
-    int parOn = 1;
-    if (strcmp(fun->pushGlobVal, "par") == 0) {
-        parOn = checkPar(fun->parTag);
-    }
     //the reason we do not add 1 to codePtr above is so that we can get the
     //arity information from the function definition instruction.
     //this type of information could be added to the symbol table to more
@@ -571,30 +567,16 @@ int main(int argc, char* argv[]) {
     char* logFileName = getLogFileName(argv[1]);
     FILE* logFile = fopen(logFileName, "w");
 
-    prog = parseGCode(inputFile);
+    int* parSwitches = malloc(sizeof(int));
+    *parSwitches = 0;
+    printf("\n%d", parSwitches[0]);
+    prog = parseGCode(inputFile, parSwitches);
     fprintf(logFile, "GCode parsed.\n");
     int counter;
     instruction * tempInstrPtr = NULL;
 
     fclose(inputFile);
     fclose(logFile);
-/*    for (counter = 4; prog[counter].type != End; counter++) {
-        if (prog[counter].type == CaseAlt || prog[counter].type == GLabel) {
-            tempInstrPtr = lookupKey(prog[counter].labelVal);
-     //       printf("ArrayIndex ptr Value: %d\nTable lookup value: %d\n", counter, 
-         //           (int)(tempInstrPtr - &prog[0]));
-      //      printf("Label Value: %s\n\n", prog[counter].labelVal);
-        }
-        else if (prog[counter].type == FunDef) {
-            tempInstrPtr = lookupKey(prog[counter].funVals.name);
-       //     printf("FunDef position: %d\nLookup val: %d\n\n", counter,
-        //            (int)(tempInstrPtr - &prog[0]));
-        }
-    //    printf("%d\n", prog[counter].type);
-    }
-   // printf("\nCounter value = %d\n", counter);
-   
-*/
 
     // Allocate and initialize the heap (double needed space since it's Cheney's
     // GC)

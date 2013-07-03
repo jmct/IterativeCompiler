@@ -89,10 +89,9 @@ void showHeap(Heap* heap) {
 HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second) {
     int nextFree = globHeap->nextFreeCell;
     if (nextFree >= globHeap->maxSize) {
- //       printf("Heap overflow, implement GC!\nExiting\n");
-        printf("Trying GC!\n");
+      //  printf("Trying GC!\n");
         nextFree = garbageCollect(globHeap, first, second);
-        printf("%d Items copied during GC\n", nextFree);
+      //  printf("%d Items copied during GC\n", nextFree);
     }
     HeapPtr heap = globHeap->toSpace;
     heap[nextFree].tag = tag;
