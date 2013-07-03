@@ -7,6 +7,8 @@
 //The following are the definitions for the functions that parse our gcode
 //file. 
 
+int parTagCount;
+
 instruction makeInstruction(char *instr) {
     instruction newInstr;
     tokenTag newRes;
@@ -104,6 +106,12 @@ instruction makeInstruction(char *instr) {
         }
         newInstr.pushGlobVal = malloc(strlen(yyval.strVal) + 1);
         strcpy(newInstr.pushGlobVal, yyval.strVal);
+        if (strcmp(newInstr.pushGlobVal, "par") == 0) {
+            newInstr.parTag = parTagCount; //The reason we have to tag it hear is 
+                                           //because we need the unique par positions 
+                                           //in the GCode and this is the only chance. 
+            parTagCount++;
+        }
         return newInstr;
     }
     else if (strcmp(instr, "PushInt") == 0) {
@@ -295,6 +303,7 @@ instruction *parseGCode(FILE* gcodeFile) {
     instruction * temp = NULL; //This is to hold a temp pointer when we realloc()
     int currentSize = 100;
     int curInstr = 4; //this is because of the intro Instructions
+    parTagCount = 0; //Ensuring that the par tags are counted up from 0
     tokenTag res;
     instruction endInstr;
     endInstr.type = End;
