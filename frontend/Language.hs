@@ -22,8 +22,30 @@ data Expr a
     | ECase                 --Case declaration
         (Expr a)            --expression to compare
         [Alter a]           --list of alternatives to execute
-    | ELam [a] (Expr a)     --Lambda expression
+    | ELam a (Expr a)     --Lambda expression
     deriving Show
+
+descend :: (Expr a -> Expr a) -> Expr a -> Expr a
+descend f (EConstrAp t a flds) = EConstrAp t a $ map f flds
+descend f (EAp a b) = EAp (f a) (f b)
+descend f (ELet is bndgs expr) = ELet is bndgs' (f expr)
+    where bndgs' = [(n, f rhs) | (n, rhs) <- bndgs]
+descend f (ECase sub alts) = ECase (f sub) alts'
+    where alts' = [(i, args, f expr) | (i, args, expr) <- alts]
+descend f (ELam n expr) = ELam n $ f expr
+descend f e = e
+
+subInExpr :: Expr Name -> Name -> Expr Name -> Expr Name
+subInExpr sub old = subInExpr'
+    where subInExpr' (EVar n) | n == old = sub
+          subInExpr' (EConstrAp t a exprs) = EConstrAp t a $ map subInExpr' exprs
+          subInExpr' (EAp expr1 expr2) = EAp (subInExpr' expr1) (subInExpr' expr2)
+          subInExpr' (ELet b defs expr) = 
+                        let newDefs = zip (map fst defs) (map (subInExpr' . snd) defs)
+                        in ELet b newDefs (subInExpr' expr)
+          subInExpr' (ECase subj alts) =
+                        ECase (subInExpr' subj) [(x, y, subInExpr' alt) | (x, y, alt) <- alts]
+          subInExpr' expr = expr
 
 type CoreExpr = Expr Name   --An expression with its name
 type CoreAlt = Alter Name   --An aternative expression and its name for cases
@@ -38,6 +60,15 @@ type Program a = [ScDef a]
 --A Core Program is the list of supercombinators with an included name
 type CoreProgram = Program Name
 
+--Functions to map onto a sub-part of a program
+onExprs :: (Expr Name -> b) -> CoreProgram -> [(Name, [Name], b)]
+onExprs f prog = [(n, args, f expr) | (n, args, expr) <- prog]
+
+onArgs :: ([Name] -> b) -> CoreProgram -> [(Name, b, Expr Name)]
+onArgs f prog = [(n, f args, expr) | (n, args, expr) <- prog]
+
+onName :: (Name -> b) -> CoreProgram -> [(b, [Name], Expr Name)]
+onName f prog = [(f n, args, expr) | (n, args, expr) <- prog]
 --Following two functions are to retrieve either the bounded variable names
 --or the expressions from a list of definitions
 bindersOf :: [(a,b)] -> [a]
@@ -158,8 +189,8 @@ pprExpr (EConstrAp t a args) = iConcat [IStr "Pack{", IStr $ show t
                                      ,IStr " ", iConcat $ map pprExpr args
                                      ,IStr " "
                                      ]
-pprExpr (ELam vars e1) = iConcat [IStr "\\", 
-                                  IStr (concat $ intersperse " " vars), 
+pprExpr (ELam var e1) = iConcat [IStr "\\", 
+                                  IStr var, 
                                   IStr " . ", (pprExpr e1)]
 
 pprProgram :: CoreProgram -> Iseq
