@@ -569,7 +569,6 @@ int main(int argc, char* argv[]) {
 
     int* parSwitches = malloc(sizeof(int));
     *parSwitches = 0;
-    printf("\n%d", parSwitches[0]);
     prog = parseGCode(inputFile, parSwitches);
     fprintf(logFile, "GCode parsed.\n");
     int counter;

@@ -311,18 +311,18 @@ instruction *parseGCode(FILE* gcodeFile, int* parSwitches) {
         if (res == Instruction) {
 //            printf("Instruction(%s)", yyval.strVal); // <-Used for debugging 
             prog[curInstr] = makeInstruction(yyval.strVal);
-            printf("curInstr = %d, parTagCount = %d\n", curInstr, parTagCount);
+//            printf("curInstr = %d, parTagCount = %d\n", curInstr, parTagCount);
             //If the parTagCount was incremented, then we know that the created
             //instruction was a PushGlobal "par". Here we check to see if that 
             //par was switched off
             if (parTagCount > parTagDiff && parSwitches != NULL) {
                 if (parSwitches[parTagCount - 1] == 0) {
-                    if (prog[curInstr].type == PushGlobal) {
+/*                    if (prog[curInstr].type == PushGlobal) {
                         printf("Type is pushglobal!\n");
                     }
                     else {
                         printf("Type is NOT pushglobal!\n");
-                    }
+                    } */
                     prog[curInstr].pushGlobVal = realloc(prog[curInstr].pushGlobVal, strlen(prog[curInstr].pushGlobVal) + 4);
                     strcpy(prog[curInstr].pushGlobVal, "parOff");
                 }
