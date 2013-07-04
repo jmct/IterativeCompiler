@@ -1,3 +1,4 @@
+module GMachine where
 {-This file will contain all the code necessary for the basic GMachine
  -
  - the functions defined here or called from {Language, Parser, Heap}.hs
