@@ -50,4 +50,4 @@ sum xs = case xs of
 
 euler n = length (filter (relPrime n) (fromTo 1 n));
 
-main = sum (parMap euler (fromTo 1 15))
+main = sum (parMap euler (fromTo 1 30))

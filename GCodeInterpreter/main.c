@@ -52,17 +52,12 @@ void slideNStack(int n, Machine *mach) {
 
 //Any top-level function will be pushed onto to the stack
 //via this function
-//TODO: Need to add parOn argument to allocFun and need to change definition of allocFun
-//However, I've just realized that it may be better to have a separate primitive such as
-//parOff that is used instead of the runtime switching. The GCode parser in instructions.c
-//could look up whether a par is on when it reads a "pushglobal: par" and if the par 
-//is actually off, we convert it to a "pushglobal: parOff"
 void pushGlobal(instruction *fun, Machine *mach) {
     instruction* codePtr = lookupKey(fun->pushGlobVal);
     //the reason we do not add 1 to codePtr above is so that we can get the
     //arity information from the function definition instruction.
     //this type of information could be added to the symbol table to more
-    //efficiency. (So the ST wouldn't just store addresses but structs that
+    //efficiency. (So the symbol table wouldn't just store addresses but structs that
     //had all relevant information based on the tag of the result of the lookup    
     HeapPtr addr = allocFun(codePtr->funVals.arity, codePtr, globalHeap);
     //don't do effectful expressions in parameter list! adding 1 to codePtr can break 
