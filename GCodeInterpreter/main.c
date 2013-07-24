@@ -546,6 +546,13 @@ char * getLogFileName(char * gcodeFileName) {
     return resStr;
 }
 
+typedef struct {
+    Bool pswitch;
+    int address;
+} parSwitch;
+
+//typedef struct _parSwitch parSwitch;
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         printf("No GCode file specified\n\nUsage: %s <filename>\n", argv[0]);
@@ -562,15 +569,16 @@ int main(int argc, char* argv[]) {
     char* logFileName = getLogFileName(argv[1]);
     FILE* logFile = fopen(logFileName, "w");
 
-    int* parSwitches = malloc(sizeof(int));
+    parSwitch* switches = malloc(sizeof(parSwitch));
     *parSwitches = 0;
-    prog = parseGCode(inputFile, parSwitches);
+    prog = parseGCode(inputFile, switches);
     fprintf(logFile, "GCode parsed.\n");
     int counter;
     instruction * tempInstrPtr = NULL;
 
     fclose(inputFile);
     fclose(logFile);
+
 
     // Allocate and initialize the heap (double needed space since it's Cheney's
     // GC)
