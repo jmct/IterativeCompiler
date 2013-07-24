@@ -293,7 +293,7 @@ void setupIntro(instruction *prog) {
     prog[3] = intro4;
 }
 
-instruction *parseGCode(FILE* gcodeFile, int* parSwitches) {
+instruction *parseGCode(FILE* gcodeFile, parSwitch* parSwitches) {
     //printf("Entered parseGCode()\n");
     instruction * prog = malloc(sizeof(instruction)* 100);
     setupIntro(prog);
@@ -310,6 +310,13 @@ instruction *parseGCode(FILE* gcodeFile, int* parSwitches) {
     while (res != END) {
         if (res == Instruction) {
             prog[curInstr] = makeInstruction(yyval.strVal);
+            if (parTagCount > parTagDiff && parSwitches != NULL) {
+                parSwitches[parTagDiff].pswitch = True;
+                parSwitches[parTagDiff].address = curInstr;
+                parSwitches = realloc(sizeof(parSwitch) * parTagCount);
+                parTagDiff++;
+            }
+/* Code for when switching pars occured during parsing
             //If the parTagCount was incremented, then we know that the created
             //instruction was a PushGlobal "par". Here we check to see if that 
             //par was switched off
@@ -321,6 +328,7 @@ instruction *parseGCode(FILE* gcodeFile, int* parSwitches) {
                 }
                 parTagDiff++;
             }
+*/
         }
         else {
             printf("There is an error in the formatting of the GCode\n");
@@ -363,6 +371,10 @@ instruction *parseGCode(FILE* gcodeFile, int* parSwitches) {
             insert(prog[curInstr].funVals.name, &prog[curInstr]);
         }
     }
+
+    //Make sure that we can know when we've reached the end of the par switch
+    //array.
+    parSwitches[parTagCount].address = -1;
     return prog;
 }
 

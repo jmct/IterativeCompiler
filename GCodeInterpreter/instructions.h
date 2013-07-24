@@ -53,6 +53,12 @@ struct _instruction {
 };
 typedef struct _instruction instruction;
 
+
+typedef struct {
+    Bool pswitch;
+    int address;
+} parSwitch;
+
 //Function to iterate over and parse .gcode file. Returns a pointer to an array
 //of instructions (the program).
 instruction *parseGCode(FILE* gcodeFile, parSwitch* parSwitches);

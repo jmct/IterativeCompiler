@@ -546,10 +546,12 @@ char * getLogFileName(char * gcodeFileName) {
     return resStr;
 }
 
+/*
 typedef struct {
     Bool pswitch;
     int address;
 } parSwitch;
+*/
 
 //typedef struct _parSwitch parSwitch;
 
@@ -570,10 +572,19 @@ int main(int argc, char* argv[]) {
     FILE* logFile = fopen(logFileName, "w");
 
     parSwitch* switches = malloc(sizeof(parSwitch));
-    *parSwitches = 0;
     prog = parseGCode(inputFile, switches);
     fprintf(logFile, "GCode parsed.\n");
-    int counter;
+    int counter = 0;
+    do {
+        if (switches[counter].address < 0) {
+            counter *= -1;
+        }
+        else {
+            counter++;
+        }
+    } while (counter > 0);
+    printf("There are %d par sites in the program\n", counter);
+
     instruction * tempInstrPtr = NULL;
 
     fclose(inputFile);
