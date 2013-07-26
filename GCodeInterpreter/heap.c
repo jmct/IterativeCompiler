@@ -124,6 +124,7 @@ HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap) {
     appNode->app.leftArg = left;
     appNode->app.rightArg = right;
     appNode->app.numBlockedThreads = 0;
+    appNode->app.blockedQueue = NULL;
     return appNode;
 }
 
@@ -143,6 +144,7 @@ HeapPtr allocFun(int arity1, instruction * codePtr, Heap* myHeap) {
     funNode->fun.arity = arity1;
     funNode->fun.code = codePtr;
     funNode->fun.numBlockedThreads = 0;
+    funNode->fun.blockedQueue = NULL;
     return funNode;
 }
 
