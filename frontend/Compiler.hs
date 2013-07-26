@@ -378,9 +378,10 @@ compiledPrimitives
       ,("<=", 2, [Push 1, Eval, Push 1, Eval, Le, Update 2, Pop 2, Unwind])
       ,(">",  2, [Push 1, Eval, Push 1, Eval, Gt, Update 2, Pop 2, Unwind])
       ,(">=", 2, [Push 1, Eval, Push 1, Eval, Ge, Update 2, Pop 2, Unwind])
-      ,("par", 2, [Push 1, Push 1, MkAp, Push 2, Par, Update 2, Pop 2, Unwind])
-      ,("parOff", 2, [Push 1, Push 1, MkAp, Update 2, Pop 2, Unwind])
-      ,("parSPJ", 2, [Push 1, Push 1, Par, Update 2, Pop 2, Unwind])] --I Think this is right.
+      ,("parSPJ", 2, [Push 1, Push 1, MkAp, Push 2, Par, Update 2, Pop 2, Unwind])
+      ,("parSPJOff", 2, [Push 1, Push 1, MkAp, Update 2, Pop 2, Unwind])
+      ,("par", 2, [Push 1, Push 1, Par, Update 2, Pop 2, Unwind]) --I Think this is right.
+      ,("parSPJOff", 2, [Push 1, Update 2, Pop 2, Unwind])]
 --      ,("if", 3, [Push 0, Eval, Cond [Push 1] [Push 2], Update 3, Pop 3, Unwind])]
 {-
 labelSuperComb ::  GMHeap -> (Name, Addr) -> Fresh String
