@@ -17,11 +17,6 @@ typedef enum {
     INDIRECTION
 } Tag;
 
-/* This typedef is just simple syntactic sugar for bools */
-typedef enum {
-    FALSE,
-    TRUE
-} Bool;
 
 struct atom;
 typedef struct atom HeapCell;
