@@ -8,7 +8,7 @@
 #include "gthread.h"
 #include "machine.h"
 //#include "lex.yy.c"
-#define NUM_CORES 1
+#define NUM_CORES 2
 #define HEAPSIZE 10000000
 
 /*
@@ -570,9 +570,16 @@ int main(int argc, char* argv[]) {
     }
     char* logFileName = getLogFileName(argv[1]);
     FILE* logFile = fopen(logFileName, "w");
-
+    
+    //setup `passing by reference' for our switches
     parSwitch* switches = malloc(sizeof(parSwitch));
-    prog = parseGCode(inputFile, switches);
+    parSwitch** switchesPtr = &switches;
+
+    //parse the actual GCode
+    prog = parseGCode(inputFile, switchesPtr);
+    //get the value back from switchesPtr
+    switches = *switchesPtr;
+
     fprintf(logFile, "GCode parsed.\n");
     int counter = 0;
     do {
@@ -583,7 +590,7 @@ int main(int argc, char* argv[]) {
             counter++;
         }
     } while (counter > 0);
-    printf("There are %d par sites in the program\n", counter);
+    printf("There are %d par sites in the program\n", counter * (-1));
 
     instruction * tempInstrPtr = NULL;
 
@@ -812,7 +819,7 @@ ExecutionMode dispatchGCode(Machine *mach) {
             break;
         case Par:
             parI(mach, globalPool);
-            printf("Trying Par");
+            //printf("Trying Par");
             break;
         default:
             break;

@@ -3,6 +3,12 @@
 #define INSTRUCTION_H
 #include <stdio.h>
 
+/* This typedef is just simple syntactic sugar for bools */
+typedef enum {
+    FALSE,
+    TRUE
+} Bool;
+
 typedef enum {       //Number of Arguments
          End,
          Unwind,     //0 
@@ -61,7 +67,7 @@ typedef struct {
 
 //Function to iterate over and parse .gcode file. Returns a pointer to an array
 //of instructions (the program).
-instruction *parseGCode(FILE* gcodeFile, parSwitch* parSwitches);
+instruction *parseGCode(FILE* gcodeFile, parSwitch** parSwitchesPtr);
 
 //Take returned value from a yylex() call and create an instruction type
 instruction makeInstruction(char *instr);

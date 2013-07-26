@@ -293,8 +293,9 @@ void setupIntro(instruction *prog) {
     prog[3] = intro4;
 }
 
-instruction *parseGCode(FILE* gcodeFile, parSwitch* parSwitches) {
-    //printf("Entered parseGCode()\n");
+instruction *parseGCode(FILE* gcodeFile, parSwitch** parSwitchesPtr) {
+    //get pointer that points to array of switches
+    parSwitch* parSwitches = *parSwitchesPtr;
     instruction * prog = malloc(sizeof(instruction)* 100);
     setupIntro(prog);
     instruction * temp = NULL; //This is to hold a temp pointer when we realloc()
@@ -311,9 +312,9 @@ instruction *parseGCode(FILE* gcodeFile, parSwitch* parSwitches) {
         if (res == Instruction) {
             prog[curInstr] = makeInstruction(yyval.strVal);
             if (parTagCount > parTagDiff && parSwitches != NULL) {
-                parSwitches[parTagDiff].pswitch = True;
+                parSwitches[parTagDiff].pswitch = TRUE;
                 parSwitches[parTagDiff].address = curInstr;
-                parSwitches = realloc(sizeof(parSwitch) * parTagCount);
+                parSwitches = realloc(parSwitches, ((sizeof(parSwitch)) + (sizeof(parSwitch) * parTagCount)));
                 parTagDiff++;
             }
 /* Code for when switching pars occured during parsing
@@ -375,6 +376,7 @@ instruction *parseGCode(FILE* gcodeFile, parSwitch* parSwitches) {
     //Make sure that we can know when we've reached the end of the par switch
     //array.
     parSwitches[parTagCount].address = -1;
+    (*parSwitchesPtr) = parSwitches;
     return prog;
 }
 
