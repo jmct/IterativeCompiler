@@ -14,7 +14,7 @@ map f xs = case xs of
 
 parMap f xs = case xs of
                 <1> -> nil;
-                <2> a b -> par (fcons (parMap f b)) (f a);
+                <2> a b -> let x = f a in par x (cons x (parMap f b));
 
 downfrom n = if (n == 0)
                     nil
