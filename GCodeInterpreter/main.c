@@ -30,10 +30,16 @@ void initMachine(Machine *mach) {
     threadCounter += 1;
 }
 
+void freeMachine(Machine* mach) {
+   freeStack(mach->stck);
+   free(mach);
+}
+
 enum ExecutionMode_ {
     LIVE,   
     BLOCKED,
-    FINISHED
+    FINISHED,
+    UNKNOWN
 };
 
 typedef enum ExecutionMode_ ExecutionMode;
@@ -661,7 +667,7 @@ int main(int argc, char* argv[]) {
         programMode = FINISHED;
         for (i = 0; i < NUM_CORES; i++) {
             Machine* fromThreadPool = NULL;
-            core = FINISHED;
+            core = UNKNOWN;
             //see if the core needs to pull from the spark pool
             if (cores[i] == NULL) {
                 fromThreadPool = getMachFromPool(globalPool);
@@ -683,6 +689,9 @@ int main(int argc, char* argv[]) {
                 core = dispatchGCode(cores[i]); 
             }
 
+            if (core == FINISHED) {
+                freeMachine(cores[i]);
+            }
             if (core != LIVE) {
                 cores[i] = NULL;
             }

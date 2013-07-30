@@ -24,6 +24,14 @@ stack initStack(stack stk) {
     return stk;
 }
 
+void freeStack(stack stck) {
+    if (stck.stackObj->previous != NULL) {
+        puts("Trying to free stack with multiple Chunks!");
+    }
+    free(stck.stackObj->stack);
+    free(stck.stackObj);
+}
+
 void stackOverflow(stack * stck) {
     chunk *tempChunk = newChunk();
     tempChunk->previous = stck->stackObj;

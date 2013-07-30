@@ -23,6 +23,8 @@ chunk * newChunk();
 
 stack initStack(stack stk);
 
+void freeStack(stack stck);
+
 void stackOverflow(stack * stck);
 
 void pushFrame(instruction *pc, stack *stck);
