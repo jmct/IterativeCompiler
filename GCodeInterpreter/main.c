@@ -213,7 +213,6 @@ ExecutionMode unwind(Machine* mach) {
     HeapPtr item = *mach->stck.stackPointer;
     //this will only be used when unwinding reaches a function call
     int nArgs = -1;
-    int i;
     while (item->tag == APP || item->tag == INDIRECTION) {
         if (item->tag == APP) {
             item->tag = LOCKED_APP;
@@ -604,7 +603,6 @@ int main(int argc, char* argv[]) {
     } while (counter > 0);
     printf("There are %d par sites in the program\n", counter * (-1));
 
-    instruction * tempInstrPtr = NULL;
 
     fclose(inputFile);
     fclose(logFile);
