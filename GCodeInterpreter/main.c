@@ -213,7 +213,6 @@ ExecutionMode unwind(Machine* mach) {
     HeapPtr item = *mach->stck.stackPointer;
     //this will only be used when unwinding reaches a function call
     int nArgs = -1;
-    int i;
     while (item->tag == APP || item->tag == INDIRECTION) {
         if (item->tag == APP) {
             item->tag = LOCKED_APP;
@@ -487,24 +486,30 @@ void pack(int tag, int ar, Machine *mach) {
 //This needs to return to dispatchGCode when printing data structures
 //shouldn't be too hard but requires that the PC keeps going back to Eval and Print
 void printI(Machine *mach) {
+    static int evalPrintLoop = 1;
+    evalPrintLoop -= 1;
     HeapPtr oldTop = stackPopKeep(&mach->stck);
     if (oldTop->tag == INTEGER) {
         printf("%d ", oldTop->num);
     }
     else if (oldTop->tag == CONSTR) {
         int i = oldTop->constr.arity;
+        evalPrintLoop += i;
         printf("<%d> ", oldTop->constr.id);
         for (i = i -1; i >=0; i--) {
             stackPush(oldTop->constr.fields[i], &mach->stck);
         }
-        eval(mach);
-        mach->progCounter -= 1;
     }
     else {
         printf("Trying to print non-Int or non-Constructor!\n");
     }
-    printf("\nTotal Reductions: %d\n", globalReductions);
-    exit(0);
+
+    if (evalPrintLoop != 0) {
+        //eval(mach);
+        mach->progCounter -= 2;
+    }
+   // printf("\nTotal Reductions: %d\n", globalReductions);
+    //exit(0);
 }
 
 //TODO initialize machine with parID and a new threadID
@@ -598,7 +603,6 @@ int main(int argc, char* argv[]) {
     } while (counter > 0);
     printf("There are %d par sites in the program\n", counter * (-1));
 
-    instruction * tempInstrPtr = NULL;
 
     fclose(inputFile);
     fclose(logFile);
@@ -700,6 +704,7 @@ int main(int argc, char* argv[]) {
             }
         }
     }
+    printf("\nTotal Reductions: %d\n", globalReductions);
     return 0;
 }
 /*
@@ -821,7 +826,7 @@ ExecutionMode dispatchGCode(Machine *mach) {
             break;
         case FunDef: //<<<<<<<<< Maybe moved to Default case?!
             em = FINISHED;
-            printf("WE HAVE REACHED A FUNDEF AND FINISHED THREAD");
+            //printf("WE HAVE REACHED A FUNDEF AND FINISHED THREAD");
             break;
         case Print:
             printI(mach);
