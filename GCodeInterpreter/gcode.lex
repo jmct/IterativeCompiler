@@ -14,7 +14,9 @@ union {
 
 %}
 /* Flex Definitions */
-%option noyywrap
+%option noyywrap 
+%option nounput
+%option noinput
 
 instr   [A-Z][A-Za-z]+:?
 label   [[:graph:]]+:?
