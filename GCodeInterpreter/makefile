@@ -19,11 +19,14 @@ gthread.o : gthread.h
 garbagecollection.o : garbagecollection.h heap.h stack.h gthread.h machine.h
 	gcc -c garbagecollection.c
 
-main.o : main.c stack.c heap.c instructions.c gthread.c symbolTable.c garbagecollection.c
+main.o : main.c stack.c heap.c instructions.c gthread.c symbolTable.c garbagecollection.c lex.yy.c
 	gcc -c main.c
+
+lex.yy.c: gcode.lex
+	flex gcode.lex
 
 clean :
 	rm instructions.o main.o symbolTable.o stack.o heap.o gthread.o garbagecollection.o
 
-debug :
+debug : lex.yy.c
 	gcc -Wall -g main.c instructions.c symbolTable.c stack.c heap.c gthread.c garbagecollection.c -o interpreter
