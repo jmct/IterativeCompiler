@@ -581,6 +581,8 @@ int main(int argc, char* argv[]) {
     }
     char* logFileName = getLogFileName(argv[1]);
     FILE* logFile = fopen(logFileName, "w");
+
+    free(logFileName);
     
     //setup `passing by reference' for our switches
     parSwitch* switches = malloc(sizeof(parSwitch));
