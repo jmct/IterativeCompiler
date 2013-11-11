@@ -30,6 +30,7 @@ void initMachine(Machine *mach) {
     threadCounter += 1;
 }
 
+/* TODO when freeing a machine we need to keep the statistics */
 void freeMachine(Machine* mach) {
    freeStack(mach->stck);
    free(mach);
@@ -112,7 +113,7 @@ void pop(int num, Machine *mach) {
 
 void unlock(HeapPtr node) {
     while (node->tag == LOCKED_APP) {
-        //TODO empty pending list <--I think it's done
+        //TODONE empty pending list <--I think it's done
         if (node->app.numBlockedThreads > 0) {
             addQueueToThreadPool(node->app.blockedQueue, node->app.numBlockedThreads, globalPool);
             node->app.numBlockedThreads = 0;
@@ -127,7 +128,7 @@ void unlock(HeapPtr node) {
             node->fun.numBlockedThreads = 0;
             node->fun.blockedQueue = NULL;
         }
-        //TODO empty pending list <--I think it's done
+        //TODONE empty pending list <--I think it's done
         node->tag = FUN;
     }
     else {
@@ -138,7 +139,7 @@ void unlock(HeapPtr node) {
         
 //update the pointer to the top of the expression tree to point
 //to an indirection node (this allows for sharing)
-//TODO:
+//TODONE:
 //When locked nodes introduced, this function must take them into accont
 void update(int num, Machine *mach) {
     HeapCell **toUpdate = NULL;
@@ -166,26 +167,6 @@ void alloc(int num, Machine *mach) {
     }
 }
     
-/*
-//After an expression is evaluated, the root node of the 
-//expression (which is n+1 items into the stack
-//must be updated in order to allow for sharing
-void update(int n, Machine *mach) {
-    HeapCell *indirectTo = popStack(mach);
-    HeapCell *indirectNode = allocIndirection(indirectTo);
-    mach->stck[(int)mach->stck.stackPointer - n] = indirectNode;
-}
-
-//alloc is used in letrec expressions to ensure that 
-//there is heap allocated for (as of yet) unknown expressions
-void allocN(int n, Machine *mach) {
-    HeapCell *tempAddr; 
-    for (n; n > 0; n--) {
-        tempAddr = allocIndirection(NULL, globalHeap);
-        stackPush(tempAddr, &mach->stck);
-    }
-}
-*/
 
 int numArgs(Machine *mach) {
     return itemsInFrame(&mach->stck) - 1;
