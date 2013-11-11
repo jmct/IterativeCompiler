@@ -1,0 +1,76 @@
+Intro
+=====
+We need to make the backend GCode interpreter iterate. This file will lay out
+the plan to do so.
+
+General Idea
+------------
+
+The RTS needs to keep statistics of all the running threads and the overal
+program. The most general of these statistics will be the "Reduction Count"
+value. This value will be kept in the variable 'globalReductions' and is found
+in main.c. Each thread requires a unique ID. This will also be a simple counter
+that increments after each thread is created. This is found in 'threadCount',
+also in main.c.
+
+
+Global Stats
+============
+
+Some global stats would be nice but for the time being they are a lower priority
+than the thread specific stats. The reason for this is that initially we will be
+choosing which `par` sites live or die based on the thread specific stats. It is
+possible and likely that later we will want to consider more global stats as
+well. 
+
+For instance, if a thread is deemed to be 'unhealthy' because it barely does any
+work it might still be worth keeping around if globally there aren't many
+threads anyway.
+
+Ideas for global stats:
+
+* Global Reduction Count
+* Total number of live threads
+* Number of currently blocked threads
+* Core utilization (this will matter more when/if we move to per-core work
+    pools)
+
+Thread Stats
+============
+
+This is the key point for right now. Each thread needs to keep track of some
+stats in order for us to know which `par` sites are worthwhile.
+
+First we will look at the stats we want, then we will think about how to
+implement them.
+
+Thread Stats
+------------
+
+1 Thread ID
+2 Thread lifespan 
+3 Number of Reductions worked
+4 Number of Reductions blocked
+5 How many threads _this_ thread blocked
+6 Which other threads blocked this thread
+
+Thread Stats Implementation
+---------------------------
+
+Implementing 1 is just a matter of using the global counter discussed earlier.
+
+Thread lifespan will probably just be the difference between the global
+reduction count when the thread was birthed and when it died. This makes it very
+easy to calculate after the thread has executed. machine.h already defines
+birthTime and deathTime as members of the machine structure.
+
+3 and 4 are just reflections of each other. My current thought is to mark the
+global reduction count whenever a thread is blocked. Then when the thread is
+awoken, we look at the global reduction count again and can know how long _this_
+blockage lasted. If each Machine is given another field for the total number of
+reductions it was blocked, we could just add to that at each awakening. Then we
+automatically get 4 since it's just the difference between 3 and 2.
+
+
+
+
