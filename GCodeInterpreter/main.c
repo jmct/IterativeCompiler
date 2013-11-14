@@ -28,6 +28,8 @@ void initMachine(Machine *mach) {
     mach->reductionCounter = 0;
     mach->threadID = threadCounter;
     threadCounter += 1;
+    mach->birthTime = globalReductions;
+    mach->unblockTime = globalReductions;
 }
 
 /* TODO when freeing a machine we need to keep the statistics */

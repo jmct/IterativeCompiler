@@ -50,9 +50,10 @@ Thread Stats
 1 Thread ID
 2 Thread lifespan 
 3 Number of Reductions worked
-4 Number of Reductions blocked
+4 Number of Global Reductions blocked
 5 How many threads _this_ thread blocked
 6 Which other threads blocked this thread
+7 Number of Global reductions alive
 
 Thread Stats Implementation
 ---------------------------
@@ -64,13 +65,23 @@ reduction count when the thread was birthed and when it died. This makes it very
 easy to calculate after the thread has executed. machine.h already defines
 birthTime and deathTime as members of the machine structure.
 
-3 and 4 are just reflections of each other. My current thought is to mark the
+7 and 4 are just reflections of each other. My current thought is to mark the
 global reduction count whenever a thread is blocked. Then when the thread is
 awoken, we look at the global reduction count again and can know how long _this_
 blockage lasted. If each Machine is given another field for the total number of
 reductions it was blocked, we could just add to that at each awakening. Then we
-automatically get 4 since it's just the difference between 3 and 2.
+automatically get 4 since it's just the difference between 7 and 2.
 
+3 is literally the count of how many reductions the thread has worked, so not
+only been alive and _able_ to work, but actually scheduled on the CPU.
 
+machine.h has the appropriate fields to get this information, with the following
+key:
 
-
+1 -> threadID
+1 -> deathTime - birthTime
+1 -> reductionCounter
+1 -> blockedCounter
+1 -> TODO
+1 -> TODO
+1 -> (2) - blockedCounter
