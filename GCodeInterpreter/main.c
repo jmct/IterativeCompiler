@@ -21,11 +21,13 @@ typedef struct Machine_ Machine;
 */
 int threadCounter;
 int globalReductions;
+FILE* logFile;
 
 void initMachine(Machine *mach) {
     mach->progCounter  = NULL;
     mach->stck = initStack(mach->stck);
     mach->reductionCounter = 0;
+    mach->blockedCounter = 0;
     mach->threadID = threadCounter;
     threadCounter += 1;
     mach->birthTime = globalReductions;
@@ -35,6 +37,16 @@ void initMachine(Machine *mach) {
 /* TODO when freeing a machine we need to keep the statistics */
 void freeMachine(Machine* mach) {
    freeStack(mach->stck);
+   
+   int lifespan = globalReductions - mach->birthTime;
+   int aliveTime = lifespan - mach->blockedCounter;
+   fprintf(logFile,
+           "%d,%d,%d,%d,%d,\n",
+           mach->threadID, 
+           lifespan,
+           mach->reductionCounter, 
+           mach->blockedCounter,
+           aliveTime);
    free(mach);
 }
 
@@ -191,7 +203,7 @@ void rearrangeStack(int num, stack *stck) {
     }
 }
 
-//TODO When thread blocks, write out to file with profiling information
+//TODONOMORE When thread blocks, write out to file with profiling information
 ExecutionMode unwind(Machine* mach) {
     HeapPtr item = *mach->stck.stackPointer;
     //this will only be used when unwinding reaches a function call
@@ -563,7 +575,7 @@ int main(int argc, char* argv[]) {
         exit (1);
     }
     char* logFileName = getLogFileName(argv[1]);
-    FILE* logFile = fopen(logFileName, "w");
+    logFile = fopen(logFileName, "w");
 
     free(logFileName);
     
@@ -590,7 +602,6 @@ int main(int argc, char* argv[]) {
 
 
     fclose(inputFile);
-    fclose(logFile);
 
 
     // Allocate and initialize the heap (double needed space since it's Cheney's
@@ -690,6 +701,7 @@ int main(int argc, char* argv[]) {
         }
     }
     printf("\nTotal Reductions: %d\n", globalReductions);
+    fclose(logFile);
     return 0;
 }
 /*

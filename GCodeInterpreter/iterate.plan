@@ -79,9 +79,9 @@ machine.h has the appropriate fields to get this information, with the following
 key:
 
 1 -> threadID
-1 -> deathTime - birthTime
-1 -> reductionCounter
-1 -> blockedCounter
-1 -> TODO
-1 -> TODO
-1 -> (2) - blockedCounter
+2 -> deathTime - birthTime
+3 -> reductionCounter
+4 -> blockedCounter
+5 -> TODO
+6 -> TODO
+7 -> (2) - blockedCounter

@@ -12,7 +12,7 @@ struct Machine_ {
     //use the log file to build up a 'picture' of each thread. 
     //
     //reductionCounter, birthTime, deathTime and threadID are self described.
-    int reductionCounter, threadID, birthTime, deathTime;
+    int reductionCounter, threadID, birthTime;
 
     //aliveCounter and blockCounter work together to give us the the total
     //number of reductions 'worked' for this thread. Whenever the thread blocks
