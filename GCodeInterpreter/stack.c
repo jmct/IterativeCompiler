@@ -206,7 +206,7 @@ void stackPopThrowAway(stack *stck) {
 }
 
 void popNFromStack(int n, stack* stck) {
-    for (n; n > 0; n--) {
+    for (; n > 0; n--) {
         if (stck->stackPointer == &stck->stackObj->stack[CHUNK_SIZE-1]) {
             stackUnderflow(stck);
         }
@@ -270,7 +270,7 @@ HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr) {
     while (!(fromPtr >= curChunk->stack && fromPtr <= &curChunk->stack[CHUNK_SIZE-1])) {
         curChunk = curChunk->previous;
     }
-    for (n; n > 0; n--) {
+    for (; n > 0; n--) {
         if (fromPtr == (&curChunk->stack[CHUNK_SIZE -1])) {
             curChunk = curChunk->previous;
             fromPtr = curChunk->stack;
@@ -287,7 +287,7 @@ HeapCell ** getNthAddrFrom(int n, stack* stck, HeapCell ** fromPtr) {
 HeapCell ** getNthAddrFromSP(int n, stack* stck) {
     chunk* oldChunk = NULL;
     HeapCell **fromPtr = stck->stackPointer;
-    for (n; n > 0; n--) {
+    for (; n > 0; n--) {
         if (fromPtr == (&stck->stackObj->stack[CHUNK_SIZE -1])) {
             oldChunk = stck->stackObj;
             stck->stackObj = stck->stackObj->previous;

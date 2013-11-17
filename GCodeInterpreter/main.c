@@ -11,14 +11,7 @@
 #define NUM_CORES 2
 #define HEAPSIZE 10000000
 
-/*
-struct Machine_ {
-    stack stck;
-    instruction* progCounter;
-};
-
-typedef struct Machine_ Machine;
-*/
+/* Ugly globals for stats and logging of stats */
 int threadCounter;
 int globalReductions;
 FILE* logFile;
@@ -80,6 +73,7 @@ void pushGlobal(instruction *fun, Machine *mach) {
     //this type of information could be added to the symbol table to more
     //efficiency. (So the symbol table wouldn't just store addresses but structs that
     //had all relevant information based on the tag of the result of the lookup    
+
     HeapPtr addr = allocFun(codePtr->funVals.arity, codePtr, globalHeap);
     //don't do effectful expressions in parameter list! adding 1 to codePtr can break 
     //lookup for first parameter. 
@@ -511,26 +505,18 @@ void printI(Machine *mach) {
 void parI(Machine* mach, threadPool* pool) {
     //get heap address that the new thread will start computing from
     HeapPtr topOfStack = stackPopKeep(&mach->stck);
+
     //allocate and initialize a new Machine
     Machine* tempMachPtr = malloc(sizeof(Machine));
     initMachine(tempMachPtr);
     stackPush(topOfStack, &tempMachPtr->stck);
+
     //Add machine to thread pool
     addMachToThreadPool(tempMachPtr, pool);
 }
 
 
-/*
-void showMachineState(Machine *mach) {
-    printf("Machine Stack:\n");
-    int stackDepth = mach->stackPointer;
-    for (stackDepth; stackDepth > 0; stackDepth--) {
-        printf("\t");
-        showHeapItem(*mach->stack[stackDepth]);
-    }
-}
-*/
-
+/* Function prototype */
 ExecutionMode dispatchGCode(Machine *mach);
 
 char * getLogFileName(char * gcodeFileName) {
@@ -552,14 +538,6 @@ char * getLogFileName(char * gcodeFileName) {
     return resStr;
 }
 
-/*
-typedef struct {
-    Bool pswitch;
-    int address;
-} parSwitch;
-*/
-
-//typedef struct _parSwitch parSwitch;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -633,32 +611,6 @@ int main(int argc, char* argv[]) {
     globalHeap->activeCores = cores;
     globalHeap->numCores = NUM_CORES;
     globalHeap->thrdPool = globalPool;
-/*
-    //Stack testing Code:
-    Machine *testMach = cores[0];
-    pushInt(5, testMach);
-    pushInt(4, testMach);
-    pushInt(3, testMach);
-    pushInt(2, testMach);
-    printf("Items in frame: %d\n", itemsInFrame(&testMach->stck));
-    pushFrame(prog, &testMach->stck);
-    printf("Items in frame: %d\n", itemsInFrame(&testMach->stck));
-    pushInt(1, testMach);
-    pushInt(9, testMach);
-    pushInt(0, testMach);
-    printf("Items in frame: %d\n", itemsInFrame(&testMach->stck));
-    mkAp(testMach);
-
-
-    pushInt(2, testMach);
-    pushGlobal(prog, testMach);
-    mkAp(testMach);
-    allocInt(4, globalHeap);
-    allocInt(4, globalHeap);
-
-    printf("Items in frame: %d\n", itemsInFrame(&testMach->stck));
-
-*/
     
     //TODO when core is no longer running, we need to free the machine and it's
     //stack... etc
@@ -704,32 +656,6 @@ int main(int argc, char* argv[]) {
     fclose(logFile);
     return 0;
 }
-/*
-main() {
-    tokenTag res;
-    res = yylex();
-    while (res != END) {
-        if (res == Instruction)
-            printf("Instruction(%s)", yyval.strVal);
-        else if (res == Label)
-            printf("Label(%s)", yyval.strVal);
-        else if (res == Argument)
-            printf("Arg(%d)", yyval.intVal);
-        res = yylex();
-    } 
-}
-typedef enum {
-    Instruction,
-    Label,
-    Argument,
-    END
-} tokenTag;
-
-union {
-    int intVal;
-    char* strVal;
-} yyval;
-*/
 
 ExecutionMode dispatchGCode(Machine *mach) {
     if (mach == NULL) {
