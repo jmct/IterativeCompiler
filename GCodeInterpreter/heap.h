@@ -39,6 +39,7 @@ typedef struct atom Atom;
 struct atom {
     Tag tag;
     HeapCell * gcForward; //for GC forwarding
+    unsigned int creatorID; /* ThreadID that created this node */
     union {
         HeapCell * indirection; //for indirection Nodes
         int num; 

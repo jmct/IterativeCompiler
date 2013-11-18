@@ -1,5 +1,5 @@
-interpreter : main.o instructions.o symbolTable.o stack.o heap.o gthread.o garbagecollection.o
-	gcc main.o instructions.o symbolTable.o stack.o heap.o gthread.o garbagecollection.o -o interpreter
+interpreter : main.o instructions.o symbolTable.o stack.o stats.o heap.o gthread.o garbagecollection.o
+	gcc main.o instructions.o symbolTable.o stack.o stats.o heap.o gthread.o garbagecollection.o -o interpreter
 
 instructions.o : instructions.h instructions.c
 	gcc -c instructions.c
@@ -12,6 +12,9 @@ heap.o : heap.h gthread.h
 
 stack.o : heap.h stack.h
 	gcc -c stack.c
+
+stats.o : stats.h stats.c
+	gcc -c stats.c
 
 gthread.o : gthread.h
 	gcc -c gthread.c
@@ -26,7 +29,7 @@ lex.yy.c: gcode.lex
 	flex gcode.lex
 
 clean :
-	rm instructions.o main.o symbolTable.o stack.o heap.o gthread.o garbagecollection.o
+	rm instructions.o main.o symbolTable.o stack.o stats.o heap.o gthread.o garbagecollection.o
 
 debug : lex.yy.c
-	gcc -Wall -g main.c instructions.c symbolTable.c stack.c heap.c gthread.c garbagecollection.c -o interpreter
+	gcc -Wall -g main.c instructions.c symbolTable.c stack.c stats.c heap.c gthread.c garbagecollection.c -o interpreter

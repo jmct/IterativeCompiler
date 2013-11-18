@@ -7,14 +7,16 @@
 #include "stack.h"
 #include "gthread.h"
 #include "machine.h"
+#include "stats.h"
 //#include "lex.yy.c"
 #define NUM_CORES 2
 #define HEAPSIZE 10000000
 
 /* Ugly globals for stats and logging of stats */
-int threadCounter;
-int globalReductions;
+unsigned int threadCounter;
+unsigned int globalReductions;
 FILE* logFile;
+StatTable globalStats;
 
 void initMachine(Machine *mach) {
     mach->progCounter  = NULL;
@@ -31,15 +33,8 @@ void initMachine(Machine *mach) {
 void freeMachine(Machine* mach) {
    freeStack(mach->stck);
    
-   int lifespan = globalReductions - mach->birthTime;
-   int aliveTime = lifespan - mach->blockedCounter;
-   fprintf(logFile,
-           "%d,%d,%d,%d,%d,\n",
-           mach->threadID, 
-           lifespan,
-           mach->reductionCounter, 
-           mach->blockedCounter,
-           aliveTime);
+   unsigned int lifespan = globalReductions - mach->birthTime;
+   recordMach(mach, &globalStats, logFile, lifespan);
    free(mach);
 }
 
@@ -77,6 +72,10 @@ void pushGlobal(instruction *fun, Machine *mach) {
     HeapPtr addr = allocFun(codePtr->funVals.arity, codePtr, globalHeap);
     //don't do effectful expressions in parameter list! adding 1 to codePtr can break 
     //lookup for first parameter. 
+
+    /* For keeping stats on how created this node */
+    addr->creatorID = mach->threadID;
+
     stackPush(addr, &mach->stck);
 }
 
@@ -566,7 +565,7 @@ int main(int argc, char* argv[]) {
     //get the value back from switchesPtr
     switches = *switchesPtr;
 
-    fprintf(logFile, "GCode parsed.\n");
+    fprintf(logFile, "ThreadID,Lifespan,Reductions,BlockedCntr,aliveTime,Creator\n");
     int counter = 0;
     do {
         if (switches[counter].address < 0) {
@@ -606,6 +605,7 @@ int main(int argc, char* argv[]) {
     globalReductions = 0;
     cores[0] = malloc(sizeof(Machine));
     initMachine(cores[0]);
+    cores[0]->creatorID = 0;
     cores[0]->progCounter = prog;
     //set roots for heap
     globalHeap->activeCores = cores;
