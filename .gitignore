@@ -11,3 +11,5 @@ monadicParse.hs
 *.swp
 temp.txt
 *.csv
+*.gcode
+*.log
