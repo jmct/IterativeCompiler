@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "instructions.h"
 #include "symbolTable.h"
 #include "heap.h"
@@ -63,17 +64,23 @@ void slideNStack(int n, Machine *mach) {
 //via this function
 void pushGlobal(instruction *fun, Machine *mach) {
     instruction* codePtr = lookupKey(fun->pushGlobVal);
-    //the reason we do not add 1 to codePtr above is so that we can get the
-    //arity information from the function definition instruction.
-    //this type of information could be added to the symbol table to more
-    //efficiency. (So the symbol table wouldn't just store addresses but structs that
-    //had all relevant information based on the tag of the result of the lookup    
+    /* the reason we do not add 1 to codePtr above is so that we can get the
+     * arity information from the function definition instruction.
+     * this type of information could be added to the symbol table to more
+     * efficiency. (So the symbol table wouldn't just store addresses but structs that
+     * had all relevant information based on the tag of the result of the lookup    
+     */
 
     HeapPtr addr = allocFun(codePtr->funVals.arity, codePtr, globalHeap);
     //don't do effectful expressions in parameter list! adding 1 to codePtr can break 
     //lookup for first parameter. 
 
     /* For keeping stats on how created this node */
+    if (strcmp(fun->pushGlobVal, "par") == 0) {
+        addr->parSite = (mach->progCounter - 1);
+        assert(strcmp(addr->parSite->pushGlobVal, "par") == 0);
+    }
+
     addr->creatorID = mach->threadID;
 
     stackPush(addr, &mach->stck);
@@ -262,6 +269,13 @@ ExecutionMode unwind(Machine* mach) {
                     printf("Tried to follow code PTR that points to NULL\nExiting\n");
                     exit(1);
                 }
+
+                /* When the function being called is `par` we have to make sure
+                 * we keep track of which par-site it's from.
+                 */
+                if (strcmp(newPC->labelVal, "par") == 0)
+                    mach->childrensParSite = item->parSite;
+
                 mach->progCounter = newPC + 1; //added 1 to avoid FunDef instruction
             }
             break;
@@ -565,7 +579,7 @@ int main(int argc, char* argv[]) {
     //get the value back from switchesPtr
     switches = *switchesPtr;
 
-    fprintf(logFile, "ThreadID,Lifespan,Reductions,BlockedCntr,aliveTime,Creator\n");
+    fprintf(logFile, "ParSite,ThreadID,Lifespan,Reductions,BlockedCntr,aliveTime,Creator\n");
     int counter = 0;
     do {
         if (switches[counter].address < 0) {

@@ -39,7 +39,11 @@ typedef struct atom Atom;
 struct atom {
     Tag tag;
     HeapCell * gcForward; //for GC forwarding
-    unsigned int creatorID; /* ThreadID that created this node */
+
+    /*TODO make the following values 'profile mode' only */
+    unsigned int creatorID; /* ThreadID that created this node */ 
+    instruction * parSite; /* parSite that created this node */
+
     union {
         HeapCell * indirection; //for indirection Nodes
         int num; 

@@ -8,7 +8,8 @@ int recordMach(Machine* mach, StatTable* table,
 
     /* Print stats to CSV file */
    fprintf(logFile,
-           "%d,%d,%d,%d,%d,%d\n",
+           "%p,%d,%d,%d,%d,%d,%d\n",
+           mach->parSite,
            mach->threadID, 
            lifespan,
            mach->reductionCounter, 
