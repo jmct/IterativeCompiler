@@ -26,11 +26,11 @@ fromTo x y = if (x > y)
 
 times2 x = 2 * x;
 
-gcd x y = if (y == 0)
-                 x
-                 (if (x > y) 
-                        (gcd (x - y) y)
-                        (gcd x (y - x)));
+gcd x y = par y (if (y == 0)
+                     x
+                     (if (x > y) 
+                            (gcd (x - y) y)
+                            (gcd x (y - x))));
 
 relPrime x y = (gcd x y) == 1;
 
