@@ -1,19 +1,21 @@
 #ifndef STATS_HEADER
 #define STATS_HEADER
 #include "machine.h"
+#include "instructions.h"
 
 /* The structures below are only used when profiling
  * TODO make these definitions depend on a 'profiling' flag
  */
 struct _StatRecord {
-    unsigned int threadID, reductionCounter, lifespan;
-    unsigned int blockedCouter, aliveTime, creatorID;
+    unsigned int parSite, threadID, reductionCounter, lifespan;
+    unsigned int blockedCounter, aliveTime, creatorID;
 };
 
 typedef struct _StatRecord StatRecord;
 
 struct _StatTable {
     unsigned int size, currentEntry;
+    instruction * progAddr;
     StatRecord * entries;
 };
 
@@ -21,6 +23,16 @@ typedef struct _StatTable StatTable;
 
 /*Profiling stat funtions */
 int recordMach(Machine* mach, StatTable* table, 
-              FILE* logFile, unsigned int lifepsan);
+               unsigned int lifepsan);
+
+void initTable(instruction* prog, unsigned int initSize, StatTable * table);
+
+int logStats(StatTable * table, FILE * logFile);
+
+/*TODO define comparison function
+ *
+ing compare_threads(const void *e1, const void *e2);
+
+*/
 
 #endif

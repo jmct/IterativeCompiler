@@ -35,7 +35,7 @@ void freeMachine(Machine* mach) {
    freeStack(mach->stck);
    
    unsigned int lifespan = globalReductions - mach->birthTime;
-   recordMach(mach, &globalStats, logFile, lifespan);
+   recordMach(mach, &globalStats, lifespan);
    free(mach);
 }
 
@@ -524,8 +524,9 @@ void parI(Machine* mach, threadPool* pool) {
     initMachine(tempMachPtr);
     stackPush(topOfStack, &tempMachPtr->stck);
 
-    /* set the new machine's parSite */
+    /* set the new machine's parSite and creatorID */
     tempMachPtr->parSite = mach->childrensParSite;
+    tempMachPtr->creatorID = mach->threadID;
 
     //Add machine to thread pool
     addMachToThreadPool(tempMachPtr, pool);
@@ -582,7 +583,6 @@ int main(int argc, char* argv[]) {
     //get the value back from switchesPtr
     switches = *switchesPtr;
 
-    fprintf(logFile, "ParSite,ThreadID,Lifespan,Reductions,BlockedCntr,aliveTime,Creator\n");
     int counter = 0;
     do {
         if (switches[counter].address < 0) {
@@ -618,16 +618,23 @@ int main(int argc, char* argv[]) {
     for (i = 0; i < NUM_CORES; i++) {
         cores[i] = NULL;
     }
-    threadCounter = 0;
+    threadCounter = 1;
     globalReductions = 0;
     cores[0] = malloc(sizeof(Machine));
     initMachine(cores[0]);
     cores[0]->creatorID = 0;
+    cores[0]->parSite = prog;
     cores[0]->progCounter = prog;
     //set roots for heap
     globalHeap->activeCores = cores;
     globalHeap->numCores = NUM_CORES;
     globalHeap->thrdPool = globalPool;
+
+
+    /* Initialize the stat table
+     * TODO make this dependent on profiling flag 
+     */
+    initTable(prog, 300, &globalStats);
     
     //TODO when core is no longer running, we need to free the machine and it's
     //stack... etc
@@ -670,6 +677,12 @@ int main(int argc, char* argv[]) {
         }
     }
     printf("\nTotal Reductions: %d\n", globalReductions);
+
+    /* write statTable to log file */
+    /*TODO make this dependent on profiling flag */
+    int nStats = logStats(&globalStats, logFile);
+    printf("Recorded %d threads\n", nStats);
+
     fclose(logFile);
     return 0;
 }
