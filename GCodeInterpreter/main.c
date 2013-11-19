@@ -273,7 +273,7 @@ ExecutionMode unwind(Machine* mach) {
                 /* When the function being called is `par` we have to make sure
                  * we keep track of which par-site it's from.
                  */
-                if (strcmp(newPC->labelVal, "par") == 0)
+                if (strcmp(newPC->funVals.name, "par") == 0)
                     mach->childrensParSite = item->parSite;
 
                 mach->progCounter = newPC + 1; //added 1 to avoid FunDef instruction
@@ -523,6 +523,9 @@ void parI(Machine* mach, threadPool* pool) {
     Machine* tempMachPtr = malloc(sizeof(Machine));
     initMachine(tempMachPtr);
     stackPush(topOfStack, &tempMachPtr->stck);
+
+    /* set the new machine's parSite */
+    tempMachPtr->parSite = mach->childrensParSite;
 
     //Add machine to thread pool
     addMachToThreadPool(tempMachPtr, pool);
