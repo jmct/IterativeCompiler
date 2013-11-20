@@ -29,10 +29,7 @@ void initTable(instruction* prog, unsigned int initSize, StatTable * table);
 
 int logStats(StatTable * table, FILE * logFile);
 
-/*TODO define comparison function
- *
-ing compare_threads(const void *e1, const void *e2);
+int compare_entries(const void *e1, const void *e2);
 
-*/
 
 #endif

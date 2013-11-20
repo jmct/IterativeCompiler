@@ -68,4 +68,10 @@ int logStats(StatTable * table, FILE * logFile) {
 }
     
 
+int compare_entries(const void *e1, const void *e2) {
 
+    const unsigned int parSite1 = ((const StatRecord *)e1)->parSite;
+    const unsigned int parSite2 = ((const StatRecord *)e2)->parSite;
+
+    return (parSite1 > parSite2) - (parSite1 < parSite2);
+}

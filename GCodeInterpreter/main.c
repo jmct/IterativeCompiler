@@ -680,6 +680,8 @@ int main(int argc, char* argv[]) {
 
     /* write statTable to log file */
     /*TODO make this dependent on profiling flag */
+    qsort(globalStats.entries, globalStats.currentEntry, 
+          sizeof(StatRecord), compare_entries);
     int nStats = logStats(&globalStats, logFile);
     printf("Recorded %d threads\n", nStats);
 
