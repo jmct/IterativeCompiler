@@ -32,4 +32,4 @@ clean :
 	rm instructions.o main.o symbolTable.o stack.o stats.o heap.o gthread.o garbagecollection.o
 
 debug : lex.yy.c
-	gcc -Wall -g main.c instructions.c symbolTable.c stack.c stats.c heap.c gthread.c garbagecollection.c -o interpreter
+	gcc -Wall -g main.c instructions.c symbolTable.c stack.c stats.c heap.c gthread.c garbagecollection.c -lgsl -lgslcblas -lm -o interpreter

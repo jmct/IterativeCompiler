@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <gsl/gsl_statistics_uint.h>
 #include "machine.h"
 #include "stats.h"
 #include "instructions.h"
@@ -74,4 +75,52 @@ int compare_entries(const void *e1, const void *e2) {
     const unsigned int parSite2 = ((const StatRecord *)e2)->parSite;
 
     return (parSite1 > parSite2) - (parSite1 < parSite2);
+}
+
+/* Our goal is to create an array where each element represents the statistics
+ * of a specific parSite. Passing in the number of parSites makes it easier
+ * since we can just allocate the correct size right at the begining.
+ */
+ParSiteStats * calcParSiteStats(StatTable* statTable, int numParSites) {
+    if (statTable->currentEntry == 0 || numParSites == 0)
+        return NULL;
+
+    ParSiteStats * statsArray = malloc(sizeof(ParSiteStats) * numParSites);
+
+    StatRecord * stats = statTable->entries;
+    StatRecord * maxEntry = statTable->entries + statTable->currentEntry;
+    unsigned int curParSite;
+
+    /* Set up two pointers that will form the boundary of the sub-arrays for
+     * each ParSite.
+     */
+    StatRecord * left = stats, * right = stats;
+
+    /*loop that measures the bounds of each sub-array and sends it off to get
+     * the stats measured
+     */
+    int n;
+    for(n = 0; n < numParSites; n++) {
+
+        curParSite = left->parSite;
+
+        while (right < maxEntry && right->parSite == curParSite) {
+            right += 1;
+        }
+
+        statsArray[n].parSite = curParSite;
+        statsArray[n].rcMean = gsl_stats_uint_mean(&left->reductionCounter,
+                                                   sizeof(StatRecord)/sizeof(int),
+                                                   (size_t)(right - left));
+        statsArray[n].bcMean = gsl_stats_uint_mean(&left->blockedCounter,
+                                                   sizeof(StatRecord)/sizeof(int),
+                                                   (size_t)(right - left));
+        statsArray[n].lsMean = gsl_stats_uint_mean(&left->lifespan,
+                                                   sizeof(StatRecord)/sizeof(int),
+                                                   (size_t)(right - left));
+
+        left = right;
+    }
+
+    return statsArray;
 }

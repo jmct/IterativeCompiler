@@ -21,6 +21,13 @@ struct _StatTable {
 
 typedef struct _StatTable StatTable;
 
+struct _ParSiteStats {
+    unsigned int parSite;
+    double rcMean, bcMean, lsMean;
+};
+
+typedef struct _ParSiteStats ParSiteStats;
+
 /*Profiling stat funtions */
 int recordMach(Machine* mach, StatTable* table, 
                unsigned int lifepsan);
@@ -30,6 +37,8 @@ void initTable(instruction* prog, unsigned int initSize, StatTable * table);
 int logStats(StatTable * table, FILE * logFile);
 
 int compare_entries(const void *e1, const void *e2);
+
+ParSiteStats * calcParSiteStats(StatTable* statTable, int numParSites);
 
 
 #endif

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <gsl/gsl_math.h>
 #include "instructions.h"
 #include "symbolTable.h"
 #include "heap.h"
@@ -22,12 +23,13 @@ StatTable globalStats;
 void initMachine(Machine *mach) {
     mach->progCounter  = NULL;
     mach->stck = initStack(mach->stck);
+
+    /* TODO profiling only */
     mach->reductionCounter = 0;
     mach->blockedCounter = 0;
     mach->threadID = threadCounter;
     threadCounter += 1;
     mach->birthTime = globalReductions;
-    mach->unblockTime = globalReductions;
 }
 
 /* TODO when freeing a machine we need to keep the statistics */
@@ -129,7 +131,15 @@ void unlock(HeapPtr node) {
     while (node->tag == LOCKED_APP) {
         //TODONE empty pending list <--I think it's done
         if (node->app.numBlockedThreads > 0) {
+            /* There are two versions of addQueueToThreadPool
+             * TODO make which one is used switchable by profiling flag
+             * The one that is currently commented out is for non-profiled
+             * builds
+             *
             addQueueToThreadPool(node->app.blockedQueue, node->app.numBlockedThreads, globalPool);
+             */
+            addQueueToThreadPoolProf(node->app.blockedQueue, node->app.numBlockedThreads, globalPool,
+                                 globalReductions);
             node->app.numBlockedThreads = 0;
             node->app.blockedQueue = NULL;
         }
@@ -138,7 +148,15 @@ void unlock(HeapPtr node) {
     }
     if (node->tag == LOCKED_FUN) {
         if (node->fun.numBlockedThreads > 0) {
-            addQueueToThreadPool(node->fun.blockedQueue, node->fun.numBlockedThreads, globalPool);
+            /* There are two versions of addQueueToThreadPool
+             * TODO make which one is used switchable by profiling flag
+             * The one that is currently commented out is for non-profiled
+             * builds
+             *
+            addQueueToThreadPool(node->app.blockedQueue, node->app.numBlockedThreads, globalPool);
+             */
+            addQueueToThreadPoolProf(node->app.blockedQueue, node->app.numBlockedThreads, globalPool,
+                                 globalReductions);
             node->fun.numBlockedThreads = 0;
             node->fun.blockedQueue = NULL;
         }
@@ -282,6 +300,8 @@ ExecutionMode unwind(Machine* mach) {
         case LOCKED_APP:
             addToBlockedQueue(mach, item);
             printf("Locked Ap case of unwind, set thread to BLOCKED\n");
+            /* TODO make profile only */
+            mach->blockTime = globalReductions;
             return BLOCKED;
         case LOCKED_FUN:
             printf("Locked function case of unwind, this isn't implemented\n");
@@ -592,7 +612,9 @@ int main(int argc, char* argv[]) {
             counter++;
         }
     } while (counter > 0);
-    printf("There are %d par sites in the program\n", counter * (-1));
+    /* Set the counter back to it's abs value */
+    counter *= -1;
+    printf("There are %d par sites in the program\n", counter);
 
 
     fclose(inputFile);
@@ -680,10 +702,25 @@ int main(int argc, char* argv[]) {
 
     /* write statTable to log file */
     /*TODO make this dependent on profiling flag */
-    qsort(globalStats.entries, globalStats.currentEntry, 
-          sizeof(StatRecord), compare_entries);
-    int nStats = logStats(&globalStats, logFile);
-    printf("Recorded %d threads\n", nStats);
+    globalStats.entries = realloc(globalStats.entries, 
+                                  sizeof(StatRecord) * globalStats.currentEntry);
+    if (globalStats.entries == NULL) {
+        printf("Resizing stats table failed after run\n");
+    }
+    else {
+        qsort(globalStats.entries, globalStats.currentEntry, 
+              sizeof(StatRecord), compare_entries);
+        int nStats = logStats(&globalStats, logFile);
+        printf("Recorded %d threads\n", nStats);
+
+        /* parSite Stats */
+        /* The (+1) for the number of par sites is due to the fact that the main
+         * thread doesn't need a par site to spark it
+         */
+        ParSiteStats * psStats = calcParSiteStats(&globalStats, counter + 1);
+        printf("Testing Par site stats: %f\n", psStats[0].rcMean);
+        
+    }
 
     fclose(logFile);
     return 0;
