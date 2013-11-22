@@ -4,8 +4,17 @@
 #include "stack.h"
 #include "instructions.h"
 
+enum _ThreadStatus {
+    NEW,
+    WAS_BLOCKED,
+    RUNNING
+};
+
+typedef enum _ThreadStatus ThreadStatus;
+
 struct Machine_ {
     stack stck;
+    ThreadStatus status;
     instruction* progCounter;
     
     /*TODO Profiling Only */

@@ -12,6 +12,7 @@
 #include "stats.h"
 //#include "lex.yy.c"
 #define NUM_CORES 2
+#define TIME_SLICE 5
 #define HEAPSIZE 10000000
 
 /* Ugly globals for stats and logging of stats */
@@ -22,6 +23,7 @@ StatTable globalStats;
 
 void initMachine(Machine *mach) {
     mach->progCounter  = NULL;
+    mach->status  = NEW;
     mach->stck = initStack(mach->stck);
 
     /* TODO profiling only */
@@ -178,7 +180,7 @@ void update(int num, Machine *mach) {
     HeapCell * top = stackPopKeep(&mach->stck);
     toUpdate = getNthAddrFrom(num, &mach->stck, mach->stck.stackPointer);
     if (*toUpdate == NULL) {
-        printf("Items in frame: %d, update parameter val: %d\n", itemsInFrame(&mach->stck), num);
+        printf("\nItems in frame: %d, update parameter val: %d\n", itemsInFrame(&mach->stck), num);
     }
     unlock(*toUpdate);
     HeapCell * newNode = updateToInd(top, *toUpdate);
@@ -299,7 +301,7 @@ ExecutionMode unwind(Machine* mach) {
             break;
         case LOCKED_APP:
             addToBlockedQueue(mach, item);
-            printf("Locked Ap case of unwind, set thread to BLOCKED\n");
+            //printf("Locked Ap case of unwind, set thread to BLOCKED\n");
             /* TODO make profile only */
             mach->blockTime = globalReductions;
             return BLOCKED;
@@ -647,6 +649,7 @@ int main(int argc, char* argv[]) {
     cores[0]->creatorID = 0;
     cores[0]->parSite = prog;
     cores[0]->progCounter = prog;
+    cores[0]->status = RUNNING;
     //set roots for heap
     globalHeap->activeCores = cores;
     globalHeap->numCores = NUM_CORES;
@@ -660,44 +663,69 @@ int main(int argc, char* argv[]) {
     
     //TODO when core is no longer running, we need to free the machine and it's
     //stack... etc
+    Machine* fromThreadPool = NULL;
+
     while (programMode == LIVE) {
-        globalReductions += 1;
-        programMode = FINISHED;
-        for (i = 0; i < NUM_CORES; i++) {
-            Machine* fromThreadPool = NULL;
-            core = UNKNOWN;
-            //see if the core needs to pull from the spark pool
-            if (cores[i] == NULL) {
-                fromThreadPool = getMachFromPool(globalPool);
-                if (fromThreadPool != NULL) {
-                    cores[i] = fromThreadPool;
+        int j;
+        for (j = 0; j <= TIME_SLICE; j++) {
+            globalReductions += 1;
+            programMode = FINISHED;
+
+            /* Any null cores need to be replaced */
+            for (i = 0; i < NUM_CORES; i++) {
+                fromThreadPool = NULL;
+                //see if the core needs to pull from the spark pool
+                if (cores[i] == NULL) {
+                    fromThreadPool = getMachFromPool(globalPool);
+                    if (fromThreadPool != NULL) {
+                        cores[i] = fromThreadPool;
+                        programMode = LIVE;
+                    }
+                }
+                else {
                     programMode = LIVE;
-                    //if the thread is a new spark, the PC will be NULL
-                    if (cores[i]->progCounter == NULL) {
+                }
+
+                if (programMode == FINISHED)
+                    goto OUTERLOOP;
+
+                core = UNKNOWN;
+                if (cores[i] != NULL) {
+                    if (cores[i]->status == NEW) {
+                        cores[i]->status = RUNNING;
                         eval(cores[i]);
                         core = unwind(cores[i]);
                     }
-                    else {
+                    else if (cores[i]->status == WAS_BLOCKED) {
+                        cores[i]->status = RUNNING;
                         core = unwind(cores[i]);
                     }
+                    else {
+                        core = dispatchGCode(cores[i]);
+                    }
+                    cores[i]->reductionCounter += 1;
+
+                }
+
+                if (core == FINISHED) {
+                    cores[i]->reductionCounter += 1;
+                    freeMachine(cores[i]);
+                }
+                if (core != LIVE) {
+                    cores[i] = NULL;
                 }
             }
-            else { 
-                programMode = LIVE; 
-                core = dispatchGCode(cores[i]); 
-            }
+        }
 
-            if (core == FINISHED) {
-                freeMachine(cores[i]);
-            }
-            if (core != LIVE) {
+        for (i = 0; i < NUM_CORES; i++) {
+            if (cores[i] != NULL) {
+                addMachToThreadPool(cores[i], globalPool);
                 cores[i] = NULL;
             }
-            else {
-                cores[i]->reductionCounter += 1;
-            }
         }
+OUTERLOOP: ;
     }
+
     printf("\nTotal Reductions: %d\n", globalReductions);
 
     /* write statTable to log file */
