@@ -685,9 +685,11 @@ int main(int argc, char* argv[]) {
                 else {
                     programMode = LIVE;
                 }
+            }
+            if (programMode == FINISHED)
+                goto OUTERLOOP;
 
-                if (programMode == FINISHED)
-                    goto OUTERLOOP;
+            for (i = 0; i < NUM_CORES; i++) {
 
                 core = UNKNOWN;
                 if (cores[i] != NULL) {
