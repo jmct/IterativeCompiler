@@ -1,5 +1,7 @@
 module Heap where
 
+import Data.IntMap as M
+
 --We need to define an association list type for use in our heap
 --An association will be a tuple _associating_ the value of one type to the a
 --stored value of another type. 
@@ -41,45 +43,42 @@ type Addr = Int
 --The heap type will consist of the number of objects in the heap (the first
 --Int), a `free-list' of unused addresses (the list of Ints), and lastly the
 --list of objects (a tuple consisting of the address and the value).
-type Heap a = (Int, [Addr], [(Addr, a)])
+type Heap a = ([Addr], M.IntMap a)
 
 --To remove an item from the heap, we only really need to worry about how to 
 --remove something from the contents (The association list). The other parts of
 --the heap can be dealt with trivially.
-remove :: [(Int, a)] -> Int -> [(Int, a)]
-remove [] a = error ("Attempting to free or update a non-allocated address "
-                     ++ showAddr a)
-remove ((a',n) : contents) a
-    | a == a' = contents
-    | a /= a' = (a',n) : remove contents a
+remove :: M.IntMap a -> Int -> M.IntMap a
+remove = flip M.delete
 
 --The function creating the initial heap. (We know that there isn't actually
 --infinite memory...)
 hInitial :: Heap a
-hInitial = (0, [1..], [])
+hInitial = ([1..], M.empty)
 
 hAlloc :: Heap a -> a -> (Heap a, Addr)
-hAlloc (size, (next:free), contents) n 
-                                = ((size+1, free, (next,n) : contents), next)
+hAlloc ((next:free), contents) n = ((free, M.insert next n contents), next)
 
 
 hUpdate :: Heap a -> Addr -> a -> Heap a
-hUpdate (size, free, contents) a n = (size, free, (a,n) : remove contents a)
+hUpdate (free, contents) addr v = (free, M.insert addr v contents)
 
 
 hFree :: Heap a -> Addr -> Heap a
-hFree (size, free, contents) a = (size-1, a:free, remove contents a)
+hFree (free, contents) a = (a:free, remove contents a)
 
 hLookup :: Heap a -> Addr -> a
-hLookup (size, free, contents) addr
-    = aLookup contents addr (error ("Can't find node " ++ showAddr addr 
-                                                    ++ " in heap"))
+hLookup (free, contents) addr
+    = let res = M.lookup addr contents
+      in case res of
+        Just a  -> a 
+        Nothing -> (error ("Can't find node " ++ showAddr addr  ++ " in heap"))
 
 hAddresses :: Heap a -> [Addr]
-hAddresses (_, _, contents) = [addr | (addr, node) <- contents]
+hAddresses (_, contents) = M.keys contents
 
 hSize :: Heap a -> Int
-hSize (size, _, _) = size
+hSize (_, conts) = M.size conts
 
 hNull :: Int
 hNull = 0
