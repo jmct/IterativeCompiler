@@ -687,7 +687,7 @@ int main(int argc, char* argv[]) {
                 }
             }
             if (programMode == FINISHED)
-                goto OUTERLOOP;
+                break;
 
             for (i = 0; i < NUM_CORES; i++) {
 
@@ -725,7 +725,6 @@ int main(int argc, char* argv[]) {
                 cores[i] = NULL;
             }
         }
-OUTERLOOP: ;
     }
 
     printf("\nTotal Reductions: %d\n", globalReductions);
