@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "instructions.h"
+#include "instruction_type.h"
 #include "symbolTable.h"
 #include "heap.h"
 #include "gthread.h"

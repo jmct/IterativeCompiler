@@ -1,7 +1,7 @@
 #ifndef SYMBOLTABLE_H
 #define SYMBOLTABLE_H
 
-#include "instructions.h"
+#include "instruction_type.h"
 
 //A bucket contains the information for each symbol
 //because we are using a symbol table with external chaining

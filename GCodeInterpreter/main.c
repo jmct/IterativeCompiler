@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <gsl/gsl_math.h>
-#include "instructions.h"
+#include "instruction_type.h"
 #include "symbolTable.h"
 #include "heap.h"
 #include "stack.h"

@@ -2,7 +2,7 @@
 #include <gsl/gsl_statistics_uint.h>
 #include "machine.h"
 #include "stats.h"
-#include "instructions.h"
+#include "instruction_type.h"
 
 int recordMach(Machine* mach, StatTable* table, 
                unsigned int lifespan) {

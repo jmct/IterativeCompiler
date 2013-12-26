@@ -1,7 +1,7 @@
 #ifndef STACK_H
 #define STACK_H
 #include "heap.h"
-#include "instructions.h"
+#include "instruction_type.h"
 
 struct chunk_ {
     struct chunk_ *previous;

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "instructions.h"
+#include "instruction_type.h"
 #include "symbolTable.h"
 
 #define TABLE_SIZE 109

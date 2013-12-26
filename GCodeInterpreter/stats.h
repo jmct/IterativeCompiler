@@ -1,7 +1,8 @@
 #ifndef STATS_HEADER
 #define STATS_HEADER
 #include "machine.h"
-#include "instructions.h"
+#include "instruction_type.h"
+
 
 /* The structures below are only used when profiling
  * TODO make these definitions depend on a 'profiling' flag

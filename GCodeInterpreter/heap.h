@@ -1,6 +1,6 @@
 #ifndef HEAP_H
 #define HEAP_H
-#include "instructions.h"
+#include "instruction_type.h"
 #include "gthread.h"
 //#include "machine.h"
 

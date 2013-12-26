@@ -2,7 +2,7 @@
 #define MACHINE_HEADER
 
 #include "stack.h"
-#include "instructions.h"
+#include "instruction_type.h"
 
 enum _ThreadStatus {
     NEW,

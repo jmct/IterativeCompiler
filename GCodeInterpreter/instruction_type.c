@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "lex.yy.c"
-#include "instructions.h"
+#include "instruction_type.h"
 #include "symbolTable.h"
 //The following are the definitions for the functions that parse our gcode
 //file. 
