@@ -41,5 +41,8 @@ int compare_entries(const void *e1, const void *e2);
 
 ParSiteStats * calcParSiteStats(StatTable* statTable, int numParSites);
 
+/* Global Variables! */
+extern unsigned int globalReductions;
+extern StatTable globalStats;
 
 #endif

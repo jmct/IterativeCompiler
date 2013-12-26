@@ -22,4 +22,8 @@ void addMachToThreadPool(struct Machine_* mach, threadPool* pool);
 void addQueueToThreadPool(threadQueueNode *lst, int numInLst, threadPool* pool);
 void addQueueToThreadPoolProf(threadQueueNode *lst, int numInLst, threadPool* pool, unsigned int grc);
 struct Machine_* getMachFromPool(threadPool* pool);
+
+/* Global task pool */
+threadPool* globalPool;
+
 #endif
