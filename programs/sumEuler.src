@@ -8,6 +8,10 @@ cons a b = Pack{2, 2} a b;
 
 fcons b a = Pack{2, 2} a b;
 
+forceSpine xs = case xs of
+                 <1> -> Pack{1, 0};
+                 <2> a b -> forceSpine b;
+
 map f xs = case xs of
             <1> -> nil;
             <2> a b -> cons (f a) (map f b);
@@ -20,9 +24,9 @@ downfrom n = if (n == 0)
                     nil
                     (cons n (downfrom (n - 1)));
 
-fromTo x y = if (x > y)
-                    nil
-                    (cons x (fromTo (x+1) y));
+fromTo x y = par y (if (x > y)
+                        nil
+                        (cons x (fromTo (x+1) y)));
 
 times2 x = 2 * x;
 
@@ -44,9 +48,11 @@ length xs = case xs of
                 <1> -> 0;
                 <2> a b -> 1 + (length b);
 
-sum xs = case xs of
-            <1> -> 0;
-            <2> a b -> a + (sum b);
+sumPrime xs = case xs of
+                 <1> -> 0;
+                 <2> a b -> a + (sum b);
+
+sum xs = par (forceSpine xs) (sumPrime xs);
 
 euler n = length (filter (relPrime n) (fromTo 1 n));
 
