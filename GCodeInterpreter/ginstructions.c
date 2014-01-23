@@ -212,7 +212,7 @@ ExecutionMode unwind(Machine* mach) {
         case CONSTR:
             newPC = popFrame(&mach->stck);
             if (newPC == NULL) {
-                printf("!!!! newPC from unwinding constr returned Null");//end thread
+                //printf("!!!! newPC from unwinding constr returned Null");//end thread
                 return FINISHED;
             }
             mach->progCounter = newPC;
