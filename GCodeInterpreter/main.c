@@ -154,8 +154,6 @@ int main(int argc, char* argv[]) {
      */
     initTable(prog, 300, &globalStats);
     
-    //TODO when core is no longer running, we need to free the machine and it's
-    //stack... etc
     Machine* fromThreadPool = NULL;
 
     while (programMode == LIVE) {
