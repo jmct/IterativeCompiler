@@ -325,7 +325,7 @@ compileC (EConstrAp tag arity args) env = compilePack (reverse args) env ++ [Pac
 compileC (ELet recursive defs e) args
     | recursive             = compileLetRec compileC defs e args
     | otherwise             = compileLet    compileC defs e args
-compileC x env              = error $ show x 
+compileC x env              = error $ "Compile scheme C reach unexpected expression: " ++ show x 
 
 compileLet :: GMCompiler -> [(Name, CoreExpr)] -> GMCompiler
 compileLet comp defs expr env
