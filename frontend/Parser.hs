@@ -368,9 +368,9 @@ pLambda = pThen4 retLambda (pLiteral "\\") pLambVars (pLiteral ".") pExpr
         where
             retLambda lamb vars dot expr = (ELam vars expr)
 
-pLambVars :: Parser Name
---pLambVars = pOneOrMore pVar
-pLambVars = pVar
+pLambVars :: Parser [Name]
+pLambVars = pOneOrMore pVar
+--pLambVars = pVar
 
 pApplication :: Parser CoreExpr
 pApplication = ((pOneOrMore pAexpr) `pApply` mkApChain) 

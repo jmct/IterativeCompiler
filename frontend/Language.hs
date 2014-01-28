@@ -212,7 +212,7 @@ pprExpr (EConstrAp t a args) = iConcat [IStr "Pack{", IStr $ show t
                                      ,IStr " "
                                      ]
 pprExpr (ELam var e1) = iConcat [IStr "\\", 
-                                  IStr var, 
+                                  IStr $ concat $ intersperse " " var, 
                                   IStr " . ", (pprExpr e1)]
 
 pprProgram :: CoreProgram -> Iseq
