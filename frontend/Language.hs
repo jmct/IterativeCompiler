@@ -27,7 +27,7 @@ data Expr a
 
 type AnExpr a b = (b, AnExpr' a b)
 
-data AnExpr' a b = 
+data AnExpr' a b
     = AVar Name             --Variables (their name)
     | ANum Int              --Numbers
     | AConstrAp Int Int 
@@ -35,11 +35,11 @@ data AnExpr' a b =
     | AAp (AnExpr a b) (AnExpr a b) --Application of expression
     | ALet                  --Let declaration
         IsRec               --Boolean (True == Recursive Let)
-        AnDefn a b          --list of definitions
+        [AnDefn a b]          --list of definitions
         (AnExpr a b)            --body of let
     | ACase                 --Case declaration
         (AnExpr a b)            --expression to compare
-        [AnAlter a b]           --list of alternatives to execute
+        [AnAlt a b]           --list of alternatives to execute
     | ALam [a] (AnExpr a b)     --Lambda expression
     deriving Show
 
