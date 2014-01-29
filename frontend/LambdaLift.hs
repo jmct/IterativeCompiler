@@ -62,8 +62,22 @@ freeVarsExpr s (EConstrAp t a args)  = (s', AConstrAp t a args')
     args' = map (freeVarsExpr s) args
     s'    = unions $ map freeVarsOf args'
 
-freeVarsCase s e alts = undefined
-    
+freeVarsCase s e alts = (s', ACase e' alts')
+  where
+    s'       = fv_e `union` fv_alts
+    fv_e     = freeVarsOf e'
+    e'       = freeVarsExpr s e
+    fv_alts  = unions $ map freeVarsAlt alts'
+    alts'    = freeVarsAlts s alts
+
+freeVarsAlts :: Set Name -> [Alter Name] -> [AnAlt Name (Set Name)]
+freeVarsAlts s alts = [ (t, args, freeVarsExpr (s `union` (fromList args)) rhs) 
+                      | (t, args, rhs) <- alts
+                      ]
+
+freeVarsAlt :: AnAlt Name (Set Name) -> Set Name
+freeVarsAlt (tag, args, rhs) = difference (freeVarsOf rhs) (fromList args)
+
 --TODO
 
 
