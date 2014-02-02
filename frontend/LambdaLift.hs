@@ -2,7 +2,8 @@ module LambdaLift (lambdaLift, freeVars) where
 
 import Language
 import Parser
-import Data.Set as S hiding (map)
+import Data.Set as S hiding (map, foldl')
+import Data.List (foldl')
 
 type AnProgram = AnProg Name (Set Name)
 
@@ -78,12 +79,29 @@ freeVarsAlts s alts = [ (t, args, freeVarsExpr (s `union` (fromList args)) rhs)
 freeVarsAlt :: AnAlt Name (Set Name) -> Set Name
 freeVarsAlt (tag, args, rhs) = difference (freeVarsOf rhs) (fromList args)
 
---TODO
 
 
 --Take all lambda abstractions and make them into let-bindings
 abstract :: AnProgram -> CoreProgram 
-abstract = undefined
+abstract prog = [ (name, args, abstractExpr rhs) | (name, args, rhs) <- prog ]
+
+abstractExpr :: AnExpr Name (Set Name) -> CoreExpr
+abstractExpr (_, AVar v) = EVar v
+abstractExpr (_, ANum n) = ENum n
+abstractExpr (_, AAp e1 e2) = EAp (abstractExpr e1) (abstractExpr e2)
+abstractExpr (_, ALet ir defs body) = 
+    ELet ir [ (name, abstractExpr rhs) | (name, rhs) <- defs ] (abstractExpr body)
+abstractExpr (fvs, ALam args body) = foldl' EAp sc $ map EVar fvList
+  where
+    fvList = toList fvs
+    sc     = ELet False [("sc", rhs)] (EVar "sc")
+    rhs    = ELam (fvList ++ args) $ abstractExpr body
+abstractExpr (_, AConstrAp t a flds) = EConstrAp t a $ map abstractExpr flds
+abstractExpr (_, ACase s alts) = ECase (abstractExpr s) $ map abstractExprAlt alts
+
+abstractExprAlt :: AnAlt Name (Set Name) -> CoreAlt
+abstractExprAlt (t, vars, rhs) = (t, vars, abstractExpr rhs)
+
 
 --Give each variable a unique name
 rename :: CoreProgram -> CoreProgram
