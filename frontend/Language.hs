@@ -243,9 +243,11 @@ pprAlters (x:xs) = (pprAlter x) `IAppend`
                             INewline `IAppend` (pprAlters xs)
 
 pprAlter :: CoreAlt -> Iseq
-pprAlter ( _, vars, e1) = 
-    iConcat [IStr (concat.intersperse " " $ map show vars), 
-             IStr " -> ", (pprExpr e1)]
+pprAlter ( t, vars, e1) = 
+    iConcat [ IStr $ "<" ++ show t ++ "> "
+            , IStr (concat.intersperse " " $ map show vars)
+            , IStr " -> ", (pprExpr e1)
+            ]
 
 iConcat :: [Iseq] -> Iseq
 iConcat []     = INil
