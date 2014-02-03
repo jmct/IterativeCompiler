@@ -4,6 +4,7 @@ import Language
 import Parser
 import Data.Set as S hiding (map, foldl')
 import Data.List (foldl')
+import Fresh
 
 type AnProgram = AnProg Name (Set Name)
 
