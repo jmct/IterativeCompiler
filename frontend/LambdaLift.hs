@@ -4,6 +4,7 @@ import Language
 import Parser
 import Data.Set as S hiding (map, foldl')
 import Data.List (foldl')
+import qualified Data.Map as M
 import Fresh
 
 type AnProgram = AnProg Name (Set Name)
@@ -73,12 +74,12 @@ freeVarsCase s e alts = (s', ACase e' alts')
     alts'    = freeVarsAlts s alts
 
 freeVarsAlts :: Set Name -> [Alter Name] -> [AnAlt Name (Set Name)]
-freeVarsAlts s alts = [ (t, args, freeVarsExpr (s `union` (fromList args)) rhs) 
+freeVarsAlts s alts = [ (t, args, freeVarsExpr (s `union` (S.fromList args)) rhs) 
                       | (t, args, rhs) <- alts
                       ]
 
 freeVarsAlt :: AnAlt Name (Set Name) -> Set Name
-freeVarsAlt (tag, args, rhs) = difference (freeVarsOf rhs) (fromList args)
+freeVarsAlt (tag, args, rhs) = S.difference (freeVarsOf rhs) (S.fromList args)
 
 
 
@@ -94,7 +95,7 @@ abstractExpr (_, ALet ir defs body) =
     ELet ir [ (name, abstractExpr rhs) | (name, rhs) <- defs ] (abstractExpr body)
 abstractExpr (fvs, ALam args body) = foldl' EAp sc $ map EVar fvList
   where
-    fvList = toList fvs
+    fvList = S.toList fvs
     sc     = ELet False [("sc", rhs)] (EVar "sc")
     rhs    = ELam (fvList ++ args) $ abstractExpr body
 abstractExpr (_, AConstrAp t a flds) = EConstrAp t a $ map abstractExpr flds
@@ -106,8 +107,24 @@ abstractExprAlt (t, vars, rhs) = (t, vars, abstractExpr rhs)
 
 --Give each variable a unique name
 rename :: CoreProgram -> CoreProgram
-rename = undefined
+rename prog = snd $ runFresh (renameDecls prog) "v_" 0
 
+renameDecls :: CoreProgram -> Fresh CoreProgram
+renameDecls prog = mapM renameRhs prog
+
+makeAssoc :: String -> Fresh (String, String)
+makeAssoc str = fresh >>= (\frsh -> return (str, frsh))
+
+renameRhs :: ScDef Name -> Fresh (ScDef Name)
+renameRhs (scName, args, rhs) = do
+    asscs <- mapM makeAssoc args
+    let env = M.fromList asscs
+        args' = map snd asscs
+    rhs' <- renameExpr env
+    return (scName, args', rhs')
+
+renameExpr :: M.Map String String -> Fresh CoreExpr
+renameExpr env = undefined
 
 collectSCs :: CoreProgram -> CoreProgram
 collectSCs = undefined
