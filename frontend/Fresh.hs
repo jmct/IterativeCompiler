@@ -1,9 +1,21 @@
 module Fresh where
 
+import Control.Applicative
+
 data Fresh a = Fresh { runFresh :: String -> Int -> (Int, a) }
 
+instance Functor Fresh where
+  fmap f (Fresh k) = Fresh $ \s i -> let (i', a) = k s i
+                                     in (i', f a)
+
+instance Applicative Fresh where
+  pure a = Fresh $ \s i -> (i, a)
+  (Fresh f) <*> (Fresh g) = Fresh $ \s i -> let (i', f')  = f s i
+                                                (i'', a)  = g s i'
+                                            in (i'', f' a)
+
 instance Monad Fresh where
-  return a = Fresh (\s i -> (i, a))
+  return = pure
   (Fresh h) >>= f = Fresh $ \s i -> let (i1, s1) = h s i
                                         (Fresh g) = f s1
                                         in g s i1
