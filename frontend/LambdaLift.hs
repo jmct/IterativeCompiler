@@ -2,8 +2,11 @@ module LambdaLift (lambdaLift, freeVars) where
 
 import Language
 import Parser
-import Data.Set as S hiding (map, foldl')
-import Data.List (foldl')
+import Control.Applicative hiding (empty)
+import Control.Monad
+import Control.Monad.Writer.Strict
+import Data.Set as S hiding (map, foldl', partition)
+import Data.List (foldl', partition)
 import qualified Data.Map as M
 import Fresh
 
@@ -115,18 +118,83 @@ renameDecls prog = mapM renameRhs prog
 makeAssoc :: String -> Fresh (String, String)
 makeAssoc str = fresh >>= (\frsh -> return (str, frsh))
 
+makeEnv :: [String] -> Fresh (M.Map String String, [String])
+makeEnv strs = do
+    asscs <- mapM makeAssoc strs
+    return (M.fromList asscs, map snd asscs)
+
 renameRhs :: ScDef Name -> Fresh (ScDef Name)
 renameRhs (scName, args, rhs) = do
-    asscs <- mapM makeAssoc args
-    let env = M.fromList asscs
-        args' = map snd asscs
-    rhs' <- renameExpr env
+    (env, args') <- makeEnv args
+    rhs' <- renameExpr env rhs
     return (scName, args', rhs')
 
-renameExpr :: M.Map String String -> Fresh CoreExpr
-renameExpr env = undefined
+renameExpr :: M.Map String String -> CoreExpr -> Fresh CoreExpr
+renameExpr env (EVar v) = return $ EVar $ M.findWithDefault v v env
+renameExpr env (ENum n) = return $ ENum n
+renameExpr env (EAp e1 e2) = EAp <$> renameExpr env e1 <*> renameExpr env e2
+renameExpr env (ELam args body) = do
+    (env', args') <- makeEnv args
+    let env'' = env' `M.union` env
+    renameExpr env'' body >>= (\body' -> return $ ELam args' body')
+renameExpr env (ELet b bndgs body) = do 
+    (env', binders) <- makeEnv $ map fst bndgs
+    let bodyEnv = env' `M.union` env
+        rhsEnv
+            | b         = bodyEnv
+            | otherwise = env
+        (bndrs, rhss) = unzip bndgs
+    body' <- renameExpr bodyEnv body
+    rhss' <- mapM (renameExpr rhsEnv) rhss
+    let bndgs' = zip binders rhss'
+    return $ ELet b bndgs' body'
+renameExpr env (EConstrAp t a flds) = EConstrAp t a <$> mapM (renameExpr env) flds
+renameExpr env (ECase s alts) = ECase <$> renameExpr env s <*> renameAlts env alts
+
+renameAlts :: M.Map String String -> [CoreAlt] -> Fresh [CoreAlt]
+renameAlts env alts = mapM (renameAlt env) alts
+
+renameAlt :: M.Map String String -> CoreAlt -> Fresh CoreAlt
+renameAlt env (t, args, body) = do
+    (env', args') <- makeEnv args
+    body' <- renameExpr (env' `M.union` env) body 
+    return (t, args', body')
 
 collectSCs :: CoreProgram -> CoreProgram
-collectSCs = undefined
+collectSCs prg = concatMap collectSC prg
+    
+collectSC :: ScDef Name -> CoreProgram
+collectSC (n, args, rhs) = newSCs
+  where
+    newSCs            = (n, args, rhs') : liftedSCs
+    (rhs', liftedSCs) = runWriter $ collectSCExpr rhs
+
+collectSCExpr :: CoreExpr -> Writer CoreProgram CoreExpr
+collectSCExpr (ENum n)             = return $ ENum n
+collectSCExpr (EVar v)             = return $ EVar v
+collectSCExpr (EAp e1 e2)          = EAp <$> collectSCExpr e1 <*> collectSCExpr e2
+collectSCExpr (EConstrAp t a flds) = EConstrAp t a <$> mapM collectSCExpr flds
+collectSCExpr (ELam args body)     = ELam args <$> collectSCExpr body
+collectSCExpr (ECase s alts)       = ECase <$> collectSCExpr s <*> mapM collectSCAlt alts
+collectSCExpr (ELet ir defs body)  = do
+    defns' <- mapM collectSCDef defs
+    let (scs, notSCs) = partition (isLambda . snd) defns'
+        liftedSCs     = [(name, args, rhs) | (name, ELam args rhs) <- scs]
+    body' <- collectSCExpr body
+    tell liftedSCs
+    return $ mkLet ir notSCs body'
+  where
+    mkLet ir [] bod    = bod
+    mkLet ir bndgs bod = ELet ir bndgs bod
+    
+
+collectSCDef :: (Name, CoreExpr) -> Writer [ScDef Name] (Name, CoreExpr)
+collectSCDef (n, expr) = collectSCExpr expr >>= (\body' -> return (n, body'))
+
+collectSCAlt (t, args, rhs) = collectSCExpr rhs >>= (\rhs' -> return (t, args, rhs'))
+
+isLambda :: CoreExpr -> Bool
+isLambda (ELam _ _) = True
+isLambda _          = False
 
 
