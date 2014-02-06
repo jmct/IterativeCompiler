@@ -1,4 +1,4 @@
-module LambdaLift (lambdaLift, freeVars) where
+module LambdaLift (lambdaLift, freeVars, rename) where
 
 import Language
 import Parser
