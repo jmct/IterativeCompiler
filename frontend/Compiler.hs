@@ -3,9 +3,12 @@ module Compiler where
 import Language
 import Parser
 import Heap
+import LambdaLift
+import CaseLift
+import Fresh
 import Data.List
 
-compileToGCode = labelProgram . compile . parse
+compileToGCode = labelProgram . compile . caseLift . parse
 
 writeGCodeFile name = 
     writeFile name . iDisplay . printInstructions . compileToGCode
