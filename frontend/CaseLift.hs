@@ -9,7 +9,7 @@ import Data.Set as S hiding (map, foldl', partition)
 import Data.List (foldl', partition)
 import qualified Data.Map as M
 import Fresh
-import LambdaLift (freeVars, rename)
+import LambdaLift (freeVars, rename, collectSCs)
 
 builtInDyadic :: [Name]
 builtInDyadic
@@ -64,40 +64,3 @@ abstractExprC (fvs, ACase s alts)     = foldl' EAp sc $ map EVar fvList
     fvList = S.toList fvs
     sc     = ELet False [("sc", rhs)] (EVar "sc") 
     rhs    = ELam fvList $ ECase (abstractExprE s) $ map abstractExprAlt alts
-
-collectSCs :: CoreProgram -> CoreProgram
-collectSCs prg = concatMap collectSC prg
-    
-collectSC :: ScDef Name -> CoreProgram
-collectSC (n, args, rhs) = newSCs
-  where
-    newSCs            = (n, args, rhs') : liftedSCs
-    (rhs', liftedSCs) = runWriter $ collectSCExpr rhs
-
-collectSCExpr :: CoreExpr -> Writer CoreProgram CoreExpr
-collectSCExpr (ENum n)             = return $ ENum n
-collectSCExpr (EVar v)             = return $ EVar v
-collectSCExpr (EAp e1 e2)          = EAp <$> collectSCExpr e1 <*> collectSCExpr e2
-collectSCExpr (EConstrAp t a flds) = EConstrAp t a <$> mapM collectSCExpr flds
-collectSCExpr (ELam args body)     = ELam args <$> collectSCExpr body
-collectSCExpr (ECase s alts)       = ECase <$> collectSCExpr s <*> mapM collectSCAlt alts
-collectSCExpr (ELet ir defs body)  = do
-    defns' <- mapM collectSCDef defs
-    let (scs, notSCs) = partition (isLambda . snd) defns'
-        liftedSCs     = [(name, args, rhs) | (name, ELam args rhs) <- scs]
-    body' <- collectSCExpr body
-    tell liftedSCs
-    return $ mkLet ir notSCs body'
-  where
-    mkLet ir [] bod    = bod
-    mkLet ir bndgs bod = ELet ir bndgs bod
-    
-
-collectSCDef :: (Name, CoreExpr) -> Writer [ScDef Name] (Name, CoreExpr)
-collectSCDef (n, expr) = collectSCExpr expr >>= (\body' -> return (n, body'))
-
-collectSCAlt (t, args, rhs) = collectSCExpr rhs >>= (\rhs' -> return (t, args, rhs'))
-
-isLambda :: CoreExpr -> Bool
-isLambda (ELam _ _) = True
-isLambda _          = False
