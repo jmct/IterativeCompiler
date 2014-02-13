@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
+#include <ctype.h>
 #include <gsl/gsl_math.h>
 #include "ginstructions.h"
 #include "instruction_type.h"
@@ -72,6 +74,37 @@ char * getLogFileName(char * gcodeFileName) {
 
 
 int main(int argc, char* argv[]) {
+
+    char* iVal = NULL;   /* Max number of iterations for compiler */
+    int iFlag = 0;       /* Flag for iterative compilation */
+    opterr = 0;          /* don't show error for no CLI args */
+    int fnIndex;
+
+    int c;               /* char for parsing CLI args */
+    
+    /* Parse CLI args */
+    while ((c = getopt(argc, argv, "I:")) != -1) {
+        switch (c)
+         {
+         case 'I':
+            iFlag = 1;
+            iVal = optarg;
+            break;
+         case '?':
+            if (optopt == 'I')
+              fprintf (stderr, "Option -%c requires an integer argument.\n", optopt);
+            else if (isprint (optopt))
+              fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+            else
+              fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
+              return 1;
+         }
+    }
+
+    fnIndex = optind;    /* After parsing options, the renaming args will be at optind */
+
+
+    
     if (argc < 2) {
         printf("No GCode file specified\n\nUsage: %s <filename>\n", argv[0]);
         exit (1);
@@ -79,7 +112,7 @@ int main(int argc, char* argv[]) {
     instruction *prog = NULL;
 
     //open GCode file. Right now we ignore any additional arguments
-    FILE * inputFile = fopen(argv[1], "r");
+    FILE * inputFile = fopen(argv[fnIndex], "r");
     if (inputFile == 0) {
         printf("Unable to open input file :(\n");
         exit (1);
@@ -88,6 +121,10 @@ int main(int argc, char* argv[]) {
     logFile = fopen(logFileName, "w");
 
     free(logFileName);
+
+    if (iFlag) {
+        iFlag = atoi(iVal);
+    }
     
     //setup `passing by reference' for our switches
     parSwitch* switches = malloc(sizeof(parSwitch));
@@ -110,6 +147,7 @@ int main(int argc, char* argv[]) {
     /* Set the counter back to it's abs value */
     counter *= -1;
     printf("There are %d par sites in the program\n", counter);
+    printf("Max number of interations: %d\n", iFlag);
 
 
     fclose(inputFile);
@@ -155,6 +193,14 @@ int main(int argc, char* argv[]) {
     initTable(prog, 300, &globalStats);
     
     Machine* fromThreadPool = NULL;
+
+    /* TODO Begin LOOP */
+    /* TODO Re-initialize:
+        Heap
+        Thread Pool
+        Cores
+        Stat table?
+     */
 
     while (programMode == LIVE) {
         int j;
@@ -241,6 +287,8 @@ int main(int argc, char* argv[]) {
         printf("Testing Par site stats: %f\n", psStats[0].rcMean);
         
     }
+
+    /* TODO END LOOP */
 
     fclose(logFile);
     return 0;

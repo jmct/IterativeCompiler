@@ -40,5 +40,6 @@ struct Machine_ {
 
 typedef struct Machine_ Machine;
     
+void initMachine(Machine *mach);
 
 #endif
