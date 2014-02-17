@@ -462,11 +462,9 @@ void pack(int tag, int ar, Machine *mach) {
     stackPush(newConstr, &mach->stck);
 }
 
-//TODO Printing does not work on Datastructure!!
 //This needs to return to dispatchGCode when printing data structures
 //shouldn't be too hard but requires that the PC keeps going back to Eval and Print
 void printI(Machine *mach) {
-    static int evalPrintLoop = 1;
     evalPrintLoop -= 1;
     HeapPtr oldTop = stackPopKeep(&mach->stck);
     if (oldTop->tag == INTEGER) {

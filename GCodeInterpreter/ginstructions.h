@@ -9,6 +9,8 @@
 #include "gthread.h"
 #include "machine.h"
 
+extern unsigned int evalPrintLoop;
+
 enum ExecutionMode_ {
     LIVE,   
     BLOCKED,

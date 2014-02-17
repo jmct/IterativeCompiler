@@ -21,6 +21,7 @@
 /* Ugly globals for stats and logging of stats */
 unsigned int threadCounter;
 unsigned int globalReductions;
+unsigned int evalPrintLoop;
 FILE* logFile;
 StatTable globalStats;
 
