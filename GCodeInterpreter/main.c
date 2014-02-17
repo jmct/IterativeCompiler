@@ -13,6 +13,7 @@
 #include "gthread.h"
 #include "machine.h"
 #include "stats.h"
+#include "searches.h"
 //#include "lex.yy.c"
 #define NUM_CORES 4
 #define TIME_SLICE 5
@@ -48,11 +49,12 @@ void freeMachine(Machine* mach) {
 }
 
 
-//Heap* globalHeap = NULL;
+Heap* globalHeap = NULL;
 threadPool* globalPool = NULL;
 
 /* Function prototype */
 ExecutionMode dispatchGCode(Machine *mach);
+
 
 char * getLogFileName(char * gcodeFileName) {
     char* resStr;
@@ -73,22 +75,35 @@ char * getLogFileName(char * gcodeFileName) {
     return resStr;
 }
 
+/*
+enum searchTypes_ {
+    RAND;
+    NONE;
+};
+*/
+
 
 int main(int argc, char* argv[]) {
 
     char* iVal = NULL;   /* Max number of iterations for compiler */
-    int iFlag = 0;       /* Flag for iterative compilation */
+    int iFlag = 0;       /* Flag for max iterations */
+    enum searchTypes_ sType = NONE;
     opterr = 0;          /* don't show error for no CLI args */
     int fnIndex;
 
-    int c;               /* char for parsing CLI args */
+    int c = 0;               /* char for parsing CLI args */
     
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "I:")) != -1) {
+    while ((c = getopt(argc, argv, "I:R:")) != -1) {
         switch (c)
          {
          case 'I':
             iFlag = 1;
+            iVal = optarg;
+            break;
+         case 'R':
+            iFlag = 1;
+            sType = RAND;
             iVal = optarg;
             break;
          case '?':
@@ -118,7 +133,7 @@ int main(int argc, char* argv[]) {
         printf("Unable to open input file :(\n");
         exit (1);
     }
-    char* logFileName = getLogFileName(argv[1]);
+    char* logFileName = getLogFileName(argv[fnIndex]);
     logFile = fopen(logFileName, "w");
 
     free(logFileName);
@@ -126,9 +141,13 @@ int main(int argc, char* argv[]) {
     if (iFlag) {
         iFlag = atoi(iVal);
     }
+    else {
+        iFlag = 1;
+    }
     
     //setup `passing by reference' for our switches
     parSwitch* switches = malloc(sizeof(parSwitch));
+    switches->address = -1;
     parSwitch** switchesPtr = &switches;
 
     //parse the actual GCode
@@ -136,19 +155,19 @@ int main(int argc, char* argv[]) {
     //get the value back from switchesPtr
     switches = *switchesPtr;
 
-    int counter = 0;
-    do {
-        if (switches[counter].address < 0) {
-            counter *= -1;
-        }
-        else {
-            counter++;
-        }
-    } while (counter > 0);
-    /* Set the counter back to it's abs value */
-    counter *= -1;
+    unsigned int counter;
+    for (counter = 0; switches[counter].address > 0; counter++);
     printf("There are %d par sites in the program\n", counter);
-    printf("Max number of interations: %d\n", iFlag);
+
+    char* searchName;
+    if (sType == RAND)
+        searchName = "Random Search\n";
+
+    if (sType != NONE)
+        printf("Performing search using: %s", searchName);
+
+    if (iFlag)
+        printf("Max number of interations: %d\n", iFlag);
 
 
     fclose(inputFile);
@@ -157,36 +176,61 @@ int main(int argc, char* argv[]) {
     // Allocate and initialize the heap (double needed space since it's Cheney's
     // GC)
     globalHeap = malloc(sizeof(Heap));
-    globalHeap->nextFreeCell = 0;
     globalHeap->maxSize = HEAPSIZE;
     globalHeap->toSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
     globalHeap->fromSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
 
-    //allocate and intialize thread pool
     globalPool = malloc(sizeof(threadPool));
-    initThreadPool(globalPool);
+
+    int numPar = counter;
+
+    iterate(switches, numPar, &globalStats, sType, iFlag, prog);
+
+   fclose(logFile);
+
+   return 0;
+}
+
+unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
+    /*  Initialize:
+        Heap
+        Thread Pool
+        Cores
+        Stat table?
+     */
+    //allocate thread pool
 
     //allocate and initlialize Machines
     ExecutionMode programMode, core;
-    programMode = core = LIVE;
     Machine** cores = malloc(sizeof(Machine*) * NUM_CORES);
     int i;
     for (i = 0; i < NUM_CORES; i++) {
         cores[i] = NULL;
     }
+
+    //set roots for heap
+    globalHeap->activeCores = cores;
+    globalHeap->numCores = NUM_CORES;
+    globalHeap->thrdPool = globalPool;
+    
+    puts("\n");
+
+    evalPrintLoop = 1;
+
+    globalHeap->nextFreeCell = 0;
+    initThreadPool(globalPool);
+
+    programMode = core = LIVE;
+
     threadCounter = 1;
     globalReductions = 0;
+
     cores[0] = malloc(sizeof(Machine));
     initMachine(cores[0]);
     cores[0]->creatorID = 0;
     cores[0]->parSite = prog;
     cores[0]->progCounter = prog;
     cores[0]->status = RUNNING;
-    //set roots for heap
-    globalHeap->activeCores = cores;
-    globalHeap->numCores = NUM_CORES;
-    globalHeap->thrdPool = globalPool;
-
 
     /* Initialize the stat table
      * TODO make this dependent on profiling flag 
@@ -194,14 +238,6 @@ int main(int argc, char* argv[]) {
     initTable(prog, 300, &globalStats);
     
     Machine* fromThreadPool = NULL;
-
-    /* TODO Begin LOOP */
-    /* TODO Re-initialize:
-        Heap
-        Thread Pool
-        Cores
-        Stat table?
-     */
 
     while (programMode == LIVE) {
         int j;
@@ -289,10 +325,10 @@ int main(int argc, char* argv[]) {
         
     }
 
-    /* TODO END LOOP */
+   free(cores);
 
-    fclose(logFile);
-    return 0;
+   return globalReductions;
+
 }
 
 ExecutionMode dispatchGCode(Machine *mach) {

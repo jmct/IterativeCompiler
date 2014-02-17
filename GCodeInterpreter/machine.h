@@ -42,4 +42,6 @@ typedef struct Machine_ Machine;
     
 void initMachine(Machine *mach);
 
+unsigned int executeProg(parSwitch* s, instruction* p, int c);
+
 #endif
