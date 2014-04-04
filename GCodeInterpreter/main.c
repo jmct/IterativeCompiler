@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <gsl/gsl_math.h>
+#include <time.h>
 #include "ginstructions.h"
 #include "instruction_type.h"
 #include "symbolTable.h"
@@ -92,6 +93,8 @@ int main(int argc, char* argv[]) {
     int fnIndex;
 
     int c = 0;               /* char for parsing CLI args */
+
+    srand(time(NULL));
     
     /* Parse CLI args */
     while ((c = getopt(argc, argv, "I:R:")) != -1) {
@@ -200,10 +203,20 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
      */
     //allocate thread pool
 
+    /* use switches */
+    int i;
+    for (i = 0; i < counter; i++) {
+        if (swtchs[i].pswitch == 1) {
+            strcpy(prog[swtchs[i].address].pushGlobVal, "par");
+        } else if (swtchs[i].pswitch == 0) {
+            strcpy(prog[swtchs[i].address].pushGlobVal, "parOff");
+        }
+    }
+        
+
     //allocate and initlialize Machines
     ExecutionMode programMode, core;
     Machine** cores = malloc(sizeof(Machine*) * NUM_CORES);
-    int i;
     for (i = 0; i < NUM_CORES; i++) {
         cores[i] = NULL;
     }
@@ -321,7 +334,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
          * thread doesn't need a par site to spark it
          */
         ParSiteStats * psStats = calcParSiteStats(&globalStats, counter + 1);
-        printf("Testing Par site stats: %f\n", psStats[0].rcMean);
+        /* printf("Testing Par site stats: %f\n", psStats[0].rcMean); */
         
     }
 

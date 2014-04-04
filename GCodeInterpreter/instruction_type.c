@@ -315,21 +315,10 @@ instruction *parseGCode(FILE* gcodeFile, parSwitch** parSwitchesPtr) {
                 parSwitches[parTagDiff].pswitch = TRUE;
                 parSwitches[parTagDiff].address = curInstr;
                 parSwitches = realloc(parSwitches, ((sizeof(parSwitch)) + (sizeof(parSwitch) * parTagCount)));
+                prog[curInstr].pushGlobVal = realloc(prog[curInstr].pushGlobVal, 
+                                                     strlen(prog[curInstr].pushGlobVal) + 4);
                 parTagDiff++;
             }
-/* Code for when switching pars occured during parsing
-            //If the parTagCount was incremented, then we know that the created
-            //instruction was a PushGlobal "par". Here we check to see if that 
-            //par was switched off
-            if (parTagCount > parTagDiff && parSwitches != NULL) {
-                if (parSwitches[parTagCount - 1] == 0) {
-                    prog[curInstr].pushGlobVal = realloc(prog[curInstr].pushGlobVal, 
-                                                         strlen(prog[curInstr].pushGlobVal) + 4);
-                    strcpy(prog[curInstr].pushGlobVal, "parOff");
-                }
-                parTagDiff++;
-            }
-*/
         }
         else {
             printf("There is an error in the formatting of the GCode\n");
