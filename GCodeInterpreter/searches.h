@@ -6,6 +6,7 @@
 
 enum searchTypes_ {
     RAND,
+    NONE_SEQ,
     NONE
 };
 

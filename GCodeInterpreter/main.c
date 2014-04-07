@@ -97,9 +97,12 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
     
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "I:R:")) != -1) {
+    while ((c = getopt(argc, argv, "SI:R:")) != -1) {
         switch (c)
          {
+         case 'S':
+            sType = NONE_SEQ;
+            break;
          case 'I':
             iFlag = 1;
             iVal = optarg;
@@ -159,14 +162,23 @@ int main(int argc, char* argv[]) {
     switches = *switchesPtr;
 
     unsigned int counter;
+
     for (counter = 0; switches[counter].address > 0; counter++);
+    
     printf("There are %d par sites in the program\n", counter);
 
     char* searchName;
-    if (sType == RAND)
+    if (sType == RAND) {
         searchName = "Random Search\n";
+    } 
+    else if (sType == NONE_SEQ) {
+        for (counter = 0; switches[counter].address > 0; counter++) {
+            switches[counter].pswitch = FALSE;
+        }
+        puts("Ignoring par annotations and running sequentially.");
+    }
 
-    if (sType != NONE)
+    if ((sType != NONE) && (sType != NONE_SEQ))
         printf("Performing search using: %s", searchName);
 
     if (iFlag)

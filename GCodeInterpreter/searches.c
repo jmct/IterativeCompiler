@@ -1,9 +1,26 @@
+/* This file contains all of the implemented search strategies for the
+ * iterative compiler. There is only one exported function (via searches.h),
+ * iterate(). The rest of the file is internal. The user specifies which search
+ * strategy they want on the comman line. So far we have the following flags
+ * implemented:
+ *
+ * no args: standard interpretation. Run the program will all the annotated 
+ *          parallelism. 
+ *
+ * -S:  Ignore any par annotations and run the program sequentially.
+ *
+ * -R <n>: Random search -> randomly mutate the bitstring and execute the 
+ *         corresponding program. Do this <n> times and display the best result.
+ *
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include "machine.h"
 #include "stats.h"
 #include "instruction_type.h"
 #include "searches.h"
+
 
 void prettyPrSwitches(parSwitch* switches, int nSwitch) {
     fputs("Bitstring used: ", stdout);
@@ -51,7 +68,7 @@ void randMutate(parSwitch* switches, int nSwitch) {
 
 
 parSwitch* iterate(parSwitch* switches, int nSwitch, StatTable* gStat, enum searchTypes_ sType, int maxI, instruction* prog) {
-    if (sType == NONE) {
+    if (sType == NONE || sType == NONE_SEQ) {
         executeProg(switches, prog, nSwitch);
         return switches;
     }
