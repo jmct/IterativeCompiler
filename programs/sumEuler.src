@@ -8,29 +8,29 @@ cons a b = Pack{2, 2} a b;
 
 fcons b a = Pack{2, 2} a b;
 
+forceSpine xs = case xs of
+                 <1> -> Pack{1, 0};
+                 <2> a b -> forceSpine b;
+
 map f xs = case xs of
             <1> -> nil;
             <2> a b -> cons (f a) (map f b);
-
-parMap f xs = case xs of
-                <1> -> nil;
-                <2> a b -> let x = f a in par x (cons x (parMap f b));
 
 downfrom n = if (n == 0)
                     nil
                     (cons n (downfrom (n - 1)));
 
 fromTo x y = if (x > y)
-                    nil
-                    (cons x (fromTo (x+1) y));
+                nil
+                (cons x (fromTo (x+1) y));
 
 times2 x = 2 * x;
 
-gcd x y = if (y == 0)
-                 x
-                 (if (x > y) 
-                        (gcd (x - y) y)
-                        (gcd x (y - x)));
+gcd x y = (if (y == 0)
+               x
+               (if (x > y) 
+                      (gcd (x - y) y)
+                      (gcd x (y - x))));
 
 relPrime x y = (gcd x y) == 1;
 
@@ -44,10 +44,20 @@ length xs = case xs of
                 <1> -> 0;
                 <2> a b -> 1 + (length b);
 
-sum xs = case xs of
-            <1> -> 0;
-            <2> a b -> a + (sum b);
+sumPrime xs = case xs of
+                 <1> -> 0;
+                 <2> a b -> a + (sum b);
 
-euler n = length (filter (relPrime n) (fromTo 1 n));
+sum xs = par (forceSpine xs) (sumPrime xs);
 
-main = sum (parMap euler (fromTo 1 30))
+euler n = let xs = fromTo 1 n in length (par (headPar xs) (filter (relPrime n) xs));
+
+headPar xs = case xs of
+                <1>      -> nil;
+                <2> y ys -> par y (cons y (headPar y ys));
+
+parList xs = case xs of
+                <1>      -> Pack{0,0};
+                <2> y ys -> par y (parList ys);
+
+main = let xs = (map euler (fromTo 1 30)) in par (parList xs) (sum xs)

@@ -181,13 +181,15 @@ pGreetings = pThen (\x y -> x) (pZeroOrMore pGreeting) (pEnd)
 
 pGreetingsN :: Parser Int
 pGreetingsN = (pGreetings) `pApply` length
+
 --once we have the tokens, we can then perform syntactical analysis
 syntax :: [Token] -> CoreProgram
 syntax = takeFirstParse . pProgram
     where
         takeFirstParse ((prog, []):otherParses) = prog
-        takeFirstParse (parse:otherParses) = takeFirstParse otherParses
+        takeFirstParse ((prog, toks):otherParses) = error $ ("Error! " ++ show toks)
         takeFirstParse _ = error "Syntax error!"
+--        takeFirstParse (parse:otherParses) = takeFirstParse otherParses
 
 pProgram :: Parser CoreProgram
 pProgram = pOneOrMoreWithSep pSc (pLiteral ";")
@@ -366,9 +368,9 @@ pLambda = pThen4 retLambda (pLiteral "\\") pLambVars (pLiteral ".") pExpr
         where
             retLambda lamb vars dot expr = (ELam vars expr)
 
-pLambVars :: Parser Name
---pLambVars = pOneOrMore pVar
-pLambVars = pVar
+pLambVars :: Parser [Name]
+pLambVars = pOneOrMore pVar
+--pLambVars = pVar
 
 pApplication :: Parser CoreExpr
 pApplication = ((pOneOrMore pAexpr) `pApply` mkApChain) 

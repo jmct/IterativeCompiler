@@ -22,8 +22,30 @@ data Expr a
     | ECase                 --Case declaration
         (Expr a)            --expression to compare
         [Alter a]           --list of alternatives to execute
-    | ELam a (Expr a)     --Lambda expression
+    | ELam [a] (Expr a)     --Lambda expression
     deriving Show
+
+type AnExpr a b = (b, AnExpr' a b)
+
+data AnExpr' a b
+    = AVar Name             --Variables (their name)
+    | ANum Int              --Numbers
+    | AConstrAp Int Int 
+                [AnExpr a b]      --Constructors (the reference tag and the arity)
+    | AAp (AnExpr a b) (AnExpr a b) --Application of expression
+    | ALet                  --Let declaration
+        IsRec               --Boolean (True == Recursive Let)
+        [AnDefn a b]          --list of definitions
+        (AnExpr a b)            --body of let
+    | ACase                 --Case declaration
+        (AnExpr a b)            --expression to compare
+        [AnAlt a b]           --list of alternatives to execute
+    | ALam [a] (AnExpr a b)     --Lambda expression
+    deriving Show
+
+type AnDefn a b = (a, AnExpr a b)
+type AnAlt a b = (Int, [a], AnExpr a b)
+type AnProg a b = [(Name, [a], AnExpr a b)]
 
 descend :: (Expr a -> Expr a) -> Expr a -> Expr a
 descend f (EConstrAp t a flds) = EConstrAp t a $ map f flds
@@ -190,7 +212,7 @@ pprExpr (EConstrAp t a args) = iConcat [IStr "Pack{", IStr $ show t
                                      ,IStr " "
                                      ]
 pprExpr (ELam var e1) = iConcat [IStr "\\", 
-                                  IStr var, 
+                                  IStr $ concat $ intersperse " " var, 
                                   IStr " . ", (pprExpr e1)]
 
 pprProgram :: CoreProgram -> Iseq
@@ -221,9 +243,11 @@ pprAlters (x:xs) = (pprAlter x) `IAppend`
                             INewline `IAppend` (pprAlters xs)
 
 pprAlter :: CoreAlt -> Iseq
-pprAlter ( _, vars, e1) = 
-    iConcat [IStr (concat.intersperse " " $ map show vars), 
-             IStr " -> ", (pprExpr e1)]
+pprAlter ( t, vars, e1) = 
+    iConcat [ IStr $ "<" ++ show t ++ "> "
+            , IStr (concat.intersperse " " $ map show vars)
+            , IStr " -> ", (pprExpr e1)
+            ]
 
 iConcat :: [Iseq] -> Iseq
 iConcat []     = INil

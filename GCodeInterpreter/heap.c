@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "instructions.h"
+#include "instruction_type.h"
 #include "symbolTable.h"
 #include "heap.h"
 #include "gthread.h"
@@ -169,6 +169,7 @@ HeapPtr allocIndirection(HeapPtr forwardAdd, Heap* myHeap) {
 void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem) {
     threadQueueNode* newNode = malloc(sizeof(threadQueueNode));
     newNode->current = mach;
+    mach->status = WAS_BLOCKED;
     if (heapItem->tag == LOCKED_APP) {
         newNode->next = heapItem->app.blockedQueue;
         heapItem->app.blockedQueue = newNode;

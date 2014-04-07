@@ -3,9 +3,12 @@ module Compiler where
 import Language
 import Parser
 import Heap
+import LambdaLift
+import CaseLift
+import Fresh
 import Data.List
 
-compileToGCode = labelProgram . compile . parse
+compileToGCode = labelProgram . compile . caseLift . parse
 
 writeGCodeFile name = 
     writeFile name . iDisplay . printInstructions . compileToGCode
@@ -118,51 +121,8 @@ flattenCode' (Append codeL codeR) acc =
     
 flattenCode t = flattenCode' t []
 
-data Fresh a = Fresh { runFresh :: String -> Int -> (Int, a) }
 
-instance Monad Fresh where
-  return a = Fresh (\s i -> (i, a))
-  (Fresh h) >>= f = Fresh $ \s i -> let (i1, s1) = h s i
-                                        (Fresh g) = f s1
-                                        in g s i1
-
-{- Naylor's bind implementation
-  m >>= f  = Fresh (\s i -> case runFresh m s i of
-                              (j, a) -> runFresh (f a) s j)
- -}
-
-fresh :: Fresh String
-fresh = Fresh (\s i -> (i+1, s ++ ": " ++ show i))
-
-scfresh :: Fresh String
-scfresh = Fresh (\s i -> (i+1, s ++ " " ++ show i))
-
-ignore :: String -> Fresh a -> Fresh a
-ignore str (Fresh f) = Fresh $ \_ i -> f str i
-
-
-labelInt :: Fresh String
-labelInt = Fresh (\s i -> (i, s ++ show i))
-
-labelNoInt = Fresh $ \s i -> (i, s)
-
-labelAppendInt :: Fresh a -> Fresh a
-labelAppendInt (Fresh f) = Fresh $ \s i -> f (s ++ show i) i
-
-labelNewCount :: Fresh String
-labelNewCount = Fresh $ \s i -> (1, s ++ ": 0")
-
-testFresh :: GMCode -> Fresh GMCode
-testFresh [] = return []
-testFresh (x:xs) = if x == PushGlobal "test"
-                   then do
-                            a <- fresh
-                            ys <- testFresh xs
-                            return (PushGlobal a: ys)
-                   else do
-                            ys <- testFresh xs
-                            return (x : ys)
-
+{- ensure that all casejumps have unique lables -}
 labelSC :: GMCode -> Fresh CodeTree
 labelSC     [] = return Nil
 labelSC (xs) = do
@@ -184,10 +144,6 @@ labelCode (x:xs) =
         otherwise     -> do
                     ys    <- labelCode xs
                     return (Code x `Append` ys)
-{-
-labelCasejump :: GMCode -> FreshCodeTree
-labelCasejump 
--}
 
 labelCases :: [(Int, GMCode)] -> Fresh CodeTree
 labelCases     [] = return Nil
@@ -208,9 +164,6 @@ labelProgram :: [GMCompiledSC] -> GMCode
 labelProgram []     = []
 labelProgram ((name, arity, code):xs) = 
     (flattenCode $ snd (runFresh (labelSC code) name arity)) ++ labelProgram xs
-
---tester :: Fresh [GMCode] -> Fresh GMCode
---tester xs = return (concat xs)
 
 type GMCompiledSC = (Name, Int, GMCode)
 
@@ -325,6 +278,7 @@ compileC (EConstrAp tag arity args) env = compilePack (reverse args) env ++ [Pac
 compileC (ELet recursive defs e) args
     | recursive             = compileLetRec compileC defs e args
     | otherwise             = compileLet    compileC defs e args
+compileC x env              = error $ "Compile scheme C reach unexpected expression: " ++ show x 
 
 compileLet :: GMCompiler -> [(Name, CoreExpr)] -> GMCompiler
 compileLet comp defs expr env

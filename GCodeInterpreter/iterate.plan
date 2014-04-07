@@ -54,6 +54,7 @@ Thread Stats
 5 How many threads _this_ thread blocked
 6 Which other threads blocked this thread
 7 Number of Global reductions alive
+8 Which par annotation the thread is born from
 
 Thread Stats Implementation
 ---------------------------
@@ -85,3 +86,17 @@ key:
 5 -> TODO
 6 -> TODO
 7 -> (2) - blockedCounter
+8 -> parSite
+
+Important Note
+--------------
+
+As of right now, if you try to do the pointer arithmetic on the parSite (by
+subtracting the `prog` pointer from it) you will _not_ get the correct line
+number in the .gcode file. This is because of the instructions we add at the
+beginning of the program. So the answer you get from the pointer arithmetic
+should be: (correct line number) + 3. 
+
+However, the number derived from the pointer arithmetic should be the
+appropriate value for manipulating the par definitions on the next parse of the
+GCode file.
