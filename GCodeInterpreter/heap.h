@@ -14,7 +14,8 @@ typedef enum {
     CONSTR,
     INTEGER, 
     COLLECTED,
-    INDIRECTION
+    INDIRECTION,
+    FIELD_PTR
 } Tag;
 
 
@@ -45,7 +46,8 @@ struct atom {
     instruction * parSite; /* parSite that created this node */
 
     union {
-        HeapCell * indirection; //for indirection Nodes
+        HeapCell * indirection; /* for indirection Nodes
+                                 * and field pointers */
         int num; 
         struct {
             HeapCell * leftArg;
@@ -57,7 +59,7 @@ struct atom {
         struct {
             int id;
             int arity;
-            HeapCell ** fields;
+            HeapCell *fields;
         } constr; 
         struct {
             int arity;
@@ -91,6 +93,7 @@ void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem);
 
 void showHeapItem(HeapCell *item);
 int isAddrInToSpace(HeapPtr addr, Heap* heap);
+int numHeapCells(Heap *h);
 HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second);
 HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap);
 HeapPtr allocConstr(int id1, int arity1, Heap* myHeap);
