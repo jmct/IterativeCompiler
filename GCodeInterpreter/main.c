@@ -43,7 +43,7 @@ void initMachine(Machine *mach) {
 /* TODO when freeing a machine we need to keep the statistics */
 void freeMachine(Machine* mach) {
    freeStack(mach->stck);
-   
+
    unsigned int lifespan = globalReductions - mach->birthTime;
    recordMach(mach, &globalStats, lifespan);
    free(mach);
@@ -95,9 +95,9 @@ int main(int argc, char* argv[]) {
     int c = 0;               /* char for parsing CLI args */
 
     srand(time(NULL));
-    
+
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "SI:R:")) != -1) {
+    while ((c = getopt(argc, argv, "SI:R:H:")) != -1) {
         switch (c)
          {
          case 'S':
@@ -105,6 +105,11 @@ int main(int argc, char* argv[]) {
             break;
          case 'I':
             iFlag = 1;
+            iVal = optarg;
+            break;
+         case 'H':
+            iFlag = 1;
+            sType = HILL;
             iVal = optarg;
             break;
          case 'R':
@@ -126,7 +131,7 @@ int main(int argc, char* argv[]) {
     fnIndex = optind;    /* After parsing options, the renaming args will be at optind */
 
 
-    
+
     if (argc < 2) {
         printf("No GCode file specified\n\nUsage: %s <filename>\n", argv[0]);
         exit (1);
@@ -150,7 +155,7 @@ int main(int argc, char* argv[]) {
     else {
         iFlag = 1;
     }
-    
+
     //setup `passing by reference' for our switches
     parSwitch* switches = malloc(sizeof(parSwitch));
     switches->address = -1;
@@ -164,13 +169,13 @@ int main(int argc, char* argv[]) {
     unsigned int counter;
 
     for (counter = 0; switches[counter].address > 0; counter++);
-    
+
     printf("There are %d par sites in the program\n", counter);
 
     char* searchName;
     if (sType == RAND) {
         searchName = "Random Search\n";
-    } 
+    }
     else if (sType == NONE_SEQ) {
         for (counter = 0; switches[counter].address > 0; counter++) {
             switches[counter].pswitch = FALSE;
@@ -224,7 +229,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
             strcpy(prog[swtchs[i].address].pushGlobVal, "parOff");
         }
     }
-        
+
 
     //allocate and initlialize Machines
     ExecutionMode programMode, core;
@@ -237,7 +242,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     globalHeap->activeCores = cores;
     globalHeap->numCores = NUM_CORES;
     globalHeap->thrdPool = globalPool;
-    
+
     puts("\n");
 
     evalPrintLoop = 1;
@@ -258,10 +263,10 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     cores[0]->status = RUNNING;
 
     /* Initialize the stat table
-     * TODO make this dependent on profiling flag 
+     * TODO make this dependent on profiling flag
      */
     initTable(prog, 300, &globalStats);
-    
+
     Machine* fromThreadPool = NULL;
 
     while (programMode == LIVE) {
@@ -330,13 +335,13 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
 
     /* write statTable to log file */
     /*TODO make this dependent on profiling flag */
-    globalStats.entries = realloc(globalStats.entries, 
+    globalStats.entries = realloc(globalStats.entries,
                                   sizeof(StatRecord) * globalStats.currentEntry);
     if (globalStats.entries == NULL) {
         printf("Resizing stats table failed after run\n");
     }
     else {
-        qsort(globalStats.entries, globalStats.currentEntry, 
+        qsort(globalStats.entries, globalStats.currentEntry,
               sizeof(StatRecord), compare_entries);
         int nStats = logStats(&globalStats, logFile);
         printf("Recorded %d threads\n", nStats);
@@ -347,7 +352,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
          */
         ParSiteStats * psStats = calcParSiteStats(&globalStats, counter + 1);
         /* printf("Testing Par site stats: %f\n", psStats[0].rcMean); */
-        
+
     }
 
    free(cores);
@@ -437,7 +442,7 @@ ExecutionMode dispatchGCode(Machine *mach) {
         case CaseAlt: //<<<<<<<<< Maybe moved to Default case?
             break;
         case CaseAltEnd:
-            //Here we need to append "EndCase" to the labelVal and 
+            //Here we need to append "EndCase" to the labelVal and
             //jump to the result of a lookup
             caseAltEnd(oldPC->labelVal, mach);
             break;

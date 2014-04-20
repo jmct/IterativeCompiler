@@ -5,6 +5,7 @@
 #include "instruction_type.h"
 
 enum searchTypes_ {
+    HILL,
     RAND,
     NONE_SEQ,
     NONE
