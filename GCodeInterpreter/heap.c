@@ -119,6 +119,10 @@ HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second) 
     return &heap[nextFree];
 }
 
+int numHeapCells(Heap* h) {
+    return h->maxSize - h->nextFreeCell;
+}
+
 HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap) {
     HeapPtr appNode = allocHeapCell(APP, myHeap, &left, &right);
     appNode->app.leftArg = left;
@@ -128,14 +132,26 @@ HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap) {
     return appNode;
 }
 
-HeapPtr allocConstr(int id1, int arity1, Heap* myHeap) {
-    HeapPtr constrNode = allocHeapCell(CONSTR, myHeap, NULL, NULL);
+HeapPtr allocConstr(int id1, int arity1, Heap *h) {
+    HeapPtr constrNode = allocHeapCell(CONSTR, h, NULL, NULL);
     constrNode->constr.id = id1;
     constrNode->constr.arity = arity1;
-    if (arity1 > 0)
-        constrNode->constr.fields = malloc(sizeof(HeapCell*) * arity1);
-    else 
+    if (arity1 > 0) {
+        int n = numHeapCells(h);
+        if (n < arity1) {
+            garbageCollect(h, NULL, NULL);
+        }
+        n = h->nextFreeCell;
+    
+        int i;
+        for (i = 0; i < arity1; i++) 
+            allocHeapCell(FIELD_PTR, h, NULL, NULL);
+
+        constrNode->constr.fields = h->toSpace + n;
+    }
+    else {
         constrNode->constr.fields = NULL;
+    }
     return constrNode;
 }
 

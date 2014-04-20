@@ -449,7 +449,7 @@ void split(int num, Machine * mach) {
     }
     int i = num;
     for (i = i -1; i >=0; i--) {
-        stackPush(topOfStack->constr.fields[i], &mach->stck);
+        stackPush(topOfStack->constr.fields[i].indirection, &mach->stck);
     }
 }    
 
@@ -457,7 +457,7 @@ void pack(int tag, int ar, Machine *mach) {
     HeapPtr newConstr = allocConstr(tag, ar, globalHeap);
     int i;
     for (i = 0; i < ar; i++) {
-        newConstr->constr.fields[i] = stackPopKeep(&mach->stck);
+        newConstr->constr.fields[i].indirection = stackPopKeep(&mach->stck);
     }
     stackPush(newConstr, &mach->stck);
 }
@@ -475,7 +475,7 @@ void printI(Machine *mach) {
         evalPrintLoop += i;
         printf("<%d> ", oldTop->constr.id);
         for (i = i -1; i >=0; i--) {
-            stackPush(oldTop->constr.fields[i], &mach->stck);
+            stackPush(oldTop->constr.fields[i].indirection, &mach->stck);
         }
     }
     else {
