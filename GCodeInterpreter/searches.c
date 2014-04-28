@@ -46,6 +46,10 @@ unsigned int hillClimb(parSwitch *switches, int nSwitch, int maxI, instruction *
 parSwitch* iterate(parSwitch *switches, int nSwitch, StatTable *gStat,
                     enum searchTypes_ sType, int maxI, instruction *prog)
 {
+    if (nSwitch == 0) {
+        puts("No need to iterate, there are no par annotations");
+        sType = NONE;
+    }
 
     unsigned int rCount;
 

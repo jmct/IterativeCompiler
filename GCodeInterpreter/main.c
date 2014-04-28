@@ -171,6 +171,9 @@ int main(int argc, char* argv[]) {
     for (counter = 0; switches[counter].address > 0; counter++);
 
     printf("There are %d par sites in the program\n", counter);
+    
+    if (counter == 0)
+        sType = NONE;
 
     char* searchName;
     if (sType == RAND) {
