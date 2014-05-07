@@ -38,9 +38,10 @@ int recordMach(Machine* mach, StatTable* table,
     
 }
 
-void initTable(instruction * prog, unsigned int initSize, StatTable * initTable) {
+void initTable(instruction * prog, unsigned int initSize, FILE *lf, StatTable * initTable) {
 
     initTable->entries = malloc(sizeof(StatRecord) * initSize);
+    initTable->lf = lf;
     initTable->progAddr = prog;
     initTable->size = initSize;
     initTable->currentEntry = 0;
@@ -48,14 +49,14 @@ void initTable(instruction * prog, unsigned int initSize, StatTable * initTable)
 }
 
 
-int logStats(StatTable * table, FILE * logFile) {
+int logStats(StatTable * table) {
 
-    fprintf(logFile, "ParSite,ThreadID,Lifespan,Reductions,BlockedCntr,aliveTime,Creator\n");
+    fprintf(table->lf, "ParSite,ThreadID,Lifespan,Reductions,BlockedCntr,aliveTime,Creator\n");
 
     unsigned int n;
     for (n = 0; n < table->currentEntry; n++) {
 
-        fprintf(logFile,
+        fprintf(table->lf,
             "%d,%d,%d,%d,%d,%d,%d\n",
             table->entries[n].parSite,
             table->entries[n].threadID, 

@@ -43,6 +43,8 @@ unsigned int randSearch(parSwitch *switches, int nSwitch, int maxI, instruction 
 
 unsigned int hillClimb(parSwitch *switches, int nSwitch, int maxI, instruction *prog);
 
+unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruction *prog);
+
 parSwitch* iterate(parSwitch *switches, int nSwitch, StatTable *gStat,
                     enum searchTypes_ sType, int maxI, instruction *prog)
 {
@@ -56,6 +58,8 @@ parSwitch* iterate(parSwitch *switches, int nSwitch, StatTable *gStat,
     if (sType == NONE || sType == NONE_SEQ) {
         executeProg(switches, prog, nSwitch);
         return switches;
+    } else if (sType == ITER) {
+        rCount = profSearch(switches, nSwitch, maxI, gStat, prog);
     } else if (sType == RAND) {
         rCount = randSearch(switches, nSwitch, maxI, prog);
     } else if (sType == HILL) {
@@ -246,4 +250,37 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, instruction *pr
     return best.rCount;
 }
 
+unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruction *prog)
+{
+    
+    int i;
+    unsigned int curRed = 0;
+    for (i = 0; i < maxI; i++) {
+        randMutate(sw, nS);
+        curRed = executeProg(sw, prog, nS);
 
+        /* write statTable to log file */
+        /*TODO make this dependent on profiling flag */
+        gS->entries = realloc(gS->entries,
+                              sizeof(StatRecord) * gS->currentEntry);
+        if (gS->entries == NULL) {
+            printf("Resizing stats table failed after run\n");
+        }
+        else {
+            qsort(gS->entries, gS->currentEntry,
+                  sizeof(StatRecord), compare_entries);
+            int nStats = logStats(gS);
+            printf("Recorded %d threads\n", nStats);
+
+            /* parSite Stats */
+            /* The (+1) for the number of par sites is due to the fact that the main
+             * thread doesn't need a par site to spark it
+             */
+            ParSiteStats * psStats = calcParSiteStats(gS, nS + 1);
+            /* printf("Testing Par site stats: %f\n", psStats[0].rcMean); */
+
+        }
+    
+    }
+    return curRed;
+}

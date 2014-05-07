@@ -180,6 +180,12 @@ int main(int argc, char* argv[]) {
     if (sType == RAND) {
         searchName = "Random Search\n";
     }
+    else if (sType == HILL) {
+        searchName = "Hill Climbing\n";
+    }
+    else if (sType == ITER) {
+        searchName = "Informed Search\n";
+    }
     else if (sType == NONE_SEQ) {
         for (counter = 0; switches[counter].address > 0; counter++) {
             switches[counter].pswitch = FALSE;
@@ -269,7 +275,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     /* Initialize the stat table
      * TODO make this dependent on profiling flag
      */
-    initTable(prog, 300, &globalStats);
+    initTable(prog, 300, logFile, &globalStats);
 
     Machine* fromThreadPool = NULL;
 
@@ -337,27 +343,6 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
 
     printf("\nTotal Reductions: %d\n", globalReductions);
 
-    /* write statTable to log file */
-    /*TODO make this dependent on profiling flag */
-    globalStats.entries = realloc(globalStats.entries,
-                                  sizeof(StatRecord) * globalStats.currentEntry);
-    if (globalStats.entries == NULL) {
-        printf("Resizing stats table failed after run\n");
-    }
-    else {
-        qsort(globalStats.entries, globalStats.currentEntry,
-              sizeof(StatRecord), compare_entries);
-        int nStats = logStats(&globalStats, logFile);
-        printf("Recorded %d threads\n", nStats);
-
-        /* parSite Stats */
-        /* The (+1) for the number of par sites is due to the fact that the main
-         * thread doesn't need a par site to spark it
-         */
-        ParSiteStats * psStats = calcParSiteStats(&globalStats, counter + 1);
-        /* printf("Testing Par site stats: %f\n", psStats[0].rcMean); */
-
-    }
 
    free(cores);
 

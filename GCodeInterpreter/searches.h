@@ -7,6 +7,7 @@
 enum searchTypes_ {
     HILL,
     RAND,
+    ITER,
     NONE_SEQ,
     NONE
 };
