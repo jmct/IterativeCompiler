@@ -125,3 +125,17 @@ ParSiteStats * calcParSiteStats(StatTable* statTable, int numParSites) {
 
     return statsArray;
 }
+
+void printParStats(ParSiteStats *st, int nps) {
+    if (nps == 0)
+        return;
+
+    int n;
+    for (n = 0; n <= nps; n++) {
+        printf("For par site %d:\n", n);
+        printf("\tReduction Count mean: %f\n", st[n].rcMean);
+        printf("\tBlocked Count mean: %f\n", st[n].bcMean);
+        printf("\tLifespan mean: %f\n\n", st[n].lsMean);
+    }
+
+}

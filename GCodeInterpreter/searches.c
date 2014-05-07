@@ -14,6 +14,8 @@
  *
  * -H <n>:  Standard Hill-Climbing with <n> climbs
  *
+ * -I <n>:  Profile-assisted search max of <n> iterations, but hopefully fewer
+ *
  */
 
 #include <stdlib.h>
@@ -277,7 +279,7 @@ unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruct
              * thread doesn't need a par site to spark it
              */
             ParSiteStats * psStats = calcParSiteStats(gS, nS + 1);
-            /* printf("Testing Par site stats: %f\n", psStats[0].rcMean); */
+            printParStats(psStats, nS);
 
         }
     
