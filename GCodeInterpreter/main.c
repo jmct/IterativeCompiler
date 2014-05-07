@@ -16,7 +16,6 @@
 #include "stats.h"
 #include "searches.h"
 //#include "lex.yy.c"
-#define NUM_CORES 4
 #define TIME_SLICE 5
 #define HEAPSIZE 10000000
 
@@ -26,6 +25,7 @@ unsigned int globalReductions;
 unsigned int evalPrintLoop;
 FILE* logFile;
 StatTable globalStats;
+unsigned int NUM_CORES;
 
 void initMachine(Machine *mach) {
     mach->progCounter  = NULL;
@@ -76,18 +76,11 @@ char * getLogFileName(char * gcodeFileName) {
     return resStr;
 }
 
-/*
-enum searchTypes_ {
-    RAND;
-    NONE;
-};
-*/
-
-
 int main(int argc, char* argv[]) {
 
     char* iVal = NULL;   /* Max number of iterations for compiler */
     int iFlag = 0;       /* Flag for max iterations */
+    int cFlag = 0;       /* Flag for number of cores */
     enum searchTypes_ sType = NONE;
     opterr = 0;          /* don't show error for no CLI args */
     int fnIndex;
@@ -97,14 +90,19 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
 
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "SI:R:H:")) != -1) {
+    while ((c = getopt(argc, argv, "c:SI:R:H:")) != -1) {
         switch (c)
          {
+         case 'c':
+            cFlag = 1;
+            NUM_CORES = atoi(optarg);
+            break;
          case 'S':
             sType = NONE_SEQ;
             break;
          case 'I':
             iFlag = 1;
+            sType = ITER;
             iVal = optarg;
             break;
          case 'H':
@@ -127,6 +125,9 @@ int main(int argc, char* argv[]) {
               return 1;
          }
     }
+
+    if (!cFlag)
+        NUM_CORES = 4;
 
     fnIndex = optind;    /* After parsing options, the renaming args will be at optind */
 
@@ -170,7 +171,7 @@ int main(int argc, char* argv[]) {
 
     for (counter = 0; switches[counter].address > 0; counter++);
 
-    printf("There are %d par sites in the program\n", counter);
+    printf("There are %d par sites in the program\nUsing %u cores\n", counter, NUM_CORES);
     
     if (counter == 0)
         sType = NONE;
