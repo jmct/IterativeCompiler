@@ -255,11 +255,24 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, instruction *pr
 unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruction *prog)
 {
     
+    /* keep track of last global red. count
+     * When we stop improving, we stop the iteration
+     */
+    elite last;
+    last.swtchs = mkSArray(sw, nS);
+    last.rCount = UINT_MAX;
+
     int i;
     unsigned int curRed = 0;
     for (i = 0; i < maxI; i++) {
-        randMutate(sw, nS);
+        //randMutate(sw, nS);
         curRed = executeProg(sw, prog, nS);
+
+        if (curRed > last.rCount) {
+            arrayToSwtch(last.swtchs, nS, sw);
+            free(best.swtchs);
+            return last.rCount;
+        }
 
         /* write statTable to log file */
         /*TODO make this dependent on profiling flag */
@@ -282,6 +295,8 @@ unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruct
             printParStats(psStats, nS);
 
         }
+
+        //gsl_stats_min_index(psStats
     
     }
     return curRed;

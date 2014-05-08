@@ -120,6 +120,8 @@ ParSiteStats * calcParSiteStats(StatTable* statTable, int numParSites) {
                                                    sizeof(StatRecord)/sizeof(int),
                                                    (size_t)(right - left));
 
+        statsArray[n].numThreads = right - left;
+
         left = right;
     }
 
@@ -132,7 +134,8 @@ void printParStats(ParSiteStats *st, int nps) {
 
     int n;
     for (n = 0; n <= nps; n++) {
-        printf("For par site %d:\n", n);
+        printf("For par site %u:\n", st[n].parSite);
+        printf("\tNumber of threads sparked: %u\n", st[n].numThreads);
         printf("\tReduction Count mean: %f\n", st[n].rcMean);
         printf("\tBlocked Count mean: %f\n", st[n].bcMean);
         printf("\tLifespan mean: %f\n\n", st[n].lsMean);

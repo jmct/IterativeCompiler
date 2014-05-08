@@ -24,7 +24,7 @@ struct _StatTable {
 typedef struct _StatTable StatTable;
 
 struct _ParSiteStats {
-    unsigned int parSite;
+    unsigned int parSite, numThreads;
     double rcMean, bcMean, lsMean;
 };
 
