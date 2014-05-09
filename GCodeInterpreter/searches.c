@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <gsl/gsl_statistics_double.h>
 #include "machine.h"
 #include "stats.h"
 #include "instruction_type.h"
@@ -68,7 +69,7 @@ parSwitch* iterate(parSwitch *switches, int nSwitch, StatTable *gStat,
         rCount = hillClimb(switches, nSwitch, maxI, prog);
     }
 
-    fputs("Best performing configuration: ", stdout);
+    fputs("\nBest performing configuration: ", stdout);
     int i;
     for (i = 0; i < nSwitch; i++) {
         printf("%d", switches[i].pswitch);
@@ -259,19 +260,34 @@ unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruct
      * When we stop improving, we stop the iteration
      */
     elite last;
-    last.swtchs = mkSArray(sw, nS);
+    last.swtchs = malloc(sizeof(int) * nS);
     last.rCount = UINT_MAX;
 
-    int i;
+    ParSiteStats * psStats = NULL;
+    size_t weakest;
+
+    int i, j;
     unsigned int curRed = 0;
     for (i = 0; i < maxI; i++) {
-        //randMutate(sw, nS);
+
         curRed = executeProg(sw, prog, nS);
+
+        fputs("Switch setting: ", stdout);
+        for (j = 0; j < nS; j++) {
+            printf("%d", sw[j].pswitch);
+        }
+        printf(" took %u reductions\n", curRed);
 
         if (curRed > last.rCount) {
             arrayToSwtch(last.swtchs, nS, sw);
-            free(best.swtchs);
+            free(last.swtchs);
             return last.rCount;
+        }
+
+        if (i == maxI - 1) {
+            if (maxI == 1)
+                free(last.swtchs);
+            return curRed;
         }
 
         /* write statTable to log file */
@@ -291,13 +307,32 @@ unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruct
             /* The (+1) for the number of par sites is due to the fact that the main
              * thread doesn't need a par site to spark it
              */
-            ParSiteStats * psStats = calcParSiteStats(gS, nS + 1);
+            psStats = calcParSiteStats(gS, nS + 1);
             printParStats(psStats, nS);
 
         }
 
-        //gsl_stats_min_index(psStats
-    
+        /* record the current switches before altering them */
+        swtchToArray(sw, nS, last.swtchs);
+        last.rCount = curRed;
+
+        weakest = gsl_stats_min_index(&psStats->rcMean, sizeof(ParSiteStats), nS - i); 
+
+        if (weakest == 0) {
+            puts("Weakest parsite is program origin, stopping iteration");
+            break;
+        }
+
+        for (j = 0; j < nS; j++) {
+            if (sw[j].address == psStats[weakest].parSite) {
+                sw[j].pswitch = FALSE;
+                break;
+            }
+        }
+                
+        printf("Weakest parsite is: %u\n", psStats[weakest].parSite);
     }
+
+    free(last.swtchs);
     return curRed;
 }
