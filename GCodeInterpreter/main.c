@@ -1,3 +1,21 @@
+/* Implemented arguments:
+ * no args: standard interpretation. Run the program will all the annotated
+ *          parallelism.
+ *
+ * -S:  Ignore any par annotations and run the program sequentially.
+ *
+ * -R <n>: Random search -> randomly mutate the bitstring and execute the
+ *         corresponding program. Do this <n> times and display the best result.
+ *
+ * -H <n>:  Standard Hill-Climbing with <n> climbs
+ *
+ * -I <n>:  Profile-assisted search max of <n> iterations, but hopefully fewer
+ * 
+ * -c <n>: number of cores, default is 4
+ *
+ * -o <n>: the initial overhead for a new thread in number of reductions.
+ *         default is 0
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,6 +99,7 @@ int main(int argc, char* argv[]) {
     char* iVal = NULL;   /* Max number of iterations for compiler */
     int iFlag = 0;       /* Flag for max iterations */
     int cFlag = 0;       /* Flag for number of cores */
+    int initOverhead = 0;
     enum searchTypes_ sType = NONE;
     opterr = 0;          /* don't show error for no CLI args */
     int fnIndex;
@@ -90,9 +109,12 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
 
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "c:SI:R:H:")) != -1) {
+    while ((c = getopt(argc, argv, "o:c:SI:R:H:")) != -1) {
         switch (c)
          {
+         case 'o':
+            initOverhead = atoi(optarg);
+            break;
          case 'c':
             cFlag = 1;
             NUM_CORES = atoi(optarg);
@@ -211,6 +233,7 @@ int main(int argc, char* argv[]) {
     globalHeap->fromSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
 
     globalPool = malloc(sizeof(threadPool));
+    globalPool->initDelay = initOverhead;
 
     int numPar = counter;
 

@@ -6,9 +6,11 @@ void initThreadPool(threadPool * pool) {
     pool->head = NULL;
     pool->tail = NULL;
     pool->numThreads = 0;
+    pool->delayHead = NULL;
+    pool->delayTail = NULL;
 }
 
-void addMachToThreadPool(Machine* mach, threadPool* pool) {
+void addMachToThreadPool(Machine *mach, threadPool *pool) {
     threadQueueNode* newNode = malloc(sizeof(threadQueueNode));
     newNode->current = mach;
     newNode->next = NULL;
@@ -21,6 +23,28 @@ void addMachToThreadPool(Machine* mach, threadPool* pool) {
     pool->tail = newNode;
     pool->numThreads += 1;
 }
+
+void checkDelays(threadPool *pool)
+{
+
+    if (pool->initDelay == 0)
+        return;
+
+    threadQueueNode n = pool->delayHead;
+
+    while (n != NULL) {
+        if (n->current->initDelay == 0) 
+            moveToPool(n, pool);
+        else
+            n->current->initDelay--;
+
+        /* TODO FINISH */
+
+        
+    }
+}
+    
+    
 
 /*This is the version for non-profiled compilations */
 void addQueueToThreadPool(threadQueueNode *lst, int numInLst, threadPool* pool) {

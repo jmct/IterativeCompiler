@@ -16,6 +16,10 @@
  *
  * -I <n>:  Profile-assisted search max of <n> iterations, but hopefully fewer
  *
+ * -c <n>: number of cores, default is 4
+ *
+ * -o <n>: the initial overhead for a new thread in number of reductions.
+ *         default is 0
  */
 
 #include <stdlib.h>
