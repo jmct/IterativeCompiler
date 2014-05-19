@@ -41,7 +41,7 @@
 unsigned int threadCounter;
 unsigned int globalReductions;
 unsigned int evalPrintLoop;
-FILE* logFile;
+FILE *logThreadsFile, *logProgFile;
 StatTable globalStats;
 unsigned int NUM_CORES;
 
@@ -79,7 +79,7 @@ char * getLogFileName(char * gcodeFileName) {
     char* resStr;
     char* lastDot;
 
-    resStr = malloc(strlen(gcodeFileName) + 4); //The + 4 is to ensure there is enough space for .log
+    resStr = malloc(strlen(gcodeFileName) + 5); //The + 4 is to ensure there is enough space for .log
     if (resStr == NULL) {
         return NULL;
     }
@@ -89,7 +89,7 @@ char * getLogFileName(char * gcodeFileName) {
         strcat(resStr, ".log");
     }
     else {
-        strcpy(lastDot, ".log\0");
+        strcpy(lastDot, ".log");
     }
     return resStr;
 }
@@ -167,10 +167,18 @@ int main(int argc, char* argv[]) {
         printf("Unable to open input file :(\n");
         exit (1);
     }
+    /* We want two logging files, one for the individual thread statistics and
+     * and one for the overal program info
+     */
     char* logFileName = getLogFileName(argv[fnIndex]);
-    logFile = fopen(logFileName, "w");
+    char* logFileName2 = malloc(strlen(logFileName) + 2);
+    strcpy(logFileName2, logFileName);
+    strcat(logFileName2, "2");
+    logThreadsFile = fopen(logFileName, "w");
+    logProgFile = fopen(logFileName2, "w");
 
     free(logFileName);
+    free(logFileName2);
 
     if (iFlag) {
         iFlag = atoi(iVal);
@@ -239,7 +247,7 @@ int main(int argc, char* argv[]) {
 
     iterate(switches, numPar, &globalStats, sType, iFlag, prog);
 
-   fclose(logFile);
+   fclose(logThreadsFile);
 
    return 0;
 }
@@ -298,7 +306,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     /* Initialize the stat table
      * TODO make this dependent on profiling flag
      */
-    initTable(prog, 300, logFile, &globalStats);
+    initTable(prog, 300, logThreadsFile, logProgFile, &globalStats);
 
     Machine* fromThreadPool = NULL;
 
