@@ -334,7 +334,7 @@ unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruct
             }
         }
                 
-        printf("Weakest parsite is: %u\n", psStats[weakest].parSite);
+        printf("Weakest parsite is: %u (index %d), with %f reductions\n", psStats[weakest].parSite, weakest, psStats[weakest].rcMean);
     }
 
     free(last.swtchs);
