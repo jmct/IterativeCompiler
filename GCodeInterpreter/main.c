@@ -306,6 +306,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
         int j;
         for (j = 0; j <= TIME_SLICE; j++) {
             globalReductions += 1;
+            checkDelays(globalPool);
             programMode = FINISHED;
 
             /* Any null cores need to be replaced */

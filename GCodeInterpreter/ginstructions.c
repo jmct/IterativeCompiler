@@ -505,5 +505,5 @@ void parI(Machine* mach, threadPool* pool) {
     tempMachPtr->creatorID = mach->threadID;
 
     //Add machine to thread pool
-    addMachToThreadPool(tempMachPtr, pool);
+    addMachToThreadPoolInit(tempMachPtr, pool);
 }
