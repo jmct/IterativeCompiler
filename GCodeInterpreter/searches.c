@@ -320,7 +320,10 @@ unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruct
         swtchToArray(sw, nS, last.swtchs);
         last.rCount = curRed;
 
-        weakest = gsl_stats_min_index(&psStats->rcMean, sizeof(ParSiteStats), nS - i); 
+        weakest = gsl_stats_min_index(&psStats->rcMean, 4, (nS + 1)- i);
+        double weakestVal = gsl_stats_min(&psStats->rcMean, 4, (nS + 1)- i);
+
+        printf("GSL says weakest is %f reds\n", weakestVal);
 
         if (weakest == 0) {
             puts("Weakest parsite is program origin, stopping iteration");
