@@ -15,6 +15,9 @@
  *
  * -o <n>: the initial overhead for a new thread in number of reductions.
  *         default is 0
+ *
+ * -L <filename>:  specified log file
+ * 
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,6 +102,8 @@ int main(int argc, char* argv[]) {
     char* iVal = NULL;   /* Max number of iterations for compiler */
     int iFlag = 0;       /* Flag for max iterations */
     int cFlag = 0;       /* Flag for number of cores */
+    int lFlag = 0;       /* Flag for number of cores */
+    char *logFileName = NULL;
     int initOverhead = 0;
     enum searchTypes_ sType = NONE;
     opterr = 0;          /* don't show error for no CLI args */
@@ -109,7 +114,7 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
 
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "o:c:SI:R:H:")) != -1) {
+    while ((c = getopt(argc, argv, "o:c:SI:R:H:L:")) != -1) {
         switch (c)
          {
          case 'o':
@@ -136,6 +141,11 @@ int main(int argc, char* argv[]) {
             iFlag = 1;
             sType = RAND;
             iVal = optarg;
+            break;
+         case 'L':
+            lFlag = strlen(optarg);
+            logFileName = malloc(lFlag + 1);
+            strcpy(logFileName, optarg);
             break;
          case '?':
             if (optopt == 'I')
@@ -170,15 +180,22 @@ int main(int argc, char* argv[]) {
     /* We want two logging files, one for the individual thread statistics and
      * and one for the overal program info
      */
-    char* logFileName = getLogFileName(argv[fnIndex]);
-    char* logFileName2 = malloc(strlen(logFileName) + 2);
-    strcpy(logFileName2, logFileName);
-    strcat(logFileName2, "2");
-    logThreadsFile = fopen(logFileName, "w");
-    logProgFile = fopen(logFileName2, "w");
+    if (!lFlag)
+        logFileName = getLogFileName(argv[fnIndex]);
 
+    char* logFileNameP = malloc(strlen(logFileName) + 7);
+    char* logFileNameT = malloc(strlen(logFileName) + 7);
+    strcpy(logFileNameP, logFileName);
+    strcat(logFileNameP, ".plog");
+    strcpy(logFileNameT, logFileName);
+    strcat(logFileNameT, ".tlog");
+    logThreadsFile = fopen(logFileNameT, "w");
+    logProgFile = fopen(logFileNameP, "w");
+
+
+    free(logFileNameP);
+    free(logFileNameT);
     free(logFileName);
-    free(logFileName2);
 
     if (iFlag) {
         iFlag = atoi(iVal);
@@ -310,8 +327,11 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
 
     Machine* fromThreadPool = NULL;
 
+    fprintf(globalStats.lp, "#Global Reduction Count, Number of Live Cores\n");
+
     while (programMode == LIVE) {
         int j;
+        int numLiveCores;
         for (j = 0; j <= TIME_SLICE; j++) {
             globalReductions += 1;
             checkDelays(globalPool);
@@ -335,10 +355,12 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
             if (programMode == FINISHED)
                 break;
 
+            numLiveCores = 0;
             for (i = 0; i < NUM_CORES; i++) {
 
                 core = UNKNOWN;
                 if (cores[i] != NULL) {
+                    numLiveCores += 1;
                     if (cores[i]->status == NEW) {
                         cores[i]->status = RUNNING;
                         eval(cores[i]);
@@ -363,6 +385,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
                     cores[i] = NULL;
                 }
             }
+            fprintf(logProgFile, "%u,%d\n", globalReductions, numLiveCores);
         }
 
         for (i = 0; i < NUM_CORES; i++) {
