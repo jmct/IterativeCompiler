@@ -52,13 +52,13 @@ void initTable(instruction * prog, unsigned int initSize, FILE *lt, FILE *lp, St
 
 int logStats(StatTable * table) {
 
-    fprintf(table->lt, "#ParSite,ThreadID,Lifespan,Reductions,BlockedCntr,aliveTime,Creator\n");
+    fprintf(table->lt, "#PSite\tTID\tLfspn\tReds\tBlckd\taTime\tCrtr\n");
 
     unsigned int n;
     for (n = 0; n < table->currentEntry; n++) {
 
         fprintf(table->lt,
-            "%d,%d,%d,%d,%d,%d,%d\n",
+            "%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
             table->entries[n].parSite,
             table->entries[n].threadID, 
             table->entries[n].lifespan,

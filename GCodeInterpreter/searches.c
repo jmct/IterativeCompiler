@@ -52,6 +52,26 @@ unsigned int hillClimb(parSwitch *switches, int nSwitch, int maxI, instruction *
 
 unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruction *prog);
 
+int logTStats(StatTable *gS)
+{
+    /* write statTable to log file */
+    /*TODO make this dependent on profiling flag */
+    gS->entries = realloc(gS->entries,
+                          sizeof(StatRecord) * gS->currentEntry);
+    if (gS->entries == NULL) {
+        printf("Resizing stats table failed after run\n");
+        return 0;
+    }
+    else {
+        qsort(gS->entries, gS->currentEntry,
+              sizeof(StatRecord), compare_entries);
+        int nStats = logStats(gS);
+        printf("Recorded %d threads\n", nStats);
+
+    }
+    return 1;
+}
+
 parSwitch* iterate(parSwitch *switches, int nSwitch, StatTable *gStat,
                     enum searchTypes_ sType, int maxI, instruction *prog)
 {
@@ -64,6 +84,7 @@ parSwitch* iterate(parSwitch *switches, int nSwitch, StatTable *gStat,
 
     if (sType == NONE || sType == NONE_SEQ) {
         executeProg(switches, prog, nSwitch);
+        logTStats(gStat);
         return switches;
     } else if (sType == ITER) {
         rCount = profSearch(switches, nSwitch, maxI, gStat, prog);
@@ -294,26 +315,14 @@ unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruct
             return curRed;
         }
 
-        /* write statTable to log file */
-        /*TODO make this dependent on profiling flag */
-        gS->entries = realloc(gS->entries,
-                              sizeof(StatRecord) * gS->currentEntry);
-        if (gS->entries == NULL) {
-            printf("Resizing stats table failed after run\n");
-        }
-        else {
-            qsort(gS->entries, gS->currentEntry,
-                  sizeof(StatRecord), compare_entries);
-            int nStats = logStats(gS);
-            printf("Recorded %d threads\n", nStats);
-
+        int statWork = logTStats(gS);
+        if (statWork) {
             /* parSite Stats */
             /* The (+1) for the number of par sites is due to the fact that the main
              * thread doesn't need a par site to spark it
              */
             psStats = calcParSiteStats(gS, nS + 1);
             printParStats(psStats, nS);
-
         }
 
         /* record the current switches before altering them */

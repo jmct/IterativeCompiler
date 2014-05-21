@@ -327,7 +327,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
 
     Machine* fromThreadPool = NULL;
 
-    fprintf(globalStats.lp, "#Global Reduction Count, Number of Live Cores\n");
+    fprintf(globalStats.lp, "#GRC\tLiveCores\n");
 
     while (programMode == LIVE) {
         int j;
@@ -385,7 +385,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
                     cores[i] = NULL;
                 }
             }
-            fprintf(logProgFile, "%u,%d\n", globalReductions, numLiveCores);
+            fprintf(logProgFile, "%u\t%d\n", globalReductions, numLiveCores);
         }
 
         for (i = 0; i < NUM_CORES; i++) {
