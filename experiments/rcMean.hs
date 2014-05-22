@@ -1,6 +1,7 @@
-module RCMean where
+module Main where
 
 import Data.List (transpose)
+import System.Environment
 
 type ParSite = Int
 
@@ -22,10 +23,8 @@ getAllInfo :: Int -> String -> [PSiteInfo]
 getAllInfo c = map (getInfo c . words) . drop 1 . lines
 
 {- For things like gnuplot's boxplot, we have to provide the data in a stupid format.
- - Each parsite gets it's own line, followed by all of the 'y' values.
- - combineAdj can get us most of the way there by crunching down adjacent PSiteInfos
- - that are for the same parsite. This works because we know the data comes sorted
- - by parsite
+ - Each parSite must be represented by its _own_ column. This is less ideal than
+ - something like matlab's 'group by'
  -}
 combineAdj :: [PSiteInfo] -> [PSiteInfo]
 combineAdj []  = []
@@ -52,3 +51,8 @@ makeSameLength xs = map (take maxLen) infLists
   where
     maxLen   = maximum $ map length xs
     infLists = map (++ repeat "") xs
+
+
+main = do
+    [inF, outF] <- getArgs
+    readFile inF >>= writeFile outF . formatBoxPlot . combineAdj . getAllInfo 3
