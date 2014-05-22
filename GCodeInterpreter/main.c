@@ -15,6 +15,9 @@
  *
  * -o <n>: the initial overhead for a new thread in number of reductions.
  *         default is 0
+ *
+ * -L <filename>:  specified log file
+ * 
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,7 +44,7 @@
 unsigned int threadCounter;
 unsigned int globalReductions;
 unsigned int evalPrintLoop;
-FILE* logFile;
+FILE *logThreadsFile, *logProgFile;
 StatTable globalStats;
 unsigned int NUM_CORES;
 
@@ -79,7 +82,7 @@ char * getLogFileName(char * gcodeFileName) {
     char* resStr;
     char* lastDot;
 
-    resStr = malloc(strlen(gcodeFileName) + 4); //The + 4 is to ensure there is enough space for .log
+    resStr = malloc(strlen(gcodeFileName) + 5); //The + 4 is to ensure there is enough space for .log
     if (resStr == NULL) {
         return NULL;
     }
@@ -89,7 +92,7 @@ char * getLogFileName(char * gcodeFileName) {
         strcat(resStr, ".log");
     }
     else {
-        strcpy(lastDot, ".log\0");
+        strcpy(lastDot, ".log");
     }
     return resStr;
 }
@@ -99,6 +102,8 @@ int main(int argc, char* argv[]) {
     char* iVal = NULL;   /* Max number of iterations for compiler */
     int iFlag = 0;       /* Flag for max iterations */
     int cFlag = 0;       /* Flag for number of cores */
+    int lFlag = 0;       /* Flag for number of cores */
+    char *logFileName = NULL;
     int initOverhead = 0;
     enum searchTypes_ sType = NONE;
     opterr = 0;          /* don't show error for no CLI args */
@@ -109,7 +114,7 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
 
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "o:c:SI:R:H:")) != -1) {
+    while ((c = getopt(argc, argv, "o:c:SI:R:H:L:")) != -1) {
         switch (c)
          {
          case 'o':
@@ -136,6 +141,11 @@ int main(int argc, char* argv[]) {
             iFlag = 1;
             sType = RAND;
             iVal = optarg;
+            break;
+         case 'L':
+            lFlag = strlen(optarg);
+            logFileName = malloc(lFlag + 1);
+            strcpy(logFileName, optarg);
             break;
          case '?':
             if (optopt == 'I')
@@ -167,9 +177,24 @@ int main(int argc, char* argv[]) {
         printf("Unable to open input file :(\n");
         exit (1);
     }
-    char* logFileName = getLogFileName(argv[fnIndex]);
-    logFile = fopen(logFileName, "w");
+    /* We want two logging files, one for the individual thread statistics and
+     * and one for the overal program info
+     */
+    if (!lFlag)
+        logFileName = getLogFileName(argv[fnIndex]);
 
+    char* logFileNameP = malloc(strlen(logFileName) + 7);
+    char* logFileNameT = malloc(strlen(logFileName) + 7);
+    strcpy(logFileNameP, logFileName);
+    strcat(logFileNameP, ".plog");
+    strcpy(logFileNameT, logFileName);
+    strcat(logFileNameT, ".tlog");
+    logThreadsFile = fopen(logFileNameT, "w");
+    logProgFile = fopen(logFileNameP, "w");
+
+
+    free(logFileNameP);
+    free(logFileNameT);
     free(logFileName);
 
     if (iFlag) {
@@ -239,7 +264,7 @@ int main(int argc, char* argv[]) {
 
     iterate(switches, numPar, &globalStats, sType, iFlag, prog);
 
-   fclose(logFile);
+   fclose(logThreadsFile);
 
    return 0;
 }
@@ -298,12 +323,15 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     /* Initialize the stat table
      * TODO make this dependent on profiling flag
      */
-    initTable(prog, 300, logFile, &globalStats);
+    initTable(prog, 300, logThreadsFile, logProgFile, &globalStats);
 
     Machine* fromThreadPool = NULL;
 
+    fprintf(globalStats.lp, "#GRC\tLiveCores\n");
+
     while (programMode == LIVE) {
         int j;
+        int numLiveCores;
         for (j = 0; j <= TIME_SLICE; j++) {
             globalReductions += 1;
             checkDelays(globalPool);
@@ -327,10 +355,12 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
             if (programMode == FINISHED)
                 break;
 
+            numLiveCores = 0;
             for (i = 0; i < NUM_CORES; i++) {
 
                 core = UNKNOWN;
                 if (cores[i] != NULL) {
+                    numLiveCores += 1;
                     if (cores[i]->status == NEW) {
                         cores[i]->status = RUNNING;
                         eval(cores[i]);
@@ -355,6 +385,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
                     cores[i] = NULL;
                 }
             }
+            fprintf(logProgFile, "%u\t%d\n", globalReductions, numLiveCores);
         }
 
         for (i = 0; i < NUM_CORES; i++) {

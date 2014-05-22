@@ -16,7 +16,7 @@ typedef struct _StatRecord StatRecord;
 
 struct _StatTable {
     unsigned int size, currentEntry;
-    FILE *lf;
+    FILE *lt, *lp;
     instruction * progAddr;
     StatRecord * entries;
 };
@@ -34,7 +34,7 @@ typedef struct _ParSiteStats ParSiteStats;
 int recordMach(Machine* mach, StatTable* table, 
                unsigned int lifepsan);
 
-void initTable(instruction* prog, unsigned int initSize, FILE *lf, StatTable * table);
+void initTable(instruction* prog, unsigned int initSize, FILE *lt, FILE *lp, StatTable * table);
 
 int logStats(StatTable * table);
 
