@@ -1,0 +1,65 @@
+
+  main 
+    = let xs = mapXeuler (fromTo 1 30) in par (parList xs) (sum xs);
+
+  parList xs = case xs of
+    <1> -> Pack{0,0};
+    <0> y ys -> par y (parList ys);
+
+  forceSpine ys = case ys of
+    <1> -> Pack{0,0};
+    <0> x xs -> forceSpine xs;
+
+  headStrict ys = case ys of
+    <1> -> Pack{1,0};
+    <0> x xs -> par x (Pack{0,2} x (headStrict xs));
+  
+  sum v_17 = sumPrime v_17;
+  
+  mapXeuler v_2 = case v_2 of
+      <1> -> Pack{1,0};
+      <0> v_84 v_85 ->
+        Pack{0,2} (euler v_84) (mapXeuler v_85)
+      ;
+  
+  fromTo v_4 v_5 = case
+      (v_4 > v_5) of
+      <1> -> Pack{1,0};
+      <0> ->
+        Pack{0,2} v_4 (fromTo (v_4 + 1) v_5)
+      ;
+  
+  sumPrime v_16 = case v_16 of
+      <1> -> 0;
+      <0> v_90 v_91 ->
+        v_90 + (sum v_91)
+      ;
+  
+  euler v_18
+    = let xs = headStrict (fromTo 1 v_18)
+      in let ys = filterXrelPrime v_18 xs
+         in par (forceSpine ys) (length ys);
+  
+  length v_15 = case v_15 of
+      <1> -> 0;
+      <0> v_88 v_89 ->
+        1 + (length v_89)
+      ;
+  
+  filterXrelPrime v_9 v_12 = case v_12 of
+      <1> -> Pack{1,0};
+      <0> v_86 v_87 -> case (relPrime v_9 v_86) of
+          <1> ->
+            Pack{0,2} v_86 (filterXrelPrime v_9 v_87);
+          <0> -> filterXrelPrime v_9 v_87
+      ;
+  
+  relPrime v_9 v_10
+    = (gcd v_9 v_10) == 1;
+  
+  gcd v_7 v_8 = case (v_8 == 0) of
+      <1> -> v_7;
+      <0> -> case (v_7 > v_8) of
+          <1> -> gcd (v_7 - v_8) v_8;
+          <0> -> gcd v_7 (v_8 - v_7)
+
