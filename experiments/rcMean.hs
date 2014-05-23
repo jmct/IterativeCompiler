@@ -35,10 +35,10 @@ combineAdj (P ps i : P qs j : xs)
 
 unwordsTab :: [String] -> String
 unwordsTab [] = ""
-unwordsTab xs = foldr1 (\w s -> w ++ '\t':s) xs
+unwordsTab xs = foldr1 (\w s -> w ++ ',':s) xs
 
 formatPSite :: PSiteInfo -> String
-formatPSite (P _ is) = unwordsTab $ map show is
+formatPSite (P _ is) = unwords $ map show is
 
 formatBoxPlot :: [PSiteInfo] -> String
 formatBoxPlot = unlines . map unwordsTab . transpose . drop 1 . makeSameLength . map (words . formatPSite)
