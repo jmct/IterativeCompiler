@@ -1,3 +1,24 @@
+/* Implemented arguments:
+ * no args: standard interpretation. Run the program will all the annotated
+ *          parallelism.
+ *
+ * -S:  Ignore any par annotations and run the program sequentially.
+ *
+ * -R <n>: Random search -> randomly mutate the bitstring and execute the
+ *         corresponding program. Do this <n> times and display the best result.
+ *
+ * -H <n>:  Standard Hill-Climbing with <n> climbs
+ *
+ * -I <n>:  Profile-assisted search max of <n> iterations, but hopefully fewer
+ * 
+ * -c <n>: number of cores, default is 4
+ *
+ * -o <n>: the initial overhead for a new thread in number of reductions.
+ *         default is 0
+ *
+ * -L <filename>:  specified log file
+ * 
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +37,6 @@
 #include "stats.h"
 #include "searches.h"
 //#include "lex.yy.c"
-#define NUM_CORES 4
 #define TIME_SLICE 5
 #define HEAPSIZE 10000000
 
@@ -24,8 +44,9 @@
 unsigned int threadCounter;
 unsigned int globalReductions;
 unsigned int evalPrintLoop;
-FILE* logFile;
+FILE *logThreadsFile, *logProgFile;
 StatTable globalStats;
+unsigned int NUM_CORES;
 
 void initMachine(Machine *mach) {
     mach->progCounter  = NULL;
@@ -43,7 +64,7 @@ void initMachine(Machine *mach) {
 /* TODO when freeing a machine we need to keep the statistics */
 void freeMachine(Machine* mach) {
    freeStack(mach->stck);
-   
+
    unsigned int lifespan = globalReductions - mach->birthTime;
    recordMach(mach, &globalStats, lifespan);
    free(mach);
@@ -61,7 +82,7 @@ char * getLogFileName(char * gcodeFileName) {
     char* resStr;
     char* lastDot;
 
-    resStr = malloc(strlen(gcodeFileName) + 4); //The + 4 is to ensure there is enough space for .log
+    resStr = malloc(strlen(gcodeFileName) + 5); //The + 4 is to ensure there is enough space for .log
     if (resStr == NULL) {
         return NULL;
     }
@@ -71,23 +92,19 @@ char * getLogFileName(char * gcodeFileName) {
         strcat(resStr, ".log");
     }
     else {
-        strcpy(lastDot, ".log\0");
+        strcpy(lastDot, ".log");
     }
     return resStr;
 }
-
-/*
-enum searchTypes_ {
-    RAND;
-    NONE;
-};
-*/
-
 
 int main(int argc, char* argv[]) {
 
     char* iVal = NULL;   /* Max number of iterations for compiler */
     int iFlag = 0;       /* Flag for max iterations */
+    int cFlag = 0;       /* Flag for number of cores */
+    int lFlag = 0;       /* Flag for number of cores */
+    char *logFileName = NULL;
+    int initOverhead = 0;
     enum searchTypes_ sType = NONE;
     opterr = 0;          /* don't show error for no CLI args */
     int fnIndex;
@@ -95,22 +112,40 @@ int main(int argc, char* argv[]) {
     int c = 0;               /* char for parsing CLI args */
 
     srand(time(NULL));
-    
+
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "SI:R:")) != -1) {
+    while ((c = getopt(argc, argv, "o:c:SI:R:H:L:")) != -1) {
         switch (c)
          {
+         case 'o':
+            initOverhead = atoi(optarg);
+            break;
+         case 'c':
+            cFlag = 1;
+            NUM_CORES = atoi(optarg);
+            break;
          case 'S':
             sType = NONE_SEQ;
             break;
          case 'I':
             iFlag = 1;
+            sType = ITER;
+            iVal = optarg;
+            break;
+         case 'H':
+            iFlag = 1;
+            sType = HILL;
             iVal = optarg;
             break;
          case 'R':
             iFlag = 1;
             sType = RAND;
             iVal = optarg;
+            break;
+         case 'L':
+            lFlag = strlen(optarg);
+            logFileName = malloc(lFlag + 1);
+            strcpy(logFileName, optarg);
             break;
          case '?':
             if (optopt == 'I')
@@ -123,10 +158,13 @@ int main(int argc, char* argv[]) {
          }
     }
 
+    if (!cFlag)
+        NUM_CORES = 4;
+
     fnIndex = optind;    /* After parsing options, the renaming args will be at optind */
 
 
-    
+
     if (argc < 2) {
         printf("No GCode file specified\n\nUsage: %s <filename>\n", argv[0]);
         exit (1);
@@ -139,9 +177,24 @@ int main(int argc, char* argv[]) {
         printf("Unable to open input file :(\n");
         exit (1);
     }
-    char* logFileName = getLogFileName(argv[fnIndex]);
-    logFile = fopen(logFileName, "w");
+    /* We want two logging files, one for the individual thread statistics and
+     * and one for the overal program info
+     */
+    if (!lFlag)
+        logFileName = getLogFileName(argv[fnIndex]);
 
+    char* logFileNameP = malloc(strlen(logFileName) + 7);
+    char* logFileNameT = malloc(strlen(logFileName) + 7);
+    strcpy(logFileNameP, logFileName);
+    strcat(logFileNameP, ".plog");
+    strcpy(logFileNameT, logFileName);
+    strcat(logFileNameT, ".tlog");
+    logThreadsFile = fopen(logFileNameT, "w");
+    logProgFile = fopen(logFileNameP, "w");
+
+
+    free(logFileNameP);
+    free(logFileNameT);
     free(logFileName);
 
     if (iFlag) {
@@ -150,7 +203,7 @@ int main(int argc, char* argv[]) {
     else {
         iFlag = 1;
     }
-    
+
     //setup `passing by reference' for our switches
     parSwitch* switches = malloc(sizeof(parSwitch));
     switches->address = -1;
@@ -164,13 +217,22 @@ int main(int argc, char* argv[]) {
     unsigned int counter;
 
     for (counter = 0; switches[counter].address > 0; counter++);
+
+    printf("There are %d par sites in the program\nUsing %u cores\n", counter, NUM_CORES);
     
-    printf("There are %d par sites in the program\n", counter);
+    if (counter == 0)
+        sType = NONE;
 
     char* searchName;
     if (sType == RAND) {
         searchName = "Random Search\n";
-    } 
+    }
+    else if (sType == HILL) {
+        searchName = "Hill Climbing\n";
+    }
+    else if (sType == ITER) {
+        searchName = "Informed Search\n";
+    }
     else if (sType == NONE_SEQ) {
         for (counter = 0; switches[counter].address > 0; counter++) {
             switches[counter].pswitch = FALSE;
@@ -196,12 +258,13 @@ int main(int argc, char* argv[]) {
     globalHeap->fromSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
 
     globalPool = malloc(sizeof(threadPool));
+    globalPool->initDelay = initOverhead;
 
     int numPar = counter;
 
     iterate(switches, numPar, &globalStats, sType, iFlag, prog);
 
-   fclose(logFile);
+   fclose(logThreadsFile);
 
    return 0;
 }
@@ -224,7 +287,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
             strcpy(prog[swtchs[i].address].pushGlobVal, "parOff");
         }
     }
-        
+
 
     //allocate and initlialize Machines
     ExecutionMode programMode, core;
@@ -237,7 +300,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     globalHeap->activeCores = cores;
     globalHeap->numCores = NUM_CORES;
     globalHeap->thrdPool = globalPool;
-    
+
     puts("\n");
 
     evalPrintLoop = 1;
@@ -258,16 +321,20 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     cores[0]->status = RUNNING;
 
     /* Initialize the stat table
-     * TODO make this dependent on profiling flag 
+     * TODO make this dependent on profiling flag
      */
-    initTable(prog, 300, &globalStats);
-    
+    initTable(prog, 300, logThreadsFile, logProgFile, &globalStats);
+
     Machine* fromThreadPool = NULL;
+
+    fprintf(globalStats.lp, "#GRC\tLiveCores\n");
 
     while (programMode == LIVE) {
         int j;
+        int numLiveCores;
         for (j = 0; j <= TIME_SLICE; j++) {
             globalReductions += 1;
+            checkDelays(globalPool);
             programMode = FINISHED;
 
             /* Any null cores need to be replaced */
@@ -288,10 +355,12 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
             if (programMode == FINISHED)
                 break;
 
+            numLiveCores = 0;
             for (i = 0; i < NUM_CORES; i++) {
 
                 core = UNKNOWN;
                 if (cores[i] != NULL) {
+                    numLiveCores += 1;
                     if (cores[i]->status == NEW) {
                         cores[i]->status = RUNNING;
                         eval(cores[i]);
@@ -316,6 +385,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
                     cores[i] = NULL;
                 }
             }
+            fprintf(logProgFile, "%u\t%d\n", globalReductions, numLiveCores);
         }
 
         for (i = 0; i < NUM_CORES; i++) {
@@ -328,27 +398,6 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
 
     printf("\nTotal Reductions: %d\n", globalReductions);
 
-    /* write statTable to log file */
-    /*TODO make this dependent on profiling flag */
-    globalStats.entries = realloc(globalStats.entries, 
-                                  sizeof(StatRecord) * globalStats.currentEntry);
-    if (globalStats.entries == NULL) {
-        printf("Resizing stats table failed after run\n");
-    }
-    else {
-        qsort(globalStats.entries, globalStats.currentEntry, 
-              sizeof(StatRecord), compare_entries);
-        int nStats = logStats(&globalStats, logFile);
-        printf("Recorded %d threads\n", nStats);
-
-        /* parSite Stats */
-        /* The (+1) for the number of par sites is due to the fact that the main
-         * thread doesn't need a par site to spark it
-         */
-        ParSiteStats * psStats = calcParSiteStats(&globalStats, counter + 1);
-        /* printf("Testing Par site stats: %f\n", psStats[0].rcMean); */
-        
-    }
 
    free(cores);
 
@@ -437,7 +486,7 @@ ExecutionMode dispatchGCode(Machine *mach) {
         case CaseAlt: //<<<<<<<<< Maybe moved to Default case?
             break;
         case CaseAltEnd:
-            //Here we need to append "EndCase" to the labelVal and 
+            //Here we need to append "EndCase" to the labelVal and
             //jump to the result of a lookup
             caseAltEnd(oldPC->labelVal, mach);
             break;

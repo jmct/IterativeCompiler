@@ -1,10 +1,27 @@
 if p t f = case p of
             <0> -> f;
             <1> -> t;
-fac n = if (n==0) 1 (n * fac (n-1)); 
+
+fac n = if (n == 0) 1 (n * fac (n - 1)); 
 
 testLift x y = par x (case y of
                        <1> -> 1;
                        <2> a b -> 2);
 
-main = fac 5
+testLet x = letrec y = x + 10;
+                   z = y * 20 
+            in z;
+
+fromTo x y = if (x == y)
+                Pack{1,0}
+                (Pack{2,2} x (fromTo (x + 1) y));
+
+headStrict xs = case xs of
+                 <1> -> Pack{1,0};
+                 <2> y ys -> par y (Pack{2,2} y (headStrict ys));
+
+length xs = case xs of
+              <1> -> 0;
+              <2> y ys -> 1 + length ys;
+
+main = length (headStrict (fromTo 1 (testLet (fac 5))))

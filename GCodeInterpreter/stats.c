@@ -38,9 +38,11 @@ int recordMach(Machine* mach, StatTable* table,
     
 }
 
-void initTable(instruction * prog, unsigned int initSize, StatTable * initTable) {
+void initTable(instruction * prog, unsigned int initSize, FILE *lt, FILE *lp, StatTable * initTable) {
 
     initTable->entries = malloc(sizeof(StatRecord) * initSize);
+    initTable->lt = lt;
+    initTable->lp = lp;
     initTable->progAddr = prog;
     initTable->size = initSize;
     initTable->currentEntry = 0;
@@ -48,15 +50,15 @@ void initTable(instruction * prog, unsigned int initSize, StatTable * initTable)
 }
 
 
-int logStats(StatTable * table, FILE * logFile) {
+int logStats(StatTable * table) {
 
-    fprintf(logFile, "ParSite,ThreadID,Lifespan,Reductions,BlockedCntr,aliveTime,Creator\n");
+    fprintf(table->lt, "#PSite\tTID\tLfspn\tReds\tBlckd\taTime\tCrtr\n");
 
     unsigned int n;
     for (n = 0; n < table->currentEntry; n++) {
 
-        fprintf(logFile,
-            "%d,%d,%d,%d,%d,%d,%d\n",
+        fprintf(table->lt,
+            "%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
             table->entries[n].parSite,
             table->entries[n].threadID, 
             table->entries[n].lifespan,
@@ -119,8 +121,25 @@ ParSiteStats * calcParSiteStats(StatTable* statTable, int numParSites) {
                                                    sizeof(StatRecord)/sizeof(int),
                                                    (size_t)(right - left));
 
+        statsArray[n].numThreads = right - left;
+
         left = right;
     }
 
     return statsArray;
+}
+
+void printParStats(ParSiteStats *st, int nps) {
+    if (nps == 0)
+        return;
+
+    int n;
+    for (n = 0; n <= nps; n++) {
+        printf("For par site %u:\n", st[n].parSite);
+        printf("\tNumber of threads sparked: %u\n", st[n].numThreads);
+        printf("\tReduction Count mean: %f\n", st[n].rcMean);
+        printf("\tBlocked Count mean: %f\n", st[n].bcMean);
+        printf("\tLifespan mean: %f\n\n", st[n].lsMean);
+    }
+
 }

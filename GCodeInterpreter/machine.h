@@ -36,6 +36,12 @@ struct Machine_ {
      * add that result to blockedCounter
      */
     unsigned int blockTime, blockedCounter;
+
+    /* The delays intended to simulate the overhead of scheduling and managing 
+     * threads. 
+    unsigned int initDelay;
+     * currently implemented in the thread queue nodes
+     */ 
 };
 
 typedef struct Machine_ Machine;
