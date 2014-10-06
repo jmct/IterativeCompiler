@@ -1,4 +1,4 @@
-interpreter : main.o instruction_type.o symbolTable.o stack.o stats.o heap.o gthread.o garbagecollection.o ginstructions.o
+interpreter : main.o instruction_type.o symbolTable.o stack.o stats.o heap.o gthread.o garbagecollection.o ginstructions.o searches.o
 	gcc main.o instruction_type.o symbolTable.o stack.o stats.o heap.o gthread.o garbagecollection.o ginstructions.o searches.o -lgsl -lgslcblas -lm -o interpreter
 
 ginstructions.o : ginstructions.h ginstructions.c
@@ -23,7 +23,7 @@ gthread.o : gthread.h
 	gcc -c gthread.c
 
 searches.o : searches.h machine.h instruction_type.h
-	gcc -c gthread.c
+	gcc -c searches.c
 
 garbagecollection.o : garbagecollection.h heap.h stack.h gthread.h machine.h
 	gcc -c garbagecollection.c
