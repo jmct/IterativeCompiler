@@ -6,6 +6,9 @@
 #include "garbagecollection.h"
 
 int garbageCollect(Heap* heap, HeapPtr* additionalRoot1, HeapPtr* additionalRoot2) {
+    /* Record that this garbage collection happened */
+    heap->gcs += 1;
+
     //declare the two `fingers'
     HeapPtr nxtTI = NULL; //nxtTI stands for `next to inspect'
     heap->nextFreeCell = 0;

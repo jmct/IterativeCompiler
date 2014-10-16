@@ -253,6 +253,7 @@ int main(int argc, char* argv[]) {
     // Allocate and initialize the heap (double needed space since it's Cheney's
     // GC)
     globalHeap = malloc(sizeof(Heap));
+    globalHeap->gcs = 0;
     globalHeap->maxSize = HEAPSIZE;
     globalHeap->toSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
     globalHeap->fromSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
@@ -397,6 +398,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     }
 
     printf("\nTotal Reductions: %d\n", globalReductions);
+    printf("Garbage Collections: %d\n", globalHeap->gcs);
 
 
    free(cores);
