@@ -63,7 +63,8 @@ int garbageCollect(Heap* heap, HeapPtr* additionalRoot1, HeapPtr* additionalRoot
                 }
                 break;
             case CONSTR:
-                nxtTI->constr.fields = copyHeapItem(nxtTI->constr.fields, heap);
+                if (nxtTI->constr.arity > 0)
+                    nxtTI->constr.fields = copyHeapItem(nxtTI->constr.fields, heap);
                 for (j = 1; j < nxtTI->constr.arity; j++) {
                     copyHeapItem(nxtTI->constr.fields + j, heap);
                 }
