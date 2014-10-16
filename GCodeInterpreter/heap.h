@@ -78,7 +78,7 @@ typedef HeapCell * HeapPtr;
 struct Machine_;
 
 struct Heap_ {
-    int nextFreeCell, maxSize, numCores;
+    int nextFreeCell, maxSize, numCores, gcs;
     struct Machine_** activeCores;
     threadPool* thrdPool;
     HeapPtr toSpace;
