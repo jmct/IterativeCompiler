@@ -52,6 +52,7 @@ int garbageCollect(Heap* heap, HeapPtr* additionalRoot1, HeapPtr* additionalRoot
     while(i == 0) {
         switch (nxtTI->tag) {
             int j; //used for looping through CONSTR fields and blocked_queues
+            HeapCell * temp;
             case APP:
             case LOCKED_APP:
                 nxtTI->app.leftArg = copyHeapItem(nxtTI->app.leftArg, heap);
@@ -66,10 +67,12 @@ int garbageCollect(Heap* heap, HeapPtr* additionalRoot1, HeapPtr* additionalRoot
                 }
                 break;
             case CONSTR:
-                if (nxtTI->constr.arity > 0)
+                if (nxtTI->constr.arity > 0) {
+                    temp = nxtTI->constr.fields;
                     nxtTI->constr.fields = copyHeapItem(nxtTI->constr.fields, heap);
+                }
                 for (j = 1; j < nxtTI->constr.arity; j++) {
-                    copyHeapItem(nxtTI->constr.fields + j, heap);
+                    copyHeapItem(temp + j, heap);
                 }
                 break;
             case FIELD_PTR:
@@ -122,9 +125,14 @@ void collectMachine(Machine* curMach, Heap* heap) {
         }
         finished = isPtrAtEndOfStack(&curMach->stck, fakeStackPtr);
     }
+    printf("Number of items collected: %lu\n", collected);
 }
 
 HeapPtr copyHeapItem(HeapPtr item, Heap* heap) {
+    if (heap->nextFreeCell >= heap->maxSize) {
+        puts("Heap Overflow");
+        exit(1);
+    }
     if (item->tag != COLLECTED) {
         heap->toSpace[heap->nextFreeCell] = *item;
         item->tag = COLLECTED;
