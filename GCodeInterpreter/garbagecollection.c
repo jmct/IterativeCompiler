@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "heap.h"
 #include "stack.h"
 #include "gthread.h"
@@ -125,7 +126,6 @@ void collectMachine(Machine* curMach, Heap* heap) {
         }
         finished = isPtrAtEndOfStack(&curMach->stck, fakeStackPtr);
     }
-    printf("Number of items collected: %lu\n", collected);
 }
 
 HeapPtr copyHeapItem(HeapPtr item, Heap* heap) {
