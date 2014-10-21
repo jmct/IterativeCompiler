@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <argp.h>
 #include <gsl/gsl_math.h>
 #include <time.h>
 #include "ginstructions.h"
@@ -38,7 +39,7 @@
 #include "searches.h"
 //#include "lex.yy.c"
 #define TIME_SLICE 5
-#define HEAPSIZE 10000000
+#define HEAPSIZE 100000
 
 /* Ugly globals for stats and logging of stats */
 unsigned int threadCounter;
@@ -96,6 +97,30 @@ char * getLogFileName(char * gcodeFileName) {
     }
     return resStr;
 }
+
+const char *argp_program_version =
+    "ginterp-1.0";
+const char *argp_program_bug_address =
+    "<jmct@cs.york.ac.uk>";
+
+/* Program documentation. */
+static char doc[] =
+    "A G-Code Interpreter! -- compilation to G-Code must happen elsewhere :)";
+
+/* A description of the arguments we accept. */
+static char args_doc[] = "This needs to be filled out";
+
+
+/* The options we understand. */
+static struct argp_option options[] = {
+    {"sequential",  'S', 0,      0,  "Ignore par annotations" },
+    {"random",      'R', 0,      0,  "Iterate using random search" },
+    {"hill",        'H', 0,      0,  "Iterate using hill-climbing" },
+    {"cores",       'c', "cores", 0,  "Number of cores to simulate" },
+    {"overhead"     'c', "delay", 0,  "Number of reductions to delay a spark" },
+    {"log",         'l', "FILE", 0,  "Output the log to FILE" },
+    { 0 }
+    };
 
 int main(int argc, char* argv[]) {
 
