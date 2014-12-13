@@ -89,10 +89,13 @@ void checkDelays(threadPool *pool)
     threadQueueNode *n = pool->delayHead;
 
     while (n != NULL) {
-        if (n->initDelay <= 1)
+        if (n->initDelay <= 1) {
             moveToPool(n, pool);
-        else
+        }
+        else {
             n->initDelay--;
+            n->current->blockedCounter++;
+        }
 
         /* TODO FINISH */
         n = n->next;
