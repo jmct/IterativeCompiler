@@ -48,7 +48,7 @@ FILE *logThreadsFile, *logProgFile;
 StatTable globalStats;
 unsigned int NUM_CORES;
 
-void initMachine(Machine *mach) {
+void initMachine(Machine *mach, unsigned int overhead) {
     mach->progCounter  = NULL;
     mach->status  = NEW;
     mach->stck = initStack(mach->stck);
@@ -59,6 +59,7 @@ void initMachine(Machine *mach) {
     mach->threadID = threadCounter;
     threadCounter += 1;
     mach->birthTime = globalReductions;
+    mach->initOH = overhead;
 }
 
 /* TODO when freeing a machine we need to keep the statistics */
@@ -259,7 +260,7 @@ int main(int argc, char* argv[]) {
     globalHeap->fromSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
 
     globalPool = malloc(sizeof(threadPool));
-    globalPool->initDelay = initOverhead;
+    globalPool->initOH = initOverhead;
 
     int numPar = counter;
 
@@ -315,7 +316,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     globalReductions = 0;
 
     cores[0] = malloc(sizeof(Machine));
-    initMachine(cores[0]);
+    initMachine(cores[0], 0);
     cores[0]->creatorID = 0;
     cores[0]->parSite = prog;
     cores[0]->progCounter = prog;
@@ -335,7 +336,6 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
         int numLiveCores;
         for (j = 0; j <= TIME_SLICE; j++) {
             globalReductions += 1;
-            checkDelays(globalPool);
             programMode = FINISHED;
 
             /* Any null cores need to be replaced */
@@ -412,8 +412,23 @@ ExecutionMode dispatchGCode(Machine *mach) {
         return FINISHED;
     }
     ExecutionMode em = LIVE;
+
+    /* If we have an overhead set, the reduction doesn't do
+     * anything, but is still taking up an 'CPU' slot
+     */
+    if (mach->initOH > 0) {
+        mach->initOH -= 1;
+        return em;
+    }
+
     instruction *oldPC = mach->progCounter;
     mach->progCounter += 1;
+
+    
+    /* Run the appropriate GInstruction.
+     * A more performant version would eliminate
+     * the function calls and have the body of each function here
+     */
     switch (oldPC->type) {
         case Unwind:
             em = unwind(mach);

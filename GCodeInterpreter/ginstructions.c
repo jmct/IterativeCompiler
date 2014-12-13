@@ -497,7 +497,7 @@ void parI(Machine* mach, threadPool* pool) {
 
     //allocate and initialize a new Machine
     Machine* tempMachPtr = malloc(sizeof(Machine));
-    initMachine(tempMachPtr);
+    initMachine(tempMachPtr, pool->initOH);
     stackPush(topOfStack, &tempMachPtr->stck);
 
     /* set the new machine's parSite and creatorID */
@@ -505,5 +505,5 @@ void parI(Machine* mach, threadPool* pool) {
     tempMachPtr->creatorID = mach->threadID;
 
     //Add machine to thread pool
-    addMachToThreadPoolInit(tempMachPtr, pool);
+    addMachToThreadPool(tempMachPtr, pool);
 }

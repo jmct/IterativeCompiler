@@ -39,14 +39,13 @@ struct Machine_ {
 
     /* The delays intended to simulate the overhead of scheduling and managing 
      * threads. 
-    unsigned int initDelay;
-     * currently implemented in the thread queue nodes
-     */ 
+     */
+    unsigned int initOH;
 };
 
 typedef struct Machine_ Machine;
     
-void initMachine(Machine *mach);
+void initMachine(Machine *mach, unsigned int overhead);
 
 unsigned int executeProg(parSwitch* s, instruction* p, int c);
 

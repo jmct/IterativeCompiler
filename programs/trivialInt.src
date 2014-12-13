@@ -2,6 +2,6 @@ nil = Pack{1, 0};
 
 cons a b = Pack{2, 2} a b;
 
-dummy x = par x (x * 4);
+dummy x = par x (x * (let y = 4 in y));
 
 main = par (par (4) (3 + 3)) (cons 1 nil)
