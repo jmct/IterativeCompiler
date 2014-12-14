@@ -14,3 +14,7 @@ temp.txt
 *.gcode
 *.log
 GHCComp
+GCodeInterpreter/junk/
+programs/junk/
+*.tlog
+*.plog
