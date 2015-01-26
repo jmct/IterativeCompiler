@@ -85,7 +85,7 @@ void pop(int num, Machine *mach) {
     mach->stck.stackPointer = newSP;
 }
 
-void unlock(HeapPtr node) {
+void unlock(HeapPtr node, int newTag) {
     while (node->tag == LOCKED_APP) {
         //TODONE empty pending list <--I think it's done
         if (node->app.numBlockedThreads > 0) {
@@ -101,7 +101,7 @@ void unlock(HeapPtr node) {
             node->app.numBlockedThreads = 0;
             node->app.blockedQueue = NULL;
         }
-        node->tag = APP;
+        node->tag = newTag;
         node = node->app.leftArg;
     }
     if (node->tag == LOCKED_FUN) {
@@ -138,7 +138,7 @@ void update(int num, Machine *mach) {
     if (*toUpdate == NULL) {
         printf("\nItems in frame: %d, update parameter val: %d\n", itemsInFrame(&mach->stck), num);
     }
-    unlock(*toUpdate);
+    unlock(*toUpdate, APP);
     HeapCell * newNode = updateToInd(top, *toUpdate);
     //*toUpdate = newNode;
     if (newNode != *toUpdate) {
@@ -171,12 +171,13 @@ void rearrangeStack(int num, stack *stck) {
     for (i = 1; i <= num; i++) {
         stackElem = getNthAddrFrom(i, stck, stck->stackPointer);
         stackElemTo = getNthAddrFrom(i-1, stck, stck->stackPointer);
-        if ((*stackElem)->tag != APP && (*stackElem)->tag != LOCKED_APP) {
+        if ((*stackElem)->tag != APP && (*stackElem)->tag != LOCKED_APP && (*stackElem)->tag != WHNF_APP) {
             printf("Tried to get argument from non-AppNode while rearrangin\nExiting\n");
             exit(1);
         }
         *stackElemTo = (*stackElem)->app.rightArg;
     }
+    unlock(*stackElem, WHNF_APP);
 }
 
 //TODONOMORE When thread blocks, write out to file with profiling information
@@ -184,16 +185,18 @@ ExecutionMode unwind(Machine* mach) {
     HeapPtr item = *mach->stck.stackPointer;
     //this will only be used when unwinding reaches a function call
     int nArgs = -1;
-    while (item->tag == APP || item->tag == INDIRECTION) {
-        if (item->tag == APP) {
-            item->tag = LOCKED_APP;
-            stackPush(item->app.leftArg, &mach->stck);
-            item = item->app.leftArg;
-        }
-        if (item->tag == INDIRECTION) {
-            stackPopThrowAway(&mach->stck);
-            stackPush(item->indirection, &mach->stck);
-            item = item->indirection;
+    while (item->tag == APP || item->tag == WHNF_APP || item->tag == INDIRECTION) {
+        switch (item->tag) {
+            case APP:
+                item->tag = LOCKED_APP;
+            case WHNF_APP:
+                stackPush(item->app.leftArg, &mach->stck);
+                item = item->app.leftArg;
+                break;
+            case INDIRECTION:
+                stackPopThrowAway(&mach->stck);
+                stackPush(item->indirection, &mach->stck);
+                item = item->indirection;
         }
     }
 
@@ -230,6 +233,8 @@ ExecutionMode unwind(Machine* mach) {
                 //Need to add sentinal for list of blocked threads
             }
             else if (nArgs < item->fun.arity) {
+                HeapPtr *redexRoot = getNthAddrFrom(nArgs, &mach->stck, mach->stck.stackPointer);
+                unlock( *redexRoot, WHNF_APP);
                 pop(nArgs, mach);
                 newPC = popFrame(&mach->stck);
                 if (newPC == NULL) {
