@@ -15,6 +15,7 @@ struct threadPool_ {
     int numThreads;
     /* TODO make dependent on iterating/profiling flag */
     unsigned int initOH;
+    unsigned int createOH;
 };
 
 typedef struct threadPool_ threadPool;

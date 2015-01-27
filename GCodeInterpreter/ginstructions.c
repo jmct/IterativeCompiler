@@ -497,12 +497,21 @@ void printI(Machine *mach) {
 
 //TODO initialize machine with parID and a new threadID
 void parI(Machine* mach, threadPool* pool) {
+    if (mach->creationOH > 0) {
+        // reset code pointer to execute PAR again
+        mach->progCounter -= 1;
+        mach->creationOH -= 1;
+        return;
+    } else if (mach->creationOH == 0) {
+        mach->creationOH = pool->createOH;
+    }
+
     //get heap address that the new thread will start computing from
     HeapPtr topOfStack = stackPopKeep(&mach->stck);
 
     //allocate and initialize a new Machine
     Machine* tempMachPtr = malloc(sizeof(Machine));
-    initMachine(tempMachPtr, pool->initOH);
+    initMachine(tempMachPtr, pool->initOH, pool->createOH);
     stackPush(topOfStack, &tempMachPtr->stck);
 
     /* set the new machine's parSite and creatorID */
