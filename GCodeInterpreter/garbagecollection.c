@@ -55,6 +55,7 @@ int garbageCollect(Heap* heap, HeapPtr* additionalRoot1, HeapPtr* additionalRoot
             int j; //used for looping through CONSTR fields and blocked_queues
             HeapCell * temp;
             case APP:
+            case WHNF_APP:
             case LOCKED_APP:
                 nxtTI->app.leftArg = copyHeapItem(nxtTI->app.leftArg, heap);
                 nxtTI->app.rightArg = copyHeapItem(nxtTI->app.rightArg, heap);

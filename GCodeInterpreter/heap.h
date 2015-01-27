@@ -11,6 +11,7 @@ typedef enum {
     LOCKED_FUN,
     APP,
     LOCKED_APP,
+    WHNF_APP,
     CONSTR,
     INTEGER, 
     COLLECTED,
