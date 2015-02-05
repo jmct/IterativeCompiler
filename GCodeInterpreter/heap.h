@@ -95,6 +95,7 @@ Heap* globalHeap;
 void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem);
 
 void showHeapItem(HeapCell *item);
+char * heapItemString(HeapCell *item);
 int isAddrInToSpace(HeapPtr addr, Heap* heap);
 int numHeapCells(Heap *h);
 HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second);
