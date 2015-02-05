@@ -39,13 +39,20 @@ struct Machine_ {
 
     /* The delays intended to simulate the overhead of scheduling and managing 
      * threads. 
+     *
+     * initOH -> The overhead that a *child* thread has before it can start com
+     *           computing
+     *
+     * creationOH -> The overhead that a *parent* thread has before it creates
+     *               a child thread
      */
     unsigned int initOH;
+    unsigned int creationOH;
 };
 
 typedef struct Machine_ Machine;
     
-void initMachine(Machine *mach, unsigned int overhead);
+void initMachine(Machine *mach, unsigned int iOH, unsigned int cOH);
 
 unsigned int executeProg(parSwitch* s, instruction* p, int c);
 

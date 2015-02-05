@@ -13,6 +13,28 @@ int isAddrInToSpace(HeapPtr addr, Heap* heap) {
         return 0;
 }
 
+char * heapItemString(HeapCell *item) {
+    switch (item->tag) {
+        case FUN:
+            return "FUN";
+        case LOCKED_FUN:
+            return "LOCKED FUN";
+        case APP:
+            return "APP ";
+        case LOCKED_APP:
+            return "LOCKED ";
+        case CONSTR:
+            return "Constr ";
+        case INTEGER:
+            return "INT ";
+        case INDIRECTION:
+            return "IND";
+        default:
+            return "OTHER";
+            break;
+    } //end of switch statement
+}
+
 void showHeapItem(HeapCell *item) {
     switch (item->tag) {
         case FUN:
@@ -95,6 +117,7 @@ HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second) 
     }
     HeapPtr heap = globHeap->toSpace;
     heap[nextFree].tag = tag;
+    heap[nextFree].delayed = 0;
     switch (tag) {
         case FUN:
             heap[nextFree].fun.arity = -1;
@@ -114,7 +137,7 @@ HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second) 
         default:
             heap[nextFree].indirection = NULL;
             break;
-    } //end of switch statement
+    } /* end of switch statement */
     globHeap->nextFreeCell += 1;
     return &heap[nextFree];
 }

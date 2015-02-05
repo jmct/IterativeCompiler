@@ -44,6 +44,7 @@ struct atom {
 
     /*TODO make the following values 'profile mode' only */
     unsigned int creatorID; /* ThreadID that created this node */ 
+    int delayed;            /* Is this node pointed to by a thread that's delayed */
     instruction * parSite; /* parSite that created this node */
 
     union {
@@ -94,6 +95,7 @@ Heap* globalHeap;
 void addToBlockedQueue(struct Machine_* mach, HeapPtr heapItem);
 
 void showHeapItem(HeapCell *item);
+char * heapItemString(HeapCell *item);
 int isAddrInToSpace(HeapPtr addr, Heap* heap);
 int numHeapCells(Heap *h);
 HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second);

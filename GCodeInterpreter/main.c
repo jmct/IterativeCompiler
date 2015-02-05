@@ -38,17 +38,18 @@
 #include "searches.h"
 //#include "lex.yy.c"
 #define TIME_SLICE 5
-#define HEAPSIZE 10000000
+#define HEAPSIZE 100000
 
 /* Ugly globals for stats and logging of stats */
 unsigned int threadCounter;
-unsigned int globalReductions;
+unsigned long long int globalReductions;
+unsigned long long int totalBlocked;
 unsigned int evalPrintLoop;
 FILE *logThreadsFile, *logProgFile;
 StatTable globalStats;
 unsigned int NUM_CORES;
 
-void initMachine(Machine *mach, unsigned int overhead) {
+void initMachine(Machine *mach, unsigned int iOH, unsigned int cOH) {
     mach->progCounter  = NULL;
     mach->status  = NEW;
     mach->stck = initStack(mach->stck);
@@ -59,7 +60,8 @@ void initMachine(Machine *mach, unsigned int overhead) {
     mach->threadID = threadCounter;
     threadCounter += 1;
     mach->birthTime = globalReductions;
-    mach->initOH = overhead;
+    mach->initOH = iOH;
+    mach->creationOH = cOH;
 }
 
 /* TODO when freeing a machine we need to keep the statistics */
@@ -105,7 +107,8 @@ int main(int argc, char* argv[]) {
     int cFlag = 0;       /* Flag for number of cores */
     int lFlag = 0;       /* Flag for number of cores */
     char *logFileName = NULL;
-    int initOverhead = 0;
+    unsigned int initOverhead = 0;
+    unsigned int createOverhead = 0;
     enum searchTypes_ sType = NONE;
     opterr = 0;          /* don't show error for no CLI args */
     int fnIndex;
@@ -115,11 +118,14 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
 
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "o:c:SI:R:H:L:")) != -1) {
+    while ((c = getopt(argc, argv, "O:o:c:SI:R:H:L:")) != -1) {
         switch (c)
          {
          case 'o':
             initOverhead = atoi(optarg);
+            break;
+         case 'O':
+            createOverhead = atoi(optarg);
             break;
          case 'c':
             cFlag = 1;
@@ -261,6 +267,7 @@ int main(int argc, char* argv[]) {
 
     globalPool = malloc(sizeof(threadPool));
     globalPool->initOH = initOverhead;
+    globalPool->createOH = createOverhead;
 
     int numPar = counter;
 
@@ -316,7 +323,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     globalReductions = 0;
 
     cores[0] = malloc(sizeof(Machine));
-    initMachine(cores[0], 0);
+    initMachine(cores[0], 0, globalPool->createOH);
     cores[0]->creatorID = 0;
     cores[0]->parSite = prog;
     cores[0]->progCounter = prog;
@@ -386,7 +393,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
                     cores[i] = NULL;
                 }
             }
-            fprintf(logProgFile, "%u\t%d\n", globalReductions, numLiveCores);
+            fprintf(logProgFile, "%llu\t%d\n", globalReductions, numLiveCores);
         }
 
         for (i = 0; i < NUM_CORES; i++) {
@@ -397,7 +404,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
         }
     }
 
-    printf("\nTotal Reductions: %d\n", globalReductions);
+    printf("\nTotal Reductions: %llu\n", globalReductions);
     printf("Garbage Collections: %d\n", globalHeap->gcs);
 
 

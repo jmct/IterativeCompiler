@@ -223,6 +223,10 @@ HeapCell * stackPopKeep(stack * stck) {
     return tempHCPtr;
 }
 
+HeapCell * stackTopAddress(stack * stck) {
+    return *stck->stackPointer;
+}
+
 int itemsInFrame(stack * stck) {
     if (stck->framePointer >= stck->stackObj->stack &&
         stck->framePointer <= &stck->stackObj->stack[CHUNK_SIZE-1]) {

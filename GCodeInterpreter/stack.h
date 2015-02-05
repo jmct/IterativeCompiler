@@ -40,6 +40,8 @@ void popNFromStack(int n, stack* stck);
 
 HeapCell * stackPopKeep(stack * stck);
 
+HeapCell * stackTopAddress(stack * stck);
+
 int itemsInFrame(stack * stck);
 
 instruction *popFrame(stack *stck);

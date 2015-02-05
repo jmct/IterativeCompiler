@@ -45,7 +45,8 @@ ParSiteStats * calcParSiteStats(StatTable* statTable, int numParSites);
 void printParStats(ParSiteStats *st, int nps);
 
 /* Global Variables! */
-extern unsigned int globalReductions;
+extern unsigned long long int globalReductions;
+extern unsigned long long int totalBlocked;
 extern StatTable globalStats;
 
 #endif
