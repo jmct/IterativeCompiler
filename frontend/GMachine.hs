@@ -542,9 +542,9 @@ unwind state
         newState (NInd a1) = putCode [Unwind] (putStack (a1:as) state)
         newState (NGlobal n c)
                 | n == 0     = putCode c (lock a state)
-                | k < n      = putCode dCode (putStack (ak:dStack) (putDump dump' state))
+                | k < n      = unlock ak $ putCode dCode (putStack (ak:dStack) (putDump dump' state))
                 | otherwise  = putStack (rearrange n (getHeap state) (a:as))
-                                        (putCode c state)
+                                        (putCode c $ unlock (head $ drop (n - 1) (a:as)) state)
 
 addToPending :: GMState -> GMState
 addToPending state@((out, heap, globals, sparks, stats), (code, a:as, dump, clock))
