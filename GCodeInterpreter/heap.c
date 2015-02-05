@@ -95,6 +95,7 @@ HeapPtr allocHeapCell(Tag tag, Heap* globHeap, HeapPtr* first, HeapPtr* second) 
     }
     HeapPtr heap = globHeap->toSpace;
     heap[nextFree].tag = tag;
+    heap[nextFree].delayed = 0;
     switch (tag) {
         case FUN:
             heap[nextFree].fun.arity = -1;

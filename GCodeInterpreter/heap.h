@@ -44,6 +44,7 @@ struct atom {
 
     /*TODO make the following values 'profile mode' only */
     unsigned int creatorID; /* ThreadID that created this node */ 
+    int delayed;            /* Is this node pointed to by a thread that's delayed */
     instruction * parSite; /* parSite that created this node */
 
     union {

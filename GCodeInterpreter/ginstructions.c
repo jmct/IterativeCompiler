@@ -501,9 +501,18 @@ void parI(Machine* mach, threadPool* pool) {
         // reset code pointer to execute PAR again
         mach->progCounter -= 1;
         mach->creationOH -= 1;
+
+        /* mark the target node as delayed */
+        HeapCell *temp = stackTopAddress(&mach->stck);
+        temp->delayed = 1;
+
         return;
     } else if (mach->creationOH == 0) {
         mach->creationOH = pool->createOH;
+
+        /* mark the target node as no longer delayed */
+        HeapCell *temp = stackTopAddress(&mach->stck);
+        temp->delayed = 0;
     }
 
     //get heap address that the new thread will start computing from
