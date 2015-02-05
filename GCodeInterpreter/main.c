@@ -38,11 +38,12 @@
 #include "searches.h"
 //#include "lex.yy.c"
 #define TIME_SLICE 5
-#define HEAPSIZE 10000000
+#define HEAPSIZE 100000
 
 /* Ugly globals for stats and logging of stats */
 unsigned int threadCounter;
-unsigned int globalReductions;
+unsigned long long int globalReductions;
+unsigned long long int totalBlocked;
 unsigned int evalPrintLoop;
 FILE *logThreadsFile, *logProgFile;
 StatTable globalStats;
@@ -392,7 +393,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
                     cores[i] = NULL;
                 }
             }
-            fprintf(logProgFile, "%u\t%d\n", globalReductions, numLiveCores);
+            fprintf(logProgFile, "%llu\t%d\n", globalReductions, numLiveCores);
         }
 
         for (i = 0; i < NUM_CORES; i++) {
@@ -403,7 +404,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
         }
     }
 
-    printf("\nTotal Reductions: %d\n", globalReductions);
+    printf("\nTotal Reductions: %llu\n", globalReductions);
     printf("Garbage Collections: %d\n", globalHeap->gcs);
 
 

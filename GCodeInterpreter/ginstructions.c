@@ -102,6 +102,7 @@ void unlock(HeapPtr node, int newTag, int updateable) {
              */
             addQueueToThreadPoolProf(node->app.blockedQueue, node->app.numBlockedThreads, globalPool,
                                  globalReductions);
+            totalBlocked -= node->app.numBlockedThreads;
             node->app.numBlockedThreads = 0;
             node->app.blockedQueue = NULL;
         }
@@ -269,6 +270,7 @@ ExecutionMode unwind(Machine* mach) {
             //printf("Locked Ap case of unwind, set thread to BLOCKED\n");
             /* TODO make profile only */
             mach->blockTime = globalReductions;
+            totalBlocked += 1;
             return BLOCKED;
         case LOCKED_FUN:
             printf("Locked function case of unwind, this isn't implemented\n");
