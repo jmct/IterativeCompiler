@@ -85,7 +85,11 @@ void pop(int num, Machine *mach) {
     mach->stck.stackPointer = newSP;
 }
 
-void unlock(HeapPtr node, int newTag) {
+void unlock(HeapPtr node, int newTag, int updateable) {
+    /* Skip unlocking the top of the spine if the redex is updateable */
+    if (updateable && node->tag == LOCKED_APP)
+        node = node->app.leftArg;
+
     while (node->tag == LOCKED_APP) {
         //TODONE empty pending list <--I think it's done
         if (node->app.numBlockedThreads > 0) {
@@ -138,7 +142,7 @@ void update(int num, Machine *mach) {
     if (*toUpdate == NULL) {
         printf("\nItems in frame: %d, update parameter val: %d\n", itemsInFrame(&mach->stck), num);
     }
-    unlock(*toUpdate, APP);
+    unlock(*toUpdate, APP, 0);
     HeapCell * newNode = updateToInd(top, *toUpdate);
     //*toUpdate = newNode;
     if (newNode != *toUpdate) {
@@ -177,7 +181,7 @@ void rearrangeStack(int num, stack *stck) {
         }
         *stackElemTo = (*stackElem)->app.rightArg;
     }
-    unlock(*stackElem, WHNF_APP);
+    unlock(*stackElem, WHNF_APP, 1);
 }
 
 //TODONOMORE When thread blocks, write out to file with profiling information
@@ -234,7 +238,7 @@ ExecutionMode unwind(Machine* mach) {
             }
             else if (nArgs < item->fun.arity) {
                 HeapPtr *redexRoot = getNthAddrFrom(nArgs, &mach->stck, mach->stck.stackPointer);
-                unlock( *redexRoot, WHNF_APP);
+                unlock( *redexRoot, WHNF_APP, 0);
                 pop(nArgs, mach);
                 newPC = popFrame(&mach->stck);
                 if (newPC == NULL) {

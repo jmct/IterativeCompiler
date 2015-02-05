@@ -27,7 +27,7 @@ void mkAp(Machine *mach);
 void push(int offset, Machine *mach);
 void slide(int num, Machine *mach);
 void pop(int num, Machine *mach);
-void unlock(HeapPtr node, int newTag);
+void unlock(HeapPtr node, int newTag, int updateable);
 void update(int num, Machine *mach);
 void alloc(int num, Machine *mach);
 int numArgs(Machine *mach);
