@@ -497,8 +497,6 @@ void printI(Machine *mach) {
         //eval(mach);
         mach->progCounter -= 2;
     }
-   // printf("\nTotal Reductions: %d\n", globalReductions);
-    //exit(0);
 }
 
 //TODO initialize machine with parID and a new threadID
