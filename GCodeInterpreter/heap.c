@@ -156,14 +156,20 @@ HeapPtr allocApp(HeapPtr left, HeapPtr right, Heap* myHeap) {
 }
 
 HeapPtr allocConstr(int id1, int arity1, Heap *h) {
+    int n = numHeapCells(h);
+    if (n < arity1 + 1) {
+        garbageCollect(h, NULL, NULL);
+        n = numHeapCells(h);
+        if (n < arity1 + 1) {
+            puts("Heap overflow: exiting");
+            exit(1);
+        }
+    }
     HeapPtr constrNode = allocHeapCell(CONSTR, h, NULL, NULL);
     constrNode->constr.id = id1;
     constrNode->constr.arity = arity1;
+
     if (arity1 > 0) {
-        int n = numHeapCells(h);
-        if (n < arity1) {
-            garbageCollect(h, NULL, NULL);
-        }
         n = h->nextFreeCell;
     
         int i;
@@ -175,6 +181,7 @@ HeapPtr allocConstr(int id1, int arity1, Heap *h) {
     else {
         constrNode->constr.fields = NULL;
     }
+
     return constrNode;
 }
 
