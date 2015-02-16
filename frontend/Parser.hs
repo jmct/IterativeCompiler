@@ -332,7 +332,10 @@ pCase = pThen4 makeCase (pLiteral "case") pExpr (pLiteral "of") pCaseAlters
             makeCase cse expr f alters = (ECase expr alters) 
 
 pCaseAlters :: Parser [(Int, [Name], Expr Name)]
-pCaseAlters = pOneOrMoreWithSep pAlter  (pLiteral ";")
+pCaseAlters = pThen3 makeAlts (pLiteral "{") p (pLiteral "}")
+  where
+    makeAlts br1 as br2 = as
+    p                   = pOneOrMoreWithSep pAlter  (pLiteral ";")
 
 --The combiner function just needs to take the parsed values, ignore the keywords
 --and place them in a tuple. 

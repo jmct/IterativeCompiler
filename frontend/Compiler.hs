@@ -63,7 +63,7 @@ data Instruction =
         | CaseAlt String
         | CaseAltEnd String
         | Case
-    deriving Eq
+    deriving (Eq, Show)
 
 
 --The code for the state's heap:
@@ -106,6 +106,7 @@ newFresh = \x -> Fresh $ (\s -> (x+1, s ++ show x))
 data CodeTree = Append CodeTree CodeTree
               | Nil
               | Code Instruction
+        deriving Show
 --              | Codes [Instruction]
               
 codeConcat :: [CodeTree] -> CodeTree
