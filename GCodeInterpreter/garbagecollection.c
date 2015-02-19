@@ -130,16 +130,16 @@ void collectMachine(Machine* curMach, Heap* heap) {
 }
 
 HeapPtr copyHeapItem(HeapPtr item, Heap* heap) {
-    if (heap->nextFreeCell >= heap->maxSize) {
-        puts("Heap Overflow");
-        exit(1);
-    }
     if (item->tag != COLLECTED) {
         heap->toSpace[heap->nextFreeCell] = *item;
         item->tag = COLLECTED;
         item->gcForward = &(heap->toSpace[heap->nextFreeCell]);
         heap->nextFreeCell += 1;
         //numCopied += 1;
+    }
+    if (heap->nextFreeCell >= heap->maxSize) {
+        puts("Heap Overflow");
+        exit(1);
     }
     return item->gcForward;
 }

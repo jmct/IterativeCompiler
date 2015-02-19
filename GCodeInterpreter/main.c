@@ -16,6 +16,8 @@
  * -o <n>: the initial overhead for a new thread in number of reductions.
  *         default is 0
  *
+ * -h <n>: The number of heap cells in thousands (defaults to 10,000 [i.e. 10,000,000 cells])
+ *
  * -L <filename>:  specified log file
  * 
  */
@@ -38,7 +40,7 @@
 #include "searches.h"
 //#include "lex.yy.c"
 #define TIME_SLICE 5
-#define HEAPSIZE 100000
+#define DEFHEAPSIZE 10000000
 
 /* Ugly globals for stats and logging of stats */
 unsigned int threadCounter;
@@ -105,8 +107,9 @@ int main(int argc, char* argv[]) {
     char* iVal = NULL;   /* Max number of iterations for compiler */
     int iFlag = 0;       /* Flag for max iterations */
     int cFlag = 0;       /* Flag for number of cores */
-    int lFlag = 0;       /* Flag for number of cores */
+    int lFlag = 0;       /* logfile name */
     char *logFileName = NULL;
+    unsigned long int hSize = 0;       /* Size of heap (in thousands) */
     unsigned int initOverhead = 0;
     unsigned int createOverhead = 0;
     enum searchTypes_ sType = NONE;
@@ -118,9 +121,13 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
 
     /* Parse CLI args */
-    while ((c = getopt(argc, argv, "O:o:c:SI:R:H:L:")) != -1) {
+    while ((c = getopt(argc, argv, "O:o:c:SI:R:H:L:h:")) != -1) {
         switch (c)
          {
+         case 'h':
+            hSize = atoi(optarg);
+            hSize *= 1000;
+            break;
          case 'o':
             initOverhead = atoi(optarg);
             break;
@@ -259,11 +266,16 @@ int main(int argc, char* argv[]) {
 
     // Allocate and initialize the heap (double needed space since it's Cheney's
     // GC)
+    if (!hSize)
+        hSize = DEFHEAPSIZE;
+
+    printf("Size of heap: %lu\n", hSize);
+
     globalHeap = malloc(sizeof(Heap));
     globalHeap->gcs = 0;
-    globalHeap->maxSize = HEAPSIZE;
-    globalHeap->toSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
-    globalHeap->fromSpace = malloc(sizeof(HeapCell) * HEAPSIZE);
+    globalHeap->maxSize = hSize;
+    globalHeap->toSpace = malloc(sizeof(HeapCell) * hSize);
+    globalHeap->fromSpace = malloc(sizeof(HeapCell) * hSize);
 
     globalPool = malloc(sizeof(threadPool));
     globalPool->initOH = initOverhead;
