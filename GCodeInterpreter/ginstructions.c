@@ -202,6 +202,14 @@ ExecutionMode unwind(Machine* mach) {
                 stackPopThrowAway(&mach->stck);
                 stackPush(item->indirection, &mach->stck);
                 item = item->indirection;
+                break;
+            default:
+                puts("Huh\n");
+                exit(1);
+                /* Note: we could only be in this loop if one of these 
+                 * cases is hit! So it'd be very strange for this to
+                 * happen.
+                 */
         }
     }
 
