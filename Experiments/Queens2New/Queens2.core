@@ -1,0 +1,366 @@
+main  = nqueens 10;
+
+nqueens v_0 = let 
+    v_340 = solve v_0 (replicate v_0 Pack{1,0})
+     in
+    (par (fix nqueensLL_0 v_340) (length v_340));
+
+nqueensLL_1 v_1 v_2 = case v_2
+  of {
+    <0> v_341 v_342 ->
+      seq (v_1 v_342) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+nqueensLL_0 v_3
+  = nqueensLL_1 v_3;
+
+length v_4 = case v_4 of {
+    <1> -> 0;
+    <0> v_343 v_344 -> let 
+        v_347 = length v_344
+         in
+        (par (lengthLL_0 v_347) ((1 + v_347)))
+    };
+
+lengthLL_0 v_5
+  = seq v_5 Pack{0,0};
+
+solve v_6 v_7 = case
+    ((v_6 == 0)) of {
+    <1> ->
+      Pack{0,2} Pack{1,0} Pack{1,0};
+    <0> -> let 
+        v_352 = fill v_7
+         in
+        (par (fix solveLL_0 v_352) (concatMapDefsol ((v_6 - 1)) v_352))
+    };
+
+solveLL_6 v_8
+  = seq v_8 Pack{0,0};
+
+solveLL_5 v_9 v_10 = case v_10
+  of {
+    <0> v_356 v_357 ->
+      par (solveLL_6 v_356) (seq (v_9 v_357) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+solveLL_4 v_11 = solveLL_5 v_11;
+
+solveLL_3 v_12 v_13 = case v_13
+  of {
+    <0> v_358 v_359 ->
+      par (fix solveLL_4 v_358) (seq (v_12 v_359) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+solveLL_2 v_14 = solveLL_3 v_14;
+
+solveLL_1 v_15 v_16 = case v_16
+  of {
+    <0> v_360 v_361 ->
+      par (fix solveLL_2 v_360) (seq (v_15 v_361) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+solveLL_0 v_17 = solveLL_1 v_17;
+
+replicate v_18 v_19 = case
+    ((v_18 == 0)) of {
+    <1> -> Pack{1,0};
+    <0> ->
+      Pack{0,2} v_19 (replicate ((v_18 - 1)) v_19)
+    };
+
+concatMapDefsol v_20 v_21 = case
+    v_21 of {
+    <1> -> Pack{1,0};
+    <0> v_369 v_370 -> let 
+        v_375 = sol v_20 v_369;
+        v_376 = concatMapDefsol v_20 v_370
+         in
+        (par (fix concatMapDefsolLL_0 v_375) (seq (fix concatMapDefsolLL_2 v_376) (append_D2 v_375 v_376)))
+    };
+
+concatMapDefsolLL_1 v_22 v_23
+  = case v_23 of {
+    <0> v_377 v_378 ->
+      seq (v_22 v_378) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefsolLL_0 v_24
+  = concatMapDefsolLL_1 v_24;
+
+concatMapDefsolLL_3 v_25 v_26
+  = case v_26 of {
+    <0> v_379 v_380 ->
+      seq (v_25 v_380) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefsolLL_2 v_27
+  = concatMapDefsolLL_3 v_27;
+
+fill v_28 = case v_28 of {
+    <1> -> Pack{1,0};
+    <0> v_381 v_382 -> let 
+        v_388 = lrd v_381 v_382;
+        v_389 = let 
+          v_387 = fill v_382
+           in
+          (par (fix fillLL_0 v_387) (mapDefCons_D1 v_381 v_387))
+         in
+        (par (fix fillLL_5 v_388) (seq (fix fillLL_12 v_389) (append_D1 v_388 v_389)))
+    };
+
+fillLL_4 v_29
+  = seq v_29 Pack{0,0};
+
+fillLL_3 v_30 v_31 = case v_31
+  of {
+    <0> v_390 v_391 ->
+      par (fillLL_4 v_390) (seq (v_30 v_391) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+fillLL_2 v_32 = fillLL_3 v_32;
+
+fillLL_1 v_33 v_34 = case v_34
+  of {
+    <0> v_392 v_393 ->
+      par (fix fillLL_2 v_392) (seq (v_33 v_393) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+fillLL_0 v_35 = fillLL_1 v_35;
+
+fillLL_11 v_36
+  = seq v_36 Pack{0,0};
+
+fillLL_10 v_37 v_38 = case v_38
+  of {
+    <0> v_394 v_395 ->
+      par (fillLL_11 v_394) (seq (v_37 v_395) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+fillLL_9 v_39 = fillLL_10 v_39;
+
+fillLL_8 v_40 v_41 = case v_41
+  of {
+    <0> v_396 v_397 ->
+      par (fix fillLL_9 v_396) (seq (v_40 v_397) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+fillLL_7 v_42 = fillLL_8 v_42;
+
+fillLL_6 v_43 v_44 = case v_44
+  of {
+    <0> v_398 v_399 ->
+      par (fix fillLL_7 v_398) (seq (v_43 v_399) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+fillLL_5 v_45 = fillLL_6 v_45;
+
+fillLL_18 v_46
+  = seq v_46 Pack{0,0};
+
+fillLL_17 v_47 v_48 = case v_48
+  of {
+    <0> v_400 v_401 ->
+      par (fillLL_18 v_400) (seq (v_47 v_401) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+fillLL_16 v_49 = fillLL_17 v_49;
+
+fillLL_15 v_50 v_51 = case v_51
+  of {
+    <0> v_402 v_403 ->
+      par (fix fillLL_16 v_402) (seq (v_50 v_403) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+fillLL_14 v_52 = fillLL_15 v_52;
+
+fillLL_13 v_53 v_54 = case v_54
+  of {
+    <0> v_404 v_405 ->
+      par (fix fillLL_14 v_404) (seq (v_53 v_405) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+fillLL_12 v_55 = fillLL_13 v_55;
+
+append_D1 v_56 v_57 = case v_56
+  of {
+    <1> -> v_57;
+    <0> v_406 v_407 ->
+      Pack{0,2} v_406 (append_D1 v_407 v_57)
+    };
+
+append_D2 v_58 v_59 = case v_58
+  of {
+    <1> -> v_59;
+    <0> v_410 v_411 ->
+      Pack{0,2} v_410 (append_D2 v_411 v_59)
+    };
+
+append_D3 v_60 v_61 = case v_60
+  of {
+    <1> -> v_61;
+    <0> v_414 v_415 ->
+      Pack{0,2} v_414 (append_D3 v_415 v_61)
+    };
+
+sol v_62 v_63 = let 
+    v_422 = solve v_62 (next v_63)
+     in
+    (par (fix solLL_0 v_422) (mapDefCons_D2 v_63 v_422));
+
+solLL_1 v_64 v_65 = case v_65 of
+    {
+    <0> v_423 v_424 ->
+      seq (v_64 v_424) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+solLL_0 v_66 = solLL_1 v_66;
+
+lrd v_67 v_68 = case v_67 of {
+    <1> ->
+      Pack{0,2} (Pack{0,2} (Pack{0,2} 0 (Pack{0,2} 1 (Pack{0,2} 2 Pack{1,0}))) v_68) Pack{1,0};
+    <0> v_425 v_426 -> Pack{1,0}
+    };
+
+mapDefCons_D1 v_69 v_70 = case
+    v_70 of {
+    <1> -> Pack{1,0};
+    <0> v_427 v_428 ->
+      Pack{0,2} (Pack{0,2} v_69 v_427) (mapDefCons_D1 v_69 v_428)
+    };
+
+mapDefCons_D2 v_71 v_72 = case
+    v_72 of {
+    <1> -> Pack{1,0};
+    <0> v_431 v_432 ->
+      Pack{0,2} (Pack{0,2} v_71 v_431) (mapDefCons_D2 v_71 v_432)
+    };
+
+next v_73 = let 
+    v_440 = let 
+      v_437 = down v_73
+       in
+      (par (fix nextLL_0 v_437) (merge v_437 (left v_73)))
+     in
+    (par (fix nextLL_4 v_440) (merge v_440 (right v_73)));
+
+nextLL_3 v_74 = case v_74 of {
+    <0> v_442 v_443 -> Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+nextLL_2 v_75 = nextLL_3;
+
+nextLL_1 v_76 v_77 = case v_77
+  of {
+    <0> v_444 v_445 ->
+      par (fix nextLL_2 v_444) (seq (v_76 v_445) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+nextLL_0 v_78 = nextLL_1 v_78;
+
+nextLL_7 v_79 = case v_79 of {
+    <0> v_446 v_447 -> Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+nextLL_6 v_80 = nextLL_7;
+
+nextLL_5 v_81 v_82 = case v_82
+  of {
+    <0> v_448 v_449 ->
+      par (fix nextLL_6 v_448) (seq (v_81 v_449) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+nextLL_4 v_83 = nextLL_5 v_83;
+
+merge v_84 v_85 = case v_84 of {
+    <1> -> Pack{1,0};
+    <0> v_450 v_451 -> case v_85 of
+        {
+        <1> -> Pack{0,2} v_450 v_451;
+        <0> v_452 v_453 ->
+          Pack{0,2} (append_D3 v_450 v_452) (merge v_451 v_453)
+        }
+    };
+
+down v_86
+  = mapDefoneDefeq_D1 2 v_86;
+
+left v_87 = let 
+    v_462 = tail v_87
+     in
+    (par (fix leftLL_0 v_462) (mapDefoneDefeq_D2 0 v_462));
+
+leftLL_1 v_88 = case v_88 of {
+    <0> v_463 v_464 -> Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+leftLL_0 v_89 = leftLL_1;
+
+right v_90
+  = Pack{0,2} Pack{1,0} (mapDefoneDefeq_D2 1 v_90);
+
+mapDefoneDefeq_D1 v_91 v_92
+  = case v_92 of {
+    <1> -> Pack{1,0};
+    <0> v_467 v_468 ->
+      Pack{0,2} (oneDefeq v_91 v_467) (mapDefoneDefeq_D1 v_91 v_468)
+    };
+
+mapDefoneDefeq_D2 v_93 v_94
+  = case v_94 of {
+    <1> -> Pack{1,0};
+    <0> v_473 v_474 ->
+      Pack{0,2} (oneDefeq v_93 v_473) (mapDefoneDefeq_D2 v_93 v_474)
+    };
+
+tail v_95 = case v_95 of {
+    <0> v_479 v_480 -> v_480
+    };
+
+oneDefeq v_96 v_97 = case v_97
+  of {
+    <1> -> Pack{1,0};
+    <0> v_481 v_482 -> let 
+        v_488 = case (eq v_96 v_481) of
+          {
+          <1> ->
+            Pack{0,2} v_481 Pack{1,0};
+          <0> -> oneDefeq v_96 v_482
+          }
+         in
+        (par (fix oneDefeqLL_0 v_488) (const v_488 0))
+    };
+
+oneDefeqLL_1 v_98 = case v_98 of
+    {
+    <0> v_490 v_491 -> Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+oneDefeqLL_0 v_99
+  = oneDefeqLL_1;
+
+const v_100 v_101 = v_100;
+
+eq v_102 v_103
+  = (v_102 == v_103)

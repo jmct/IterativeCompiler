@@ -1,0 +1,41 @@
+mkTree v_0
+  = ifte ((v_0 == 0)) Pack{0,0} (Pack{1,3} (mkTree ((v_0 - 1))) v_0 (mkTree ((v_0 - 1))));
+
+ifte v_1 v_2 v_3 = case v_1 of {
+    <1> -> v_2;
+    <0> -> v_3
+    };
+
+sizeTree v_4 = case v_4 of {
+    <0> -> 0;
+    <1> v_53 v_54 v_55 -> let 
+        v_61 = let 
+          v_58 = sizeTree v_53;
+          v_59 = sizeTree v_55
+           in
+          (par (sizeTreeLL_0 v_58) (seq (sizeTreeLL_1 v_59) ((v_58 + v_59))))
+         in
+        (par (sizeTreeLL_2 v_61) ((1 + v_61)))
+    };
+
+sizeTreeLL_0 v_5
+  = seq v_5 Pack{0,0};
+
+sizeTreeLL_1 v_6
+  = seq v_6 Pack{0,0};
+
+sizeTreeLL_2 v_7
+  = seq v_7 Pack{0,0};
+
+main  = let 
+    v_63 = mkTree 30
+     in
+    (par (fix mainLL_0 v_63) (sizeTree v_63));
+
+mainLL_1 v_8 v_9 = case v_9 of {
+    <0> -> Pack{0,0};
+    <1> v_64 v_65 v_66 ->
+      par (v_8 v_64) (seq (v_8 v_66) Pack{0,0})
+    };
+
+mainLL_0 v_10 = mainLL_1 v_10

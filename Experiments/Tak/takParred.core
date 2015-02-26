@@ -1,0 +1,15 @@
+tak v_0 v_1 v_2 = case
+    ((v_0 <= v_1)) of {
+    <1> -> v_2;
+    <0> -> let 
+        v_44 = tak ((v_0 - 1)) v_1 v_2;
+        v_46 = tak ((v_2 - 1)) v_0 v_1
+         in
+        (par (takLL_0 v_44) (seq (takLL_1 v_46) (tak v_44 (tak ((v_1 - 1)) v_2 v_0) v_46)))
+    };
+
+takLL_0 v_3 = seq v_3 Pack{0,0};
+
+takLL_1 v_4 = seq v_4 Pack{0,0};
+
+main  = tak 24 16 8

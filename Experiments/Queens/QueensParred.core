@@ -1,0 +1,256 @@
+main  = nsoln 8;
+
+nsoln v_0 = let 
+    v_245 = gen_D1 v_0 v_0
+     in
+    (par (fix nsolnLL_0 v_245) (length v_245));
+
+nsolnLL_1 v_1 v_2 = case v_2 of
+    {
+    <0> v_246 v_247 ->
+      seq (v_1 v_247) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+nsolnLL_0 v_3 = nsolnLL_1 v_3;
+
+length v_4 = case v_4 of {
+    <1> -> 0;
+    <0> v_248 v_249 -> let 
+        v_252 = length v_249
+         in
+        (par (lengthLL_0 v_252) ((1 + v_252)))
+    };
+
+lengthLL_0 v_5
+  = seq v_5 Pack{0,0};
+
+gen_D1 v_6 v_7 = case
+    ((v_7 == 0)) of {
+    <1> ->
+      Pack{0,2} Pack{1,0} Pack{1,0};
+    <0> -> let 
+        v_258 = gen_D2 v_6 ((v_7 - 1))
+         in
+        (par (fix gen_D1LL_0 v_258) (concatMapDefgen1_D1 v_6 v_258))
+    };
+
+gen_D1LL_1 v_8 v_9 = case v_9 of
+    {
+    <0> v_262 v_263 ->
+      seq (v_8 v_263) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+gen_D1LL_0 v_10
+  = gen_D1LL_1 v_10;
+
+gen_D2 v_11 v_12 = case
+    ((v_12 == 0)) of {
+    <1> ->
+      Pack{0,2} Pack{1,0} Pack{1,0};
+    <0> -> let 
+        v_269 = gen_D2 v_11 ((v_12 - 1))
+         in
+        (par (fix gen_D2LL_0 v_269) (concatMapDefgen1_D2 v_11 v_269))
+    };
+
+gen_D2LL_1 v_13 v_14 = case v_14
+  of {
+    <0> v_273 v_274 ->
+      seq (v_13 v_274) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+gen_D2LL_0 v_15
+  = gen_D2LL_1 v_15;
+
+concatMapDefgen1_D1 v_16 v_17
+  = case v_17 of {
+    <1> -> Pack{1,0};
+    <0> v_275 v_276 -> let 
+        v_281 = gen1_D1 v_16 v_275;
+        v_282 = concatMapDefgen1_D1 v_16 v_276
+         in
+        (par (fix concatMapDefgen1_D1LL_0 v_281) (seq (fix concatMapDefgen1_D1LL_2 v_282) (append v_281 v_282)))
+    };
+
+concatMapDefgen1_D1LL_1 v_18 v_19
+  = case v_19 of {
+    <0> v_283 v_284 ->
+      seq (v_18 v_284) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefgen1_D1LL_0 v_20
+  = concatMapDefgen1_D1LL_1 v_20;
+
+concatMapDefgen1_D1LL_3 v_21 v_22
+  = case v_22 of {
+    <0> v_285 v_286 ->
+      seq (v_21 v_286) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefgen1_D1LL_2 v_23
+  = concatMapDefgen1_D1LL_3 v_23;
+
+concatMapDefgen1_D2 v_24 v_25
+  = case v_25 of {
+    <1> -> Pack{1,0};
+    <0> v_287 v_288 -> let 
+        v_293 = gen1_D2 v_24 v_287;
+        v_294 = concatMapDefgen1_D2 v_24 v_288
+         in
+        (par (fix concatMapDefgen1_D2LL_0 v_293) (seq (fix concatMapDefgen1_D2LL_2 v_294) (append v_293 v_294)))
+    };
+
+concatMapDefgen1_D2LL_1 v_26 v_27
+  = case v_27 of {
+    <0> v_295 v_296 ->
+      seq (v_26 v_296) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefgen1_D2LL_0 v_28
+  = concatMapDefgen1_D2LL_1 v_28;
+
+concatMapDefgen1_D2LL_3 v_29 v_30
+  = case v_30 of {
+    <0> v_297 v_298 ->
+      seq (v_29 v_298) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefgen1_D2LL_2 v_31
+  = concatMapDefgen1_D2LL_3 v_31;
+
+append v_32 v_33 = case v_32 of
+    {
+    <1> -> v_33;
+    <0> v_299 v_300 ->
+      Pack{0,2} v_299 (append v_300 v_33)
+    };
+
+gen1_D1 v_34 v_35 = let 
+    v_305 = toOne v_34
+     in
+    (par (fix gen1_D1LL_0 v_305) (concatMapDefgen2_D1 v_35 v_305));
+
+gen1_D1LL_1 v_36 v_37 = case
+    v_37 of {
+    <0> v_306 v_307 ->
+      seq (v_36 v_307) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+gen1_D1LL_0 v_38
+  = gen1_D1LL_1 v_38;
+
+gen1_D2 v_39 v_40 = let 
+    v_310 = toOne v_39
+     in
+    (par (fix gen1_D2LL_0 v_310) (concatMapDefgen2_D2 v_40 v_310));
+
+gen1_D2LL_1 v_41 v_42 = case
+    v_42 of {
+    <0> v_311 v_312 ->
+      seq (v_41 v_312) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+gen1_D2LL_0 v_43
+  = gen1_D2LL_1 v_43;
+
+concatMapDefgen2_D1 v_44 v_45
+  = case v_45 of {
+    <1> -> Pack{1,0};
+    <0> v_313 v_314 -> let 
+        v_319 = gen2_D1 v_44 v_313;
+        v_320 = concatMapDefgen2_D1 v_44 v_314
+         in
+        (par (fix concatMapDefgen2_D1LL_0 v_319) (seq (fix concatMapDefgen2_D1LL_2 v_320) (append v_319 v_320)))
+    };
+
+concatMapDefgen2_D1LL_1 v_46 v_47
+  = case v_47 of {
+    <0> v_321 v_322 ->
+      seq (v_46 v_322) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefgen2_D1LL_0 v_48
+  = concatMapDefgen2_D1LL_1 v_48;
+
+concatMapDefgen2_D1LL_3 v_49 v_50
+  = case v_50 of {
+    <0> v_323 v_324 ->
+      seq (v_49 v_324) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefgen2_D1LL_2 v_51
+  = concatMapDefgen2_D1LL_3 v_51;
+
+concatMapDefgen2_D2 v_52 v_53
+  = case v_53 of {
+    <1> -> Pack{1,0};
+    <0> v_325 v_326 -> let 
+        v_331 = gen2_D2 v_52 v_325;
+        v_332 = concatMapDefgen2_D2 v_52 v_326
+         in
+        (par (fix concatMapDefgen2_D2LL_0 v_331) (seq (fix concatMapDefgen2_D2LL_2 v_332) (append v_331 v_332)))
+    };
+
+concatMapDefgen2_D2LL_1 v_54 v_55
+  = case v_55 of {
+    <0> v_333 v_334 ->
+      seq (v_54 v_334) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefgen2_D2LL_0 v_56
+  = concatMapDefgen2_D2LL_1 v_56;
+
+concatMapDefgen2_D2LL_3 v_57 v_58
+  = case v_58 of {
+    <0> v_335 v_336 ->
+      seq (v_57 v_336) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+concatMapDefgen2_D2LL_2 v_59
+  = concatMapDefgen2_D2LL_3 v_59;
+
+toOne v_60 = case ((v_60 == 1))
+  of {
+    <1> -> Pack{0,2} 1 Pack{1,0};
+    <0> ->
+      Pack{0,2} v_60 (toOne ((v_60 - 1)))
+    };
+
+gen2_D1 v_61 v_62 = case
+    (safe v_62 1 v_61) of {
+    <1> ->
+      Pack{0,2} (Pack{0,2} v_62 v_61) Pack{1,0};
+    <0> -> Pack{1,0}
+    };
+
+gen2_D2 v_63 v_64 = case
+    (safe v_64 1 v_63) of {
+    <1> ->
+      Pack{0,2} (Pack{0,2} v_64 v_63) Pack{1,0};
+    <0> -> Pack{1,0}
+    };
+
+safe v_65 v_66 v_67 = case v_67
+  of {
+    <1> -> Pack{1,0};
+    <0> v_351 v_352 ->
+      and ((v_65 /= v_351)) (and ((v_65 /= (v_351 + v_66))) (and ((v_65 /= (v_351 - v_66))) (safe v_65 ((v_66 + 1)) v_352)))
+    };
+
+and v_68 v_69 = case v_68 of {
+    <0> -> Pack{0,0};
+    <1> -> v_69
+    }

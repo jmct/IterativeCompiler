@@ -1,0 +1,48 @@
+ifte v_0 v_1 v_2 = case v_0 of {
+    <1> -> v_1;
+    <0> -> v_2
+    };
+
+gcd v_3 v_4
+  = ifte ((v_4 == 0)) v_3 (ifte ((v_3 > v_4)) (gcd ((v_3 - v_4)) v_4) (gcd v_3 ((v_4 - v_3))));
+
+fromto v_5 v_6
+  = ifte ((v_5 > v_6)) Pack{1,0} (Pack{0,2} v_5 (fromto ((v_5 + 1)) v_6));
+
+downfrom v_7
+  = ifte ((v_7 == 0)) Pack{1,0} (Pack{0,2} v_7 (downfrom ((v_7 - 1))));
+
+map v_8 v_9 = case v_9 of {
+    <1> -> Pack{1,0};
+    <0> v_44 v_45 -> let y = v_8 v_44 ;
+                         ys = map v_8 v_45
+                     in par y (Pack{0,2} y ys)
+    };
+
+relPrime v_12 v_13
+  = (gcd v_12 v_13 == 1);
+
+filter v_14 v_15 = case v_15 of
+    {
+    <1> -> Pack{1,0};
+    <0> v_48 v_49 ->
+      ifte (v_14 v_48) (Pack{0,2} v_48 (filter v_14 v_49)) (filter v_14 v_49)
+    };
+
+length v_18 = case v_18 of {
+    <1> -> 0;
+    <0> v_50 v_51 ->
+      (1 + length v_51)
+    };
+
+sum v_21 = case v_21 of {
+    <1> -> 0;
+    <0> v_52 v_53 ->
+      (v_52 + sum v_53)
+    };
+
+euler v_24
+  = length (filter (relPrime v_24) (fromto 1 v_24));
+
+main 
+  = sum (map euler (fromto 1 1000))

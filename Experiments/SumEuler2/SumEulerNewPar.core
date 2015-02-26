@@ -1,0 +1,105 @@
+main  = let 
+    v_129 = let 
+      v_128 = fromto_D2 1 1000
+       in
+      (par (fix mainLL_0 v_128) (mapDefeuler v_128))
+     in
+    (par (fix mainLL_2 v_129) (sum v_129));
+
+mainLL_1 v_0 v_1 = case v_1 of {
+    <0> v_130 v_131 ->
+      seq (v_0 v_131) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+mainLL_0 v_2 = mainLL_1 v_2;
+
+mainLL_4 v_3
+  = seq v_3 Pack{0,0};
+
+mainLL_3 v_4 v_5 = case v_5 of {
+    <0> v_132 v_133 ->
+      par (mainLL_4 v_132) (seq (v_4 v_133) Pack{0,0});
+    <1> -> Pack{0,0}
+    };
+
+mainLL_2 v_6 = mainLL_3 v_6;
+
+sum v_7 = case v_7 of {
+    <1> -> 0;
+    <0> v_134 v_135 -> let 
+        v_138 = sum v_135
+         in
+        (par (sumLL_0 v_138) ((v_134 + v_138)))
+    };
+
+sumLL_0 v_8 = seq v_8 Pack{0,0};
+
+mapDefeuler v_9 = case v_9 of {
+    <1> -> Pack{1,0};
+    <0> v_139 v_140 ->
+      Pack{0,2} (euler v_139) (mapDefeuler v_140)
+    };
+
+fromto_D1 v_10 v_11
+  = ifte ((v_10 > v_11)) Pack{1,0} (Pack{0,2} v_10 (fromto_D1 ((v_10 + 1)) v_11));
+
+fromto_D2 v_12 v_13
+  = ifte ((v_12 > v_13)) Pack{1,0} (Pack{0,2} v_12 (fromto_D2 ((v_12 + 1)) v_13));
+
+euler v_14 = let 
+    v_163 = filterDefrelPrime v_14 (fromto_D1 1 v_14)
+     in
+    (par (fix eulerLL_0 v_163) (length v_163));
+
+eulerLL_1 v_15 v_16 = case v_16
+  of {
+    <0> v_167 v_168 ->
+      seq (v_15 v_168) Pack{0,0};
+    <1> -> Pack{0,0}
+    };
+
+eulerLL_0 v_17 = eulerLL_1 v_17;
+
+ifte v_18 v_19 v_20 = case v_18
+  of {
+    <1> -> v_19;
+    <0> -> v_20
+    };
+
+length v_21 = case v_21 of {
+    <1> -> 0;
+    <0> v_169 v_170 -> let 
+        v_173 = length v_170
+         in
+        (par (lengthLL_0 v_173) ((1 + v_173)))
+    };
+
+lengthLL_0 v_22
+  = seq v_22 Pack{0,0};
+
+filterDefrelPrime v_23 v_24
+  = case v_24 of {
+    <1> -> Pack{1,0};
+    <0> v_174 v_175 -> let 
+        v_182 = relPrime v_23 v_174
+         in
+        (par (filterDefrelPrimeLL_0 v_182) (ifte v_182 (Pack{0,2} v_174 (filterDefrelPrime v_23 v_175)) (filterDefrelPrime v_23 v_175)))
+    };
+
+filterDefrelPrimeLL_0 v_25
+  = case v_25 of {
+    <1> -> Pack{0,0};
+    <0> -> Pack{0,0}
+    };
+
+relPrime v_26 v_27 = let 
+    v_187 = gcd v_26 v_27
+     in
+    (par (relPrimeLL_0 v_187) ((v_187 == 1)));
+
+relPrimeLL_0 v_28
+  = seq v_28 Pack{0,0};
+
+gcd v_29 v_30
+  = ifte ((v_30 == 0)) v_29 (ifte ((v_29 > v_30)) (gcd ((v_29 - v_30)) v_30) (gcd v_29 ((v_30 - v_29))))
