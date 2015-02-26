@@ -15,8 +15,10 @@ struct _StatRecord {
 typedef struct _StatRecord StatRecord;
 
 struct _StatTable {
+    int iteration;
     unsigned int size, currentEntry;
     FILE *lt, *lp;
+    char *ltName, *lpName;
     instruction * progAddr;
     StatRecord * entries;
 };
@@ -34,7 +36,9 @@ typedef struct _ParSiteStats ParSiteStats;
 int recordMach(Machine* mach, StatTable* table, 
                unsigned int lifepsan);
 
-void initTable(instruction* prog, unsigned int initSize, FILE *lt, FILE *lp, StatTable * table);
+void initTable(instruction* prog, unsigned int initSize, char *ltn, char *lpn, StatTable * table);
+
+void setupOpenLogFile(char *logFN, StatTable *table, int iter);
 
 int logStats(StatTable * table);
 

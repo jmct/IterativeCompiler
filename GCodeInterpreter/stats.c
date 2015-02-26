@@ -1,8 +1,20 @@
 #include <stdlib.h>
+#include <string.h>
 #include <gsl/gsl_statistics_uint.h>
 #include "machine.h"
 #include "stats.h"
 #include "instruction_type.h"
+
+void setupOpenLogFile(char *logFN, StatTable *table, int iter) {
+
+    char logCnt[15];
+    sprintf(logCnt, ".%d", iter);
+    strcpy(logFN, table->lpName);
+    strcat(logFN, logCnt);
+    table->lp = fopen(logFN, "w");
+
+    return;
+}
 
 int recordMach(Machine* mach, StatTable* table, 
                unsigned int lifespan) {
@@ -38,19 +50,26 @@ int recordMach(Machine* mach, StatTable* table,
     
 }
 
-void initTable(instruction * prog, unsigned int initSize, FILE *lt, FILE *lp, StatTable * initTable) {
+void initTable(instruction * prog, unsigned int initSize, char *ltn, char *lpn, StatTable * table) {
 
-    initTable->entries = malloc(sizeof(StatRecord) * initSize);
-    initTable->lt = lt;
-    initTable->lp = lp;
-    initTable->progAddr = prog;
-    initTable->size = initSize;
-    initTable->currentEntry = 0;
+    table->entries = malloc(sizeof(StatRecord) * initSize);
+    table->ltName = ltn;
+    table->lpName = lpn;
+    table->progAddr = prog;
+    table->size = initSize;
+    table->currentEntry = 0;
+    table->iteration += 1;
 
 }
 
 
 int logStats(StatTable * table) {
+    char logFN[100];
+    char logCnt[15];
+    sprintf(logCnt, ".%d", table->iteration - 1);
+    strcpy(logFN, table->ltName);
+    strcat(logFN, logCnt);
+    table->lt = fopen(logFN, "w");
 
     fprintf(table->lt, "#PSite\tTID\tLfspn\tReds\tBlckd\taTime\tCrtr\n");
 
@@ -67,6 +86,7 @@ int logStats(StatTable * table) {
             table->entries[n].aliveTime,
             table->entries[n].creatorID);
     }
+    fclose(table->lt);
     return n;
 }
     

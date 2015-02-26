@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <string.h>
 #include <gsl/gsl_statistics_double.h>
 #include "machine.h"
 #include "stats.h"
@@ -46,9 +47,9 @@ void swtchToArray(parSwitch *swtchs, int nSwitch, int *sArray);
 
 void randMutate(parSwitch *switches, int nSwitch);
 
-unsigned int randSearch(parSwitch *switches, int nSwitch, int maxI, instruction *prog);
+unsigned int randSearch(parSwitch *switches, int nSwitch, int maxI, StatTable *gS, instruction *prog);
 
-unsigned int hillClimb(parSwitch *switches, int nSwitch, int maxI, instruction *prog);
+unsigned int hillClimb(parSwitch *switches, int nSwitch, int maxI, StatTable *gS, instruction *prog);
 
 unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruction *prog);
 
@@ -83,15 +84,17 @@ parSwitch* iterate(parSwitch *switches, int nSwitch, StatTable *gStat,
     unsigned int rCount;
 
     if (sType == NONE || sType == NONE_SEQ) {
+        gStat->lp = fopen(gStat->lpName, "w");
         executeProg(switches, prog, nSwitch);
         logTStats(gStat);
+        fclose(gStat->lp);
         return switches;
     } else if (sType == ITER) {
         rCount = profSearch(switches, nSwitch, maxI, gStat, prog);
     } else if (sType == RAND) {
-        rCount = randSearch(switches, nSwitch, maxI, prog);
+        rCount = randSearch(switches, nSwitch, maxI, gStat, prog);
     } else if (sType == HILL) {
-        rCount = hillClimb(switches, nSwitch, maxI, prog);
+        rCount = hillClimb(switches, nSwitch, maxI, gStat, prog);
     }
 
     fputs("\nBest performing configuration: ", stdout);
@@ -149,7 +152,7 @@ void cpSArray(int *from, int *to, int n) {
 /* Random search starts from the initial switch setting (all 1s) and jumps to
  * random points in the search space. We save the best performing setting
  * throughout the process */
-unsigned int randSearch(parSwitch *s, int nSwitch, int maxI, instruction *prog)
+unsigned int randSearch(parSwitch *s, int nSwitch, int maxI, StatTable *gS, instruction *prog)
 {
     unsigned int gr = UINT_MAX;
 
@@ -157,11 +160,14 @@ unsigned int randSearch(parSwitch *s, int nSwitch, int maxI, instruction *prog)
     best.rCount = gr;
     best.swtchs = mkSArray(s, nSwitch);
 
+    char logFN[100];
     int i;
     for (i = 1; i <= maxI; i++) {
         randMutate(s, nSwitch);
 
+        setupOpenLogFile(logFN, gS, i);
         gr = executeProg(s, prog, nSwitch);
+        fclose(gS->lp);
 
         if (gr < best.rCount) {
             swtchToArray(s, nSwitch, best.swtchs);
@@ -219,7 +225,7 @@ int hasBeenTried(int attempt, int *tried, int nTried)
  * 3) If the neighbor performs better than A, then B is your new point.
  * 4) Iterate from 2 again until max number of iterations reached.
  */
-unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, instruction *prog)
+unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, StatTable *gS, instruction *prog)
 {
     int triedNbrs[nSwitch];
     int attempt, nTried = 0;
@@ -233,6 +239,7 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, instruction *pr
     int i, j;
     unsigned int curRed;
 
+    char logFN[100];
     for (i = 0; i < maxI; i++) {
 
         /* We keep track of which neighbors have
@@ -253,7 +260,13 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, instruction *pr
             else
                 swtchs[attempt].pswitch = TRUE;
 
+            /* prepare new log filename and open the file */
+            setupOpenLogFile(logFN, gS, i);
+
+            /* actually run the program with the new settings */
             curRed = executeProg(swtchs, prog, nSwitch);
+
+            fclose(gS->lp);
 
             /* If a better candidate is found, we set that as the new
              * candidate and start again */
@@ -293,9 +306,12 @@ unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruct
 
     int i, j;
     unsigned int curRed = 0;
+    char logFN[100];
     for (i = 0; i < maxI; i++) {
 
+        setupOpenLogFile(logFN, gS, i);
         curRed = executeProg(sw, prog, nS);
+        fclose(gS->lp);
 
         fputs("Switch setting: ", stdout);
         for (j = 0; j < nS; j++) {

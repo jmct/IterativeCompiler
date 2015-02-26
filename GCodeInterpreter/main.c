@@ -47,7 +47,9 @@ unsigned int threadCounter;
 unsigned long long int globalReductions;
 unsigned long long int totalBlocked;
 unsigned int evalPrintLoop;
-FILE *logThreadsFile, *logProgFile;
+//FILE *logThreadsFile, *logProgFile;
+char* logFileNameP;
+char* logFileNameT;
 StatTable globalStats;
 unsigned int NUM_CORES;
 
@@ -197,18 +199,18 @@ int main(int argc, char* argv[]) {
     if (!lFlag)
         logFileName = getLogFileName(argv[fnIndex]);
 
-    char* logFileNameP = malloc(strlen(logFileName) + 7);
-    char* logFileNameT = malloc(strlen(logFileName) + 7);
+    logFileNameP = malloc(strlen(logFileName) + 10);
+    logFileNameT = malloc(strlen(logFileName) + 10);
     strcpy(logFileNameP, logFileName);
     strcat(logFileNameP, ".plog");
     strcpy(logFileNameT, logFileName);
     strcat(logFileNameT, ".tlog");
-    logThreadsFile = fopen(logFileNameT, "w");
-    logProgFile = fopen(logFileNameP, "w");
+    globalStats.lpName = logFileNameP;
+    globalStats.ltName = logFileNameT;
+    //logThreadsFile = fopen(logFileNameT, "w");
+    //logProgFile = fopen(logFileNameP, "w");
 
 
-    free(logFileNameP);
-    free(logFileNameT);
     free(logFileName);
 
     if (iFlag) {
@@ -285,8 +287,6 @@ int main(int argc, char* argv[]) {
 
     iterate(switches, numPar, &globalStats, sType, iFlag, prog);
 
-   fclose(logThreadsFile);
-
    return 0;
 }
 
@@ -344,7 +344,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     /* Initialize the stat table
      * TODO make this dependent on profiling flag
      */
-    initTable(prog, 300, logThreadsFile, logProgFile, &globalStats);
+    initTable(prog, 300, logFileNameT, logFileNameP, &globalStats);
 
     Machine* fromThreadPool = NULL;
 
@@ -405,7 +405,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
                     cores[i] = NULL;
                 }
             }
-            fprintf(logProgFile, "%llu\t%d\n", globalReductions, numLiveCores);
+            fprintf(globalStats.lp, "%llu\t%d\n", globalReductions, numLiveCores);
         }
 
         for (i = 0; i < NUM_CORES; i++) {
