@@ -232,14 +232,18 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, StatTable *gS, 
     /* Get random starting point */
     randMutate(swtchs, nSwitch);
 
+    char logFN[100];
+    /* prepare new log filename and open the file */
+    setupOpenLogFile(logFN, gS, 0);
+
     elite best;
     best.rCount = executeProg(swtchs, prog, nSwitch);
     best.swtchs = mkSArray(swtchs, nSwitch);
 
     int i, j;
+    int c = 1;
     unsigned int curRed;
 
-    char logFN[100];
     for (i = 0; i < maxI; i++) {
 
         /* We keep track of which neighbors have
@@ -261,7 +265,8 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, StatTable *gS, 
                 swtchs[attempt].pswitch = TRUE;
 
             /* prepare new log filename and open the file */
-            setupOpenLogFile(logFN, gS, i);
+            setupOpenLogFile(logFN, gS, c);
+            c++;
 
             /* actually run the program with the new settings */
             curRed = executeProg(swtchs, prog, nSwitch);
