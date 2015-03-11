@@ -3,6 +3,10 @@
 #include "heap.h"
 #include "instruction_type.h"
 
+extern unsigned long long int globalReductions;
+extern int progLeng;
+extern instruction *gprog;
+
 struct chunk_ {
     struct chunk_ *previous;
     HeapCell **stack;

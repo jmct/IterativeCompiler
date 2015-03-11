@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "stack.h"
+#include "heap.h"
 
-#define CHUNK_SIZE 200
+#define CHUNK_SIZE 300
 
 
 

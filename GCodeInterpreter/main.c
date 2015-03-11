@@ -53,6 +53,10 @@ char* logFileNameT;
 StatTable globalStats;
 unsigned int NUM_CORES;
 
+instruction *gprog;
+int progLeng;
+Machine *seqMach;
+
 void initMachine(Machine *mach, unsigned int iOH, unsigned int cOH) {
     mach->progCounter  = NULL;
     mach->status  = NEW;
@@ -227,6 +231,14 @@ int main(int argc, char* argv[]) {
 
     //parse the actual GCode
     prog = parseGCode(inputFile, switchesPtr);
+    gprog = prog;
+
+    int plen = 4;
+    while(prog[plen].type != End) {
+        plen++;
+    }
+    progLeng = plen;
+
     //get the value back from switchesPtr
     switches = *switchesPtr;
 
@@ -336,6 +348,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
 
     cores[0] = malloc(sizeof(Machine));
     initMachine(cores[0], 0, globalPool->createOH);
+    seqMach = *cores;
     cores[0]->creatorID = 0;
     cores[0]->parSite = prog;
     cores[0]->progCounter = prog;

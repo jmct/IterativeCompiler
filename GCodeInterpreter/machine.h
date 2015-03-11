@@ -2,6 +2,7 @@
 #define MACHINE_HEADER
 
 #include "stack.h"
+#include "heap.h"
 #include "instruction_type.h"
 
 enum _ThreadStatus {
@@ -55,5 +56,7 @@ typedef struct Machine_ Machine;
 void initMachine(Machine *mach, unsigned int iOH, unsigned int cOH);
 
 unsigned int executeProg(parSwitch* s, instruction* p, int c);
+
+int isCleanStack(Machine *mach, Heap* heap);
 
 #endif

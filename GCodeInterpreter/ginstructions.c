@@ -417,10 +417,10 @@ void geI(Machine *mach) {
 //Casejump deals with checking the constructor tag at the top of the stack, and
 //then jumping to the corresponding code sequence. 
 void casejump(char *label, Machine *mach) {
-    //printf("Casejump here!\n");
     HeapPtr topOfStack = *mach->stck.stackPointer;
     if (topOfStack->tag != CONSTR) {
-        printf("Tried to casejump when top of stack was not a constructor\n exiting.\n");
+        printf("Tried to casejump when top of stack was not a constructor.\n");
+        printf("Prog label: %s\nReductions: %llu\n\n", label, globalReductions); 
         exit(1);
     }
     int constrTag = topOfStack->constr.id;
@@ -501,6 +501,7 @@ void printI(Machine *mach) {
         printf("Trying to print non-Int or non-Constructor!\n");
     }
 
+    fflush(stdout);
     if (evalPrintLoop != 0) {
         //eval(mach);
         mach->progCounter -= 2;

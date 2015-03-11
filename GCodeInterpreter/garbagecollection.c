@@ -6,7 +6,10 @@
 #include "machine.h"
 #include "garbagecollection.h"
 
+extern unsigned long long int globalReductions;
+
 int garbageCollect(Heap* heap, HeapPtr* additionalRoot1, HeapPtr* additionalRoot2) {
+    /* printf("GC: %llu\n", globalReductions); */
     /* Record that this garbage collection happened */
     heap->gcs += 1;
 
