@@ -38,6 +38,7 @@
 #include "machine.h"
 #include "stats.h"
 #include "searches.h"
+#include "lib/sgetopt.h"
 //#include "lex.yy.c"
 #define TIME_SLICE 5
 #define DEFHEAPSIZE 10000000
@@ -108,81 +109,74 @@ char * getLogFileName(char * gcodeFileName) {
     return resStr;
 }
 
+int capture_search(const char *arg, void *pvar) {
+
+    printf("Testing: %c\n", *arg);
+    return 0;
+
+}
+
 int main(int argc, char* argv[]) {
 
-    char* iVal = NULL;   /* Max number of iterations for compiler */
-    int iFlag = 0;       /* Flag for max iterations */
+    unsigned long int infSearch = 0;
+    unsigned long int hillSearch = 0;
+    unsigned long int randSearch = 0;
+    unsigned long int iFlag = 0;
+    enum searchTypes_ sType = NONE;
+    int seqRun = 0;
     int cFlag = 0;       /* Flag for number of cores */
     int lFlag = 0;       /* logfile name */
     char *logFileName = NULL;
     unsigned long int hSize = 0;       /* Size of heap (in thousands) */
-    unsigned int initOverhead = 0;
-    unsigned int createOverhead = 0;
-    enum searchTypes_ sType = NONE;
+    unsigned long int initOverhead = 0;
+    unsigned long int createOverhead = 0;
     opterr = 0;          /* don't show error for no CLI args */
     int fnIndex;
 
-    int c = 0;               /* char for parsing CLI args */
-
     srand(time(NULL));
 
-    /* Parse CLI args */
-    while ((c = getopt(argc, argv, "O:o:c:SI:R:H:L:h:")) != -1) {
-        switch (c)
-         {
-         case 'h':
-            hSize = atoi(optarg);
-            hSize *= 1000;
-            break;
-         case 'o':
-            initOverhead = atoi(optarg);
-            break;
-         case 'O':
-            createOverhead = atoi(optarg);
-            break;
-         case 'c':
-            cFlag = 1;
-            NUM_CORES = atoi(optarg);
-            break;
-         case 'S':
-            sType = NONE_SEQ;
-            break;
-         case 'I':
-            iFlag = 1;
-            sType = ITER;
-            iVal = optarg;
-            break;
-         case 'H':
-            iFlag = 1;
-            sType = HILL;
-            iVal = optarg;
-            break;
-         case 'R':
-            iFlag = 1;
-            sType = RAND;
-            iVal = optarg;
-            break;
-         case 'L':
-            lFlag = strlen(optarg);
-            logFileName = malloc(lFlag + 1);
-            strcpy(logFileName, optarg);
-            break;
-         case '?':
-            if (optopt == 'I')
-              fprintf (stderr, "Option -%c requires an integer argument.\n", optopt);
-            else if (isprint (optopt))
-              fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-            else
-              fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
-              return 1;
-         }
+    struct soption opttable[] = {
+            { 'h', "heap",          1, capture_unsigned_int, &hSize },
+            { 'o', "init-overhead", 1, capture_unsigned_int, &initOverhead },
+            { 'O', "overhead",      1, capture_unsigned_int, &createOverhead },
+            { 'I', "inf-search",    1, capture_unsigned_int, &infSearch },
+            { 'R', "rand-search",   1, capture_unsigned_int, &randSearch },
+            { 'H', "hill-climb",    1, capture_unsigned_int, &hillSearch },
+            { 'S', "sequential",    0, capture_presence,     &seqRun },
+            { 'c', "cores",         1, capture_int,          &cFlag },
+            { 0,   0,               0, 0,                    0 }
+       };
+
+    /* argv+1 will point to all non-option arguments */
+    if (sgetopt(argc, argv, opttable, argv+1, 0)) {
+        printf("Error parsing one of the command line options\n");
+        return 1;
     }
 
-    if (!cFlag)
+    /* set the search type and max iterations */
+    if (infSearch) {
+        sType = ITER;
+        iFlag = infSearch;
+    } else if (randSearch) {
+        sType = RAND;
+        iFlag = randSearch;
+    } else if (hillSearch) {
+        sType = HILL;
+        iFlag = hillSearch;
+    } else if (seqRun) {
+        sType = NONE_SEQ;
+        iFlag = 1;
+    }
+
+    if (!iFlag)
+        iFlag = 1;
+
+    if (!cFlag) {
         NUM_CORES = 4;
+    }
+
 
     fnIndex = optind;    /* After parsing options, the renaming args will be at optind */
-
 
 
     if (argc < 2) {
@@ -216,13 +210,6 @@ int main(int argc, char* argv[]) {
 
 
     free(logFileName);
-
-    if (iFlag) {
-        iFlag = atoi(iVal);
-    }
-    else {
-        iFlag = 1;
-    }
 
     //setup `passing by reference' for our switches
     parSwitch* switches = malloc(sizeof(parSwitch));
@@ -272,7 +259,7 @@ int main(int argc, char* argv[]) {
         printf("Performing search using: %s", searchName);
 
     if (iFlag)
-        printf("Max number of interations: %d\n", iFlag);
+        printf("Max number of interations: %lu\n", iFlag);
 
 
     fclose(inputFile);
