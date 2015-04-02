@@ -126,6 +126,7 @@ int main(int argc, char* argv[]) {
     int seqRun = 0;
     int cFlag = 0;       /* Flag for number of cores */
     int lFlag = 0;       /* logfile name */
+    int seed = -1;        /* random seed */
     char *logFileName = NULL;
     unsigned long int hSize = 0;       /* Size of heap (in thousands) */
     unsigned long int initOverhead = 0;
@@ -133,7 +134,6 @@ int main(int argc, char* argv[]) {
     opterr = 0;          /* don't show error for no CLI args */
     int fnIndex;
 
-    srand(time(NULL));
 
     struct soption opttable[] = {
             { 'h', "heap",          1, capture_unsigned_int, &hSize },
@@ -144,6 +144,7 @@ int main(int argc, char* argv[]) {
             { 'H', "hill-climb",    1, capture_unsigned_int, &hillSearch },
             { 'S', "sequential",    0, capture_presence,     &seqRun },
             { 'c', "cores",         1, capture_int,          &cFlag },
+            { 's', "seed",          1, capture_int,          &seed },
             { 0,   0,               0, 0,                    0 }
        };
 
@@ -175,6 +176,8 @@ int main(int argc, char* argv[]) {
         NUM_CORES = 4;
     }
 
+    srand(seed < 0 ? time(0) : seed);
+    printf("Using random seed: %d\n", seed);
 
     fnIndex = optind;    /* After parsing options, the renaming args will be at optind */
 
