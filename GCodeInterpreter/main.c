@@ -276,7 +276,6 @@ int main(int argc, char* argv[]) {
     printf("Size of heap: %lu\n", hSize);
 
     globalHeap = malloc(sizeof(Heap));
-    globalHeap->gcs = 0;
     globalHeap->maxSize = hSize;
     globalHeap->toSpace = malloc(sizeof(HeapCell) * hSize);
     globalHeap->fromSpace = malloc(sizeof(HeapCell) * hSize);
@@ -337,6 +336,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     evalPrintLoop = 1;
 
     globalHeap->nextFreeCell = 0;
+    globalHeap->gcs = 0;
     initThreadPool(globalPool);
 
     programMode = core = LIVE;
