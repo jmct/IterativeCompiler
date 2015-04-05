@@ -29,9 +29,9 @@ getAllInfo c = map (getInfo c . words) . drop 1 . lines
 combineAdj :: [PSiteInfo] -> [PSiteInfo]
 combineAdj []  = []
 combineAdj [x] = [x]
-combineAdj (P ps i : P qs j : xs)
-    | ps == qs  = combineAdj (P ps (i ++ j) : xs)
-    | otherwise = P ps i : combineAdj (P qs j : xs)
+combineAdj (P ps i : P qs [j] : xs)
+    | ps == qs  = combineAdj (P ps (j : i) : xs)
+    | otherwise = P ps i : combineAdj (P qs [j] : xs)
 
 unwordsTab :: [String] -> String
 unwordsTab [] = ""
