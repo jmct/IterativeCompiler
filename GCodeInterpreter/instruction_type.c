@@ -8,6 +8,7 @@
 //file. 
 
 int parTagCount;
+int isStratPar;
 
 instruction makeInstruction(char *instr) {
     instruction newInstr;
@@ -106,8 +107,11 @@ instruction makeInstruction(char *instr) {
         }
         newInstr.pushGlobVal = malloc(strlen(yyval.strVal) + 1);
         strcpy(newInstr.pushGlobVal, yyval.strVal);
-        if (strcmp(newInstr.pushGlobVal, "par") == 0) {
+        if (strcmp(newInstr.pushGlobVal, "par") == 0 || strcmp(newInstr.pushGlobVal, "parStrat") == 0) {
             parTagCount++;
+            if (strcmp(newInstr.pushGlobVal, "parStrat") == 0) {
+                isStratPar = 1;
+            }
         }
         return newInstr;
     }
@@ -302,6 +306,7 @@ instruction *parseGCode(FILE* gcodeFile, parSwitch** parSwitchesPtr) {
     int currentSize = 100;
     int curInstr = 4; //this is because of the intro Instructions
     parTagCount = 0; //Ensuring that the par tags are counted up from 0
+    isStratPar = 0;
     int parTagDiff = 0;
     tokenTag res;
     instruction endInstr;
@@ -314,6 +319,13 @@ instruction *parseGCode(FILE* gcodeFile, parSwitch** parSwitchesPtr) {
             if (parTagCount > parTagDiff && parSwitches != NULL) {
                 parSwitches[parTagDiff].pswitch = TRUE;
                 parSwitches[parTagDiff].address = curInstr;
+                printf("New par at: %d, stratPar? %d\n", curInstr, isStratPar);
+                if (isStratPar) {
+                    parSwitches[parTagDiff].stratPar = TRUE;
+                    isStratPar = 0;
+                } else {
+                    parSwitches[parTagDiff].stratPar = FALSE;
+                }
                 parSwitches = realloc(parSwitches, ((sizeof(parSwitch)) + (sizeof(parSwitch) * parTagCount)));
                 prog[curInstr].pushGlobVal = realloc(prog[curInstr].pushGlobVal, 
                                                      strlen(prog[curInstr].pushGlobVal) + 4);

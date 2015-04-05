@@ -62,6 +62,7 @@ typedef struct _instruction instruction;
 
 typedef struct {
     Bool pswitch;
+    Bool stratPar;
     int address;
 } parSwitch;
 

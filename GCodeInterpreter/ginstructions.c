@@ -36,9 +36,9 @@ void pushGlobal(instruction *fun, Machine *mach) {
     //lookup for first parameter. 
 
     /* For keeping stats on how created this node */
-    if (strcmp(fun->pushGlobVal, "par") == 0) {
+    if (strcmp(fun->pushGlobVal, "par") == 0 || strcmp(fun->pushGlobVal, "parStrat") == 0) {
         addr->parSite = (mach->progCounter - 1);
-        assert(strcmp(addr->parSite->pushGlobVal, "par") == 0);
+        assert(strcmp(addr->parSite->pushGlobVal, "par") == 0 || strcmp(fun->pushGlobVal, "parStrat") == 0);
     }
 
     addr->creatorID = mach->threadID;
@@ -267,7 +267,7 @@ ExecutionMode unwind(Machine* mach) {
                 /* When the function being called is `par` we have to make sure
                  * we keep track of which par-site it's from.
                  */
-                if (strcmp(newPC->funVals.name, "par") == 0)
+                if (strcmp(newPC->funVals.name, "par") == 0 || strcmp(newPC->funVals.name, "parStrat") == 0)
                     mach->childrensParSite = item->parSite;
 
                 mach->progCounter = newPC + 1; //added 1 to avoid FunDef instruction

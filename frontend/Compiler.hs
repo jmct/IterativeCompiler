@@ -336,6 +336,7 @@ compiledPrimitives
       ,("parSPJ", 2, [Push 1, Push 1, MkAp, Push 2, Par, Update 2, Pop 2, Unwind])
       ,("parSPJOff", 2, [Push 1, Push 1, MkAp, Update 2, Pop 2, Unwind])
       ,("par", 2, [Push 1, Push 1, Par, Eval, Update 2, Pop 2, Unwind]) --I Think this is right.
+      ,("parStrat", 2, [Push 1, Push 1, Par, Eval, Update 2, Pop 2, Unwind]) -- This is right if par is right
       ,("parOff", 2, [Push 1, Eval, Update 2, Pop 2, Unwind])
       ,("fix", 2, [Push 1, Push 1, PushGlobal "fix", MkAp, Push 2, MkAp, MkAp, Eval, Update 2, Pop 2, Unwind])
       ,("seq", 2, [Push 1, Push 1, Eval, Pop 1, Eval, Update 2, Pop 2, Unwind]) --I Think this is right.

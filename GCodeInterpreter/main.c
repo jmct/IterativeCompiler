@@ -304,10 +304,18 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
     /* use switches */
     int i;
     for (i = 0; i < counter; i++) {
-        if (swtchs[i].pswitch == 1) {
-            strcpy(prog[swtchs[i].address].pushGlobVal, "par");
-        } else if (swtchs[i].pswitch == 0) {
-            strcpy(prog[swtchs[i].address].pushGlobVal, "parOff");
+        if (swtchs[i].stratPar == TRUE) {
+            if (swtchs[i].pswitch == 1) {
+                strcpy(prog[swtchs[i].address].pushGlobVal, "parStrat");
+            } else if (swtchs[i].pswitch == 0) {
+                strcpy(prog[swtchs[i].address].pushGlobVal, "seq");
+            }
+        } else {
+            if (swtchs[i].pswitch == 1) {
+                strcpy(prog[swtchs[i].address].pushGlobVal, "par");
+            } else if (swtchs[i].pswitch == 0) {
+                strcpy(prog[swtchs[i].address].pushGlobVal, "parOff");
+            }
         }
     }
 
