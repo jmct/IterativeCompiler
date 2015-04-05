@@ -243,6 +243,8 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, StatTable *gS, 
     int i, j;
     int c = 1;
     unsigned int curRed;
+    int moved = 0; /* we only continue searching if we've moved */
+
 
     for (i = 0; i < maxI; i++) {
 
@@ -276,12 +278,19 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, StatTable *gS, 
             /* If a better candidate is found, we set that as the new
              * candidate and start again */
             if (curRed < best.rCount) {
+                moved = 1;
                 best.rCount = curRed;
                 swtchToArray(swtchs, nSwitch, best.swtchs);
                 break;
+            } else {
+                arrayToSwtch(best.swtchs, nSwitch, swtchs);
             }
-        }
 
+        }
+        if (!moved)
+            break;
+
+        moved = 0;
         nTried = 0;
 
         /*
