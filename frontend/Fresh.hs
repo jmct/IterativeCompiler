@@ -41,7 +41,7 @@ labelInt = Fresh (\s i -> (i, s ++ show i))
 labelNoInt = Fresh $ \s i -> (i, s)
 
 labelAppendInt :: Fresh a -> Fresh a
-labelAppendInt (Fresh f) = Fresh $ \s i -> f (s ++ show i) i
+labelAppendInt (Fresh f) = Fresh $ \s i -> f (s ++ show i) (i + 1)
 
 labelNewCount :: Fresh String
 labelNewCount = Fresh $ \s i -> (1, s ++ ": 0")

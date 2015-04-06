@@ -137,7 +137,7 @@ labelCode (x:xs) =
     case x of
         Casejump alts -> do 
                     startCase <- labelInt
-                    alts' <- labelAppendInt $ labelCases alts
+                    alts' <- labelAppendInt $ labelCases alts startCase
                     ys    <- labelCode xs
                     return $ (Code (CasejumpInstr startCase) `Append` alts') 
                              `Append` (Code $ Label $ startCase ++ ":EndCase")
@@ -146,20 +146,19 @@ labelCode (x:xs) =
                     ys    <- labelCode xs
                     return (Code x `Append` ys)
 
-labelCases :: [(Int, GMCode)] -> Fresh CodeTree
-labelCases     [] = return Nil
-labelCases (x:xs) =
+labelCases :: [(Int, GMCode)] -> String -> Fresh CodeTree
+labelCases     [] l = return Nil
+labelCases (x:xs) l =
     do
-        y <- labelCaseAlt x
-        ys <- labelCases xs
+        y <- labelCaseAlt x l
+        ys <- labelCases xs l
         return (y `Append` ys)
 
-labelCaseAlt :: (Int, GMCode) -> Fresh CodeTree
-labelCaseAlt (tag, code) = do
-    altLabel <- labelNoInt
+labelCaseAlt :: (Int, GMCode) -> String -> Fresh CodeTree
+labelCaseAlt (tag, code) l = do
     freshCode <- labelCode code
-    return ( Code (CaseAlt (altLabel ++ ": " ++ show tag)) `Append` freshCode
-                            `Append` Code (CaseAltEnd $ altLabel))
+    return ( Code (CaseAlt (l ++ ": " ++ show tag)) `Append` freshCode
+                            `Append` Code (CaseAltEnd $ l))
 
 labelProgram :: [GMCompiledSC] -> GMCode
 labelProgram []     = []
