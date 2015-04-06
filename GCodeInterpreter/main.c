@@ -176,6 +176,8 @@ int main(int argc, char* argv[]) {
 
     if (!cFlag) {
         NUM_CORES = 4;
+    } else {
+        NUM_CORES = cFlag;
     }
 
     srand(seed < 0 ? time(0) : seed);
