@@ -6,12 +6,19 @@
 #include "instruction_type.h"
 
 void setupOpenLogFile(char *logFN, StatTable *table, int iter) {
+    static int initialized = 0;
 
-    char logCnt[15];
-    sprintf(logCnt, ".%d", iter);
-    strcpy(logFN, table->lpName);
-    strcat(logFN, logCnt);
-    table->lp = fopen(logFN, "w");
+    if (table->quiet && !initialized) {
+        initialized = 1;
+        strcpy(logFN, table->lpName);
+        table->lp = fopen(logFN, "w");
+    } else if (!table->quiet) {
+        char logCnt[15];
+        sprintf(logCnt, ".%d", iter);
+        strcpy(logFN, table->lpName);
+        strcat(logFN, logCnt);
+        table->lp = fopen(logFN, "w");
+    }
 
     return;
 }
@@ -89,7 +96,32 @@ int logStats(StatTable * table) {
     fclose(table->lt);
     return n;
 }
-    
+
+void logStep(StatTable *table, unsigned long long int gReds, int nCores) {
+    if (!table->quiet)
+        fprintf(table->lp, "%llu\t%d\n", gReds, nCores);
+}
+
+void logIter(StatTable *table, unsigned long long int gReds, parSwitch *sws) {
+    if (table->quiet) {
+        fprintf(table->lp, "%d\t%llu\t", table->iteration - 1, gReds);
+        int i;
+        for (i = 0; sws[i].address > 0; i++) {
+            fprintf(table->lp, "%d", sws[i].pswitch);
+        }
+        fprintf(table->lp, "\n");
+    }
+}
+
+void endIterLog(StatTable *table) {
+    if (!table->quiet)
+        fclose(table->lp);
+}
+
+void closeLogFile(StatTable *table) {
+    if (table->quiet)
+        fclose(table->lp);
+}
 
 int compare_entries(const void *e1, const void *e2) {
 

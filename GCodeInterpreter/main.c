@@ -52,6 +52,7 @@ unsigned int evalPrintLoop;
 char* logFileNameP;
 char* logFileNameT;
 StatTable globalStats;
+int quiet;
 unsigned int NUM_CORES;
 
 instruction *gprog;
@@ -145,6 +146,7 @@ int main(int argc, char* argv[]) {
             { 'S', "sequential",    0, capture_presence,     &seqRun },
             { 'c', "cores",         1, capture_int,          &cFlag },
             { 's', "seed",          1, capture_int,          &seed },
+            { 'q', "quiet",         0, capture_presence,     &quiet },
             { 0,   0,               0, 0,                    0 }
        };
 
@@ -208,6 +210,7 @@ int main(int argc, char* argv[]) {
     strcat(logFileNameT, ".tlog");
     globalStats.lpName = logFileNameP;
     globalStats.ltName = logFileNameT;
+    globalStats.quiet = quiet;
     //logThreadsFile = fopen(logFileNameT, "w");
     //logProgFile = fopen(logFileNameP, "w");
 
@@ -359,7 +362,8 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
 
     Machine* fromThreadPool = NULL;
 
-    fprintf(globalStats.lp, "#GRC\tLiveCores\n");
+    if (!quiet)
+        fprintf(globalStats.lp, "#GRC\tLiveCores\n");
 
     while (programMode == LIVE) {
         int j;
@@ -416,7 +420,7 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
                     cores[i] = NULL;
                 }
             }
-            fprintf(globalStats.lp, "%llu\t%d\n", globalReductions, numLiveCores);
+            logStep(&globalStats, globalReductions, numLiveCores);
         }
 
         for (i = 0; i < NUM_CORES; i++) {
@@ -432,6 +436,8 @@ unsigned int executeProg(parSwitch* swtchs, instruction* prog, int counter) {
 
 
    free(cores);
+
+   logIter(&globalStats, globalReductions, swtchs); 
 
    return globalReductions;
 

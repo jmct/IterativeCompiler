@@ -273,7 +273,7 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, StatTable *gS, 
             /* actually run the program with the new settings */
             curRed = executeProg(swtchs, prog, nSwitch);
 
-            fclose(gS->lp);
+            endIterLog(gS);
 
             /* If a better candidate is found, we set that as the new
              * candidate and start again */
@@ -301,6 +301,7 @@ unsigned int hillClimb(parSwitch *swtchs, int nSwitch, int maxI, StatTable *gS, 
     }
     arrayToSwtch(best.swtchs, nSwitch, swtchs);
     free(best.swtchs);
+    closeLogFile(gS);
 
     return best.rCount;
 }

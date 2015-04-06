@@ -16,6 +16,7 @@ typedef struct _StatRecord StatRecord;
 
 struct _StatTable {
     int iteration;
+    int quiet;
     unsigned int size, currentEntry;
     FILE *lt, *lp;
     char *ltName, *lpName;
@@ -41,6 +42,14 @@ void initTable(instruction* prog, unsigned int initSize, char *ltn, char *lpn, S
 void setupOpenLogFile(char *logFN, StatTable *table, int iter);
 
 int logStats(StatTable * table);
+
+void logStep(StatTable * table, unsigned long long int gReds, int nCores);
+
+void logIter(StatTable * table, unsigned long long int gReds, parSwitch * sws);
+
+void endIterLog(StatTable *table);
+
+void closeLogFile(StatTable *table);
 
 int compare_entries(const void *e1, const void *e2);
 
