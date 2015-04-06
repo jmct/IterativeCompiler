@@ -125,6 +125,7 @@ int main(int argc, char* argv[]) {
     unsigned long int iFlag = 0;
     enum searchTypes_ sType = NONE;
     int seqRun = 0;
+    int greedyRun = 0;
     int cFlag = 0;       /* Flag for number of cores */
     int lFlag = 0;       /* logfile name */
     int seed = -1;        /* random seed */
@@ -143,6 +144,7 @@ int main(int argc, char* argv[]) {
             { 'I', "inf-search",    1, capture_unsigned_int, &infSearch },
             { 'R', "rand-search",   1, capture_unsigned_int, &randSearch },
             { 'H', "hill-climb",    1, capture_unsigned_int, &hillSearch },
+            { 'G', "greedy",        0, capture_presence,     &greedyRun },
             { 'S', "sequential",    0, capture_presence,     &seqRun },
             { 'c', "cores",         1, capture_int,          &cFlag },
             { 's', "seed",          1, capture_int,          &seed },
@@ -166,6 +168,9 @@ int main(int argc, char* argv[]) {
     } else if (hillSearch) {
         sType = HILL;
         iFlag = hillSearch;
+    } else if (greedyRun) {
+        sType = GREEDY;
+        iFlag = 1;
     } else if (seqRun) {
         sType = NONE_SEQ;
         iFlag = 1;
@@ -256,6 +261,9 @@ int main(int argc, char* argv[]) {
     }
     else if (sType == ITER) {
         searchName = "Informed Search\n";
+    }
+    else if (sType == GREEDY) {
+        searchName = "Greedy Search\n";
     }
     else if (sType == NONE_SEQ) {
         for (counter = 0; switches[counter].address > 0; counter++) {

@@ -51,6 +51,8 @@ unsigned int randSearch(parSwitch *switches, int nSwitch, int maxI, StatTable *g
 
 unsigned int hillClimb(parSwitch *switches, int nSwitch, int maxI, StatTable *gS, instruction *prog);
 
+unsigned int greedySearch(parSwitch *switches, int nSwitch, StatTable *gS, instruction *prog);
+
 unsigned int profSearch(parSwitch *sw, int nS, int maxI, StatTable *gS, instruction *prog);
 
 int logTStats(StatTable *gS)
@@ -93,6 +95,8 @@ parSwitch* iterate(parSwitch *switches, int nSwitch, StatTable *gStat,
         rCount = profSearch(switches, nSwitch, maxI, gStat, prog);
     } else if (sType == RAND) {
         rCount = randSearch(switches, nSwitch, maxI, gStat, prog);
+    } else if (sType == GREEDY) {
+        rCount = greedySearch(switches, nSwitch, gStat, prog);
     } else if (sType == HILL) {
         rCount = hillClimb(switches, nSwitch, maxI, gStat, prog);
     }
@@ -185,7 +189,6 @@ unsigned int randSearch(parSwitch *s, int nSwitch, int maxI, StatTable *gS, inst
 }
 
 
-
 void randMutate(parSwitch* switches, int nSwitch) {
     int i;
     for (i = 0; i < nSwitch; i++) {
@@ -213,6 +216,66 @@ int hasBeenTried(int attempt, int *tried, int nTried)
     }
 
     return 0;
+}
+
+unsigned int greedySearch(parSwitch *s, int nSwitch, StatTable *gS, instruction *prog) {
+
+    unsigned int curRed = UINT_MAX;
+    int triedNbrs[nSwitch];
+    int attempt, nTried = 0;
+
+    /* random starting positioin */
+    randMutate(s, nSwitch);
+
+
+    char logFN[100];
+    /* prepare new log filename and open the file */
+    setupOpenLogFile(logFN, gS, 0);
+
+    elite best;
+    best.rCount = executeProg(s, prog, nSwitch);
+    best.swtchs = mkSArray(s, nSwitch);
+
+    attempt = rand()%nSwitch;
+    int i;
+    int c = 1;
+    for (i = 0; i < nSwitch; i++) {
+        while (hasBeenTried(attempt, triedNbrs, nTried))
+            attempt = rand()%nSwitch;
+
+        triedNbrs[i] = attempt;
+        nTried++;
+
+        if (s[attempt].pswitch == TRUE)
+            s[attempt].pswitch = FALSE;
+        else
+            s[attempt].pswitch = TRUE;
+
+        /* prepare new log filename and open the file */
+        setupOpenLogFile(logFN, gS, c);
+        c++;
+
+        /* actually run the program with the new settings */
+        curRed = executeProg(s, prog, nSwitch);
+
+        endIterLog(gS);
+
+        /* If a better candidate is found, we keep the current switch 
+         * setting and continue */
+        if (curRed < best.rCount) {
+            best.rCount = curRed;
+            swtchToArray(s, nSwitch, best.swtchs);
+        } else {
+            arrayToSwtch(best.swtchs, nSwitch, s);
+        }
+    }
+
+    arrayToSwtch(best.swtchs, nSwitch, s);
+    free(best.swtchs);
+    closeLogFile(gS);
+
+    return best.rCount;
+
 }
 
 /* For hill climbing there are a few approaches. TODO: Copy Simon's hierarchy
