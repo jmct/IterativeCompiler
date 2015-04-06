@@ -180,7 +180,8 @@ int main(int argc, char* argv[]) {
         NUM_CORES = cFlag;
     }
 
-    srand(seed < 0 ? time(0) : seed);
+    seed = seed < 0 ? time(0) : seed;
+    srand(seed);
     printf("Using random seed: %d\n", seed);
 
     fnIndex = optind;    /* After parsing options, the renaming args will be at optind */
