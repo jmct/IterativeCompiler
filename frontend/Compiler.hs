@@ -261,7 +261,7 @@ compileAlts comp alts env
 builtInDyadic :: Assoc Name Instruction
 builtInDyadic
     = [("+", Add), ("-", Sub), ("*", Mul), ("/", Div), 
-       ("==", Eq), ("~=", Ne), (">=", Ge), ("div", Div),
+       ("==", Eq), ("/=", Ne), (">=", Ge), ("div", Div),
        (">", Gt), ("<=", Le), ("<", Lt)] 
 
 
