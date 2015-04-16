@@ -24,6 +24,12 @@ runShowProg = putStr . showResults . evals . compile . parse
 
 runLogProg fileName = writeFile fileName . logStats . evals . compile . parse
 
+showSCDef p name = hLookup h nodeAddr
+  where
+    ((_,h,defs,_,_), _) = compile $ parse p
+    nodeAddr            = aLookupString defs name (error "not defined")
+
+
 maximum' [] = 0
 maximum' xs  = maximum xs
 
@@ -100,7 +106,7 @@ data Instruction =
         | Split Int
         | Print
         | Par
-    deriving Eq
+    deriving (Eq, Show)
 
 getCode :: GMState -> GMCode
 getCode (globals, (code, stack, dump, clock)) = code
@@ -133,7 +139,7 @@ data Node =
         | NConstr Int [Addr]
         | NLAp Addr Addr PGMPendingList       --Locked Application node
         | NLGlobal Int GMCode PGMPendingList  --Locked global
-    deriving Eq
+    deriving (Eq, Show)
 
 type PGMPendingList = [PGMLocalState]
 
