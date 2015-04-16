@@ -765,31 +765,55 @@ initCode = [Eval, Print]
 
 compileSC :: (Name, [Name], CoreExpr) -> GMCompiledSC
 compileSC (name, env, body)
-    = (name, length env, compileR body (zip env [0..]))
+    = (name, d, compileR body (zip env [0..]) d)
+  where
+    d = length env
 
 compileR :: GMCompiler
-compileR expr env = compileE expr env ++ [Update d, Pop d, Unwind]
-    where d = length env
+compileR (ELet recursive defs e) env d
+    | recursive = compileLetRec True compileR defs e env d
+    | otherwise = compileLet True compileR defs e env d
+compileR e@(EAp e1 e2)           env d = compileRT e env 0
+compileR (ECase sub alts) env d
+    = compileE sub env d ++ [Casejump $ compileAlts (compileE' True) alts env d]
+compileR expr env d = compileE expr env d ++ [Update d, Pop d, Unwind]
+
+compileRT :: GMCompiler
+compileRT (EVar v) env d
+    | elem v (aDomain env)           = [Push n] ++ (take d $ repeat MkAp) ++ [Update d', Pop d', Unwind]
+    | elem v (aDomain builtInDyadic) = [aLookupString builtInDyadic v (error "Can't happen")] ++ [Update d', Pop d', Unwind]
+    | otherwise                      = [PushGlobal v] ++ (take d $ repeat MkAp) ++ [Update d', Pop d', Unwind]
+        where
+            n  = aLookupString env v (error "This error can't possibly happen")
+            d' = length env
+compileRT (EVar arith `EAp` e1 `EAp` e2) env d
+    | elem arith (aDomain builtInDyadic) = compileE e2 env d ++
+                                           compileE e1 (argOffset 1 env) (d + 1) ++
+                                           compileRT (EVar arith) (argOffset 2 env) (d + 2)
+                                           -- [aLookupString builtInDyadic arith (error "Can't happen")]
+compileRT (EVar "negate" `EAp` e1) env d  = compileE e1 env d ++ [Neg] ++ [Update d', Pop d', Unwind]
+  where
+    d' = length env
+compileRT (EAp e1 e2) env d = compileC e2 env d ++ compileRT e1 (argOffset 1 env) (d + 1)
 
 --The compileE scheme is for the expressions that inherit a strict context from
 --where they are called. 
 compileE :: GMCompiler
-compileE (ENum n) env = [PushInt n]
-compileE (ELet recursive defs e) args
-    | recursive             = compileLetRec compileE defs e args
-    | otherwise             = compileLet    compileE defs e args
-compileE exp@(EVar arith `EAp` e1 `EAp` e2) env
-    | elem arith (aDomain builtInDyadic) = compileE e2 env ++
-                                           compileE e1 (argOffset 1 env) ++
+compileE (ENum n) env d = [PushInt n]
+compileE (ELet recursive defs e) args d
+    | recursive             = compileLetRec False compileE defs e args d
+    | otherwise             = compileLet False compileE defs e args d
+compileE (EVar arith `EAp` e1 `EAp` e2) env d
+    | elem arith (aDomain builtInDyadic) = compileE e2 env d ++
+                                           compileE e1 (argOffset 1 env) (d + 1) ++
                                            [aLookupString builtInDyadic arith (error "Can't happen")]
-compileE (EVar "negate" `EAp` e1) env    = compileE e1 env ++ [Neg]
---compileE (EVar "if" `EAp` e0 `EAp` e1 `EAp` e2) env =
---                          compileE e0 env ++ [Cond (compileE e1 env) (compileE e2 env)]
-compileE (ECase sub alts) env            
-    = compileE sub env ++ [Casejump $ compileAlts compileE' alts env]
-compileE (EConstrAp tag arity args) env    
-    = compilePack (reverse args) env ++ [Pack tag arity]
-compileE expr env                        = compileC expr env ++ [Eval]
+compileE (EVar "negate" `EAp` e1) env d  = compileE e1 env d ++ [Neg]
+compileE (ECase sub alts) env d
+    = compileE sub env d ++ [Casejump $ compileAlts (compileE' False) alts env d]
+compileE (EConstrAp tag arity args) env d
+    = compilePack (reverse args) env d ++ [Pack tag arity]
+compileE expr env d
+    = compileC expr env d ++ [Eval]
 
 
 {-This was my original idea for compiling constructors, now I think it's bad and
@@ -797,70 +821,77 @@ compileE expr env                        = compileC expr env ++ [Eval]
 
 -}
 
-compilePack :: [CoreExpr] -> GMEnvironment -> [Instruction]
-compilePack []     env = []
-compilePack (a:as) env
-    = compileC a env ++ compilePack as (argOffset 1 env)
+compilePack :: [CoreExpr] -> GMEnvironment -> Int -> [Instruction]
+compilePack []     _    _ = []
+compilePack (a:as) env  d
+    = compileC a env d ++ compilePack as (argOffset 1 env) (d + 1)
+
+
 --The compileE' scheme is used to wrap a Split and Slide instruction around the
 --results of the normal compileE scheme, this is used when compiling case
 --expressions. 
-compileE' :: Int -> GMCompiler
-compileE' offset expr env
-    = [Split offset] ++ compileE expr env ++ [Slide offset]
+compileE' :: Bool -> Int -> GMCompiler
+compileE' fromR offset expr env d 
+    | fromR     = [Split offset] ++ compileR expr env d
+    | otherwise = [Split offset] ++ compileE expr env d ++ [Slide offset]
 
 --CompileAlts corresponds to the compileD scheme in the IFL book. The arguments
 --this function takes will be described below.
 compileAlts :: (Int -> GMCompiler) --compiler for alternates
                -> [CoreAlt]        --the list of alternates
                -> GMEnvironment    --the current environment
+               -> Int              --current stack depth
                -> [(Int, GMCode)]  --the output list of alternats sequences
-compileAlts comp alts env
+compileAlts comp alts env d
     = [(tag, 
-      comp (length names) body (zip names [0..] ++ argOffset (length names) env))
+      comp (length names) body (zip names [0..] ++ argOffset (length names) env) (d + (length names)))
         | (tag, names, body) <- alts]
 
 builtInDyadic :: Assoc Name Instruction
 builtInDyadic
     = [("+", Add), ("-", Sub), ("*", Mul), ("/", Div), 
-       ("==", Eq), ("~=", Ne), (">=", Ge), ("div", Div),
+       ("==", Eq), ("/=", Ne), (">=", Ge), ("div", Div),
        (">", Gt), ("<=", Le), ("<", Lt)] 
 
 
 compileC :: GMCompiler
-compileC (EVar v) env
+compileC (EVar v) env d
     | elem v (aDomain env)  = [Push n]
     | otherwise             = [PushGlobal v]
     where n = aLookupString env v (error "This error can't possibly happen")
-compileC (ENum n) env       = [PushInt n]
-compileC (EAp e1 e2) env    = compileC e2 env ++ 
-                              compileC e1 (argOffset 1 env) ++ 
+compileC (ENum n) env d     = [PushInt n]
+compileC (EAp e1 e2) env d  = compileC e2 env d ++ 
+                              compileC e1 (argOffset 1 env) (d + 1) ++ 
                               [MkAp]
-compileC (EConstrAp tag arity args) env = compilePack (reverse args) env ++ [Pack tag arity]
-compileC (ELet recursive defs e) args
-    | recursive             = compileLetRec compileC defs e args
-    | otherwise             = compileLet    compileC defs e args
+compileC (EConstrAp tag arity args) env d = compilePack (reverse args) env d ++ [Pack tag arity]
+compileC (ELet recursive defs e) args d
+    | recursive             = compileLetRec False compileC defs e args d
+    | otherwise             = compileLet False compileC defs e args d
 
-compileLet :: GMCompiler -> [(Name, CoreExpr)] -> GMCompiler
-compileLet comp defs expr env
-    = compileLet' defs env ++ comp expr env' ++ [Slide (length defs)]
-      where env' = compileArgs defs env
+compileLet :: Bool -> GMCompiler -> [(Name, CoreExpr)] -> GMCompiler
+compileLet fromR comp defs expr env d
+    = compileLet' defs env d ++ comp expr env' (d + lds) ++ slide
+      where env'  = compileArgs defs env
+            lds   = length defs
+            slide = if fromR then [] else [Slide lds]
 
-compileLet' :: [(Name, CoreExpr)] -> GMEnvironment -> GMCode
-compileLet' []                  env = []
-compileLet' ((name, expr):defs) env 
-    = compileC expr env ++ compileLet' defs (argOffset 1 env)
+compileLet' :: [(Name, CoreExpr)] -> GMEnvironment -> Int -> GMCode
+compileLet' []                  env d = []
+compileLet' ((name, expr):defs) env d
+    = compileC expr env d ++ compileLet' defs (argOffset 1 env) (d + 1)
 
-compileLetRec :: GMCompiler -> [(Name, CoreExpr)] -> GMCompiler
-compileLetRec comp defs expr env
-    = [Alloc n] ++ compileLetRec' defs env' ++ comp expr env' ++ [Slide n]
+compileLetRec :: Bool -> GMCompiler -> [(Name, CoreExpr)] -> GMCompiler
+compileLetRec fromR comp defs expr env d
+    = [Alloc n] ++ compileLetRec' defs env' d ++ comp expr env' (d + n) ++ slide
         where 
-            n    = length defs
-            env' = compileArgs defs env
+            n     = length defs
+            env'  = compileArgs defs env
+            slide = if fromR then [] else [Slide n]
 
-compileLetRec' :: [(Name, CoreExpr)] -> GMEnvironment -> GMCode
-compileLetRec' []   env = []
-compileLetRec' defs env
-    = compileC expr env ++ [Update (n-1)] ++ compileLetRec' rest (argOffset 1 env)
+compileLetRec' :: [(Name, CoreExpr)] -> GMEnvironment -> Int -> GMCode
+compileLetRec' []   env d = []
+compileLetRec' defs env d
+    = compileC expr env d ++ [Update (n-1)] ++ compileLetRec' rest (argOffset 1 env) (d + 1)
     where
         ((name, expr):rest) = defs
         n                   = length defs
@@ -870,7 +901,9 @@ compileArgs defs env
     = zip (map fst defs) [n-1, n-2 .. 0] ++ argOffset n env
         where n = length defs
 
-type GMCompiler = CoreExpr -> GMEnvironment -> GMCode
+-- A GMCompiler takes an expression, and environment, and the current stack depth
+-- and produces GCode
+type GMCompiler = CoreExpr -> GMEnvironment -> Int -> GMCode
 
 type GMEnvironment = Assoc Name Int
 
