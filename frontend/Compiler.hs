@@ -8,10 +8,30 @@ import CaseLift
 import Fresh
 import Data.List
 
-compileToGCode = labelProgram . compile . caseLift . parse
+{--------------------------------------------------- 
+ ------------- Compiler Options --------------------
+ ---------------------------------------------------}
 
-writeGCodeFile name = 
-    writeFile name . iDisplay . printInstructions . compileToGCode
+data Option = TCO
+            | OZ
+            | File String
+       deriving (Eq, Show)
+
+isFile :: Option -> Bool
+isFile (File _) = True
+isFile _        = False
+
+noTC :: [Option] -> Bool
+noTC = not . elem TCO
+
+{--------------------------------------------------- 
+ ------------- Compiler Output ---------------------
+ ---------------------------------------------------}
+
+compileToGCode opts = labelProgram . compile opts . caseLift . parse
+
+writeGCodeFile opts name = 
+    writeFile name . iDisplay . printInstructions . compileToGCode opts
 
 {- 
  - Code for testing the compilation and labelling of G-Code:
@@ -170,11 +190,13 @@ type GMCompiledSC = (Name, Int, GMCode)
 --This function compiles to a list of tuples (one for each supercombinator).
 --Each tuple consists of the name of the SC, its arity, and the Code for the
 --supercombinator
-compile :: CoreProgram -> [GMCompiledSC]
-compile prog = map compileSC (prog ++ preludeDefs)
-                             ++ compiledPrimitives
+compile :: [Option] -> CoreProgram -> [GMCompiledSC]
+compile opts prog
+    | noTC opts  = map (compileSC False) (prog ++ preludeDefs) ++ compiledPrimitives
+    | otherwise  = map (compileSC True) (prog ++ preludeDefs) ++ compiledPrimitives
 
 
+{- Things below not needed?!
 --This is the top-level compile function, it creates a heap with all of the
 --global function instances
 compileToHeap :: CoreProgram -> (GMHeap, GMGlobals)
@@ -196,17 +218,21 @@ allocateSC :: GMHeap -> GMCompiledSC -> (GMHeap, (Name, Addr))
 allocateSC heap (name, numArgs, gmCode) = (newHeap, (name, addr))
         where
             (newHeap, addr) = hAlloc heap (NGlobal numArgs gmCode)
-
+-}
 
 {-Below is the section that compiles the coreExpr to GCode
  - ---------------------------------------------------------------------
  - ---------------------------------------------------------------------
  - -}
-compileSC :: (Name, [Name], CoreExpr) -> GMCompiledSC
-compileSC (name, env, body)
-    = (name, d, compileR body (zip env [0..]) d)
+compileSC :: Bool -> (Name, [Name], CoreExpr) -> GMCompiledSC
+compileSC b (name, env, body)
+    | b         = (name, d, compileR body (zip env [0..]) d)
+    | otherwise = (name, d, compileRO body (zip env [0..]) d)
   where
     d = length env
+
+compileRO :: GMCompiler
+compileRO exp env d = compileE exp env d ++ [Update d, Pop d, Unwind]
 
 compileR :: GMCompiler
 compileR (ELet recursive defs e) env d
