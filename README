@@ -1,3 +1,62 @@
-Language.hs will define the core language that will be compiled.
-This is described in Chapter 1 of 'Implementing Functional Languages' and has been
-completed up through chapter 1.3
+PRC: Phil Recompiles Code
+
+Introduction
+============
+
+This repo is home to an experimental compiler for taking advantage of the
+parallelism implicit in non-strict functional languages. You can write
+a program in F-Lite (which is a subset of Haskell) and get out a 
+parallelised version of the program.
+
+This idea is not new. In fact it's as old as functional languages themselves.
+Lots of work was undertaken in the 1980's and early 1990's towards exploiting
+implicit parallelism. It turned out to be a hard problem, much of the complication
+was due to the *granularity problem*.
+
+The Granularity Problem
+-----------------------
+
+Static analysis technique for non-strict and pure functional languages are pretty
+powerful. Because of this, find the *safe* parallelism in a program is not too hard.
+Things like strictness analysis, usage analaysis, and path analysis can all help you
+determine what *could* be executed in parallel.
+
+The problem: just because we *can* do something in parallel doesn't mean we *should*.
+
+Parallelism incurs cost. That cost comes from all sorts of sources;
+communication through shared memory, message passing, worsened cache behavior
+due to context switching etc. These costs are **very** difficult to predict with
+static analysis.
+
+If the benefit (how much a computation contributes towards the goal of the
+program) of a parallel task is smaller than its cost (the time taken up by the
+overheads of introducing and managing the parallel task) we actually slow down
+our program by parallelising it!
+
+So determining which parallel tasks would actually benefit the overall computation
+is known as the granularity problem.
+
+
+Our Approach
+============
+
+So while our static analysis can tell us where to evaluate something in
+parallel, we're stuck using ugly heuristics and imperfect cost-semantics to
+tell us whether we should. This is not ideal.
+
+Instead, what if we actually *run* the program? This way we can profile the
+parallelism in the program and determine which parallel tasks are not
+worthwhile.
+
+
+How we do it
+============
+
+Our approach has 3 main parts:
+
+1. First we use some well-studied static analysis techniques to find the *safe*
+    parallelism in our program
+2. We introduce `par` annotations in order to evaluate the safe parallel tasks
+3. We run the program and determine what parallelism can be turned off. We keep
+    running the program until turning off any more parallelism slows the program
+    down
